@@ -1,0 +1,9 @@
+rules:
+  - id: derive-clone
+    patterns:
+      - pattern: struct $NAME { ... }
+      - pattern-not: |
+          #[derive(..., Clone, ...)] struct $NAME { ... }
+    message: Derive the `Clone` trait for struct $NAME if possible
+    languages: [rust]
+    severity: ERROR

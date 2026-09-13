@@ -1,0 +1,46 @@
+config_version = "0"
+
+[plugins.downloads.swiftlint]
+strip_components = 0
+
+[[plugins.downloads.swiftlint.system]]
+cpu = "x86_64"
+os = "macos"
+url = "https://github.com/realm/SwiftLint/releases/download/${version}/portable_swiftlint.zip"
+
+[[plugins.downloads.swiftlint.system]]
+cpu = "aarch64"
+os = "macos"
+url = "https://github.com/realm/SwiftLint/releases/download/${version}/portable_swiftlint.zip"
+
+[[plugins.downloads.swiftlint.system]]
+cpu = "x86_64"
+os = "linux"
+url = "https://github.com/realm/SwiftLint/releases/download/${version}/swiftlint_linux_amd64.zip"
+
+[[plugins.downloads.swiftlint.system]]
+cpu = "aarch64"
+os = "linux"
+url = "https://github.com/realm/SwiftLint/releases/download/${version}/swiftlint_linux_arm64.zip"
+
+[plugins.definitions.swiftlint]
+downloads = ["swiftlint"]
+config_files = [".swiftlint.yml", ".swiftlint.yaml", ".swiftlint"]
+file_types = ["swift"]
+latest_version = "0.65.0"
+known_good_version = "0.65.0"
+version_command = "swiftlint --version"
+description = "Enforces Swift style and conventions"
+supported_platforms = ["macos"]
+
+[plugins.definitions.swiftlint.drivers.lint]
+script = "swiftlint --quiet ${target}"
+success_codes = [0, 2]
+output = "stdout"
+output_format = "regex"
+output_regex = "(?P<path>.*?):(?P<line>\\d+):(?P<col>\\d+): (?P<severity>.*?): (?P<message>.*)\\((?P<code>.*?)\\)"
+batch = true
+cache_results = true
+output_category = "style"
+suggested = "never"
+output_missing = "parse"

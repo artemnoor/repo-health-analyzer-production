@@ -1,0 +1,138 @@
+---
+version: "2"
+run:
+  concurrency: 6
+  timeout: 5m
+issues:
+  # Maximum issues count per one linter.
+  # Set to 0 to disable.
+  # Default: 50
+  max-issues-per-linter: 0
+  # Maximum count of issues with the same text.
+  # Set to 0 to disable.
+  # Default: 3
+  max-same-issues: 0
+  # Exclude previously existing issues from the report
+  new: true
+  new-from-rev: HEAD
+
+formatters:
+  settings:
+    gci:
+      sections:
+        - standard
+        - default
+        - prefix(github.com/ossf/criticality_score)
+
+linters:
+  default: none
+  enable:
+    - asciicheck
+    #- bodyclose  # Temporarily disabled.
+    #- depguard  # Temporarily disabled.
+    - copyloopvar
+    - dogsled
+    #- errcheck  # Temporarily disabled.
+    - errorlint
+    - exhaustive
+    #- gochecknoinits  # Temporarily disabled.
+    - gocognit
+    - goconst
+    - gocritic
+    - gocyclo
+    - godot
+    - godox
+    #- goerr113  # Temporarily disabled.
+    - goheader
+    - gomodguard
+    - goprintffuncname
+    - gosec
+    - govet
+    - ineffassign
+    #- lll  # Temporarily disabled.
+    - makezero
+    - misspell
+    - nakedret
+    - nestif
+    - noctx
+    - nolintlint
+    - predeclared
+    - staticcheck
+    - thelper
+    - tparallel
+    - unconvert
+    - unparam
+    - unused
+    - whitespace
+    - wrapcheck
+  settings:
+    errcheck:
+      check-type-assertions: true
+      check-blank: true
+    exhaustive:
+      # https://golangci-lint.run/usage/linters/#exhaustive
+      default-signifies-exhaustive: true
+    godot:
+      exclude:
+        - "^ -- "
+    govet:
+      enable:
+        - fieldalignment
+    godox:
+      keywords:
+        - BUG
+        - FIXME
+        - HACK
+    gocritic:
+      enabled-checks:
+        # Diagnostic
+        - appendAssign
+        - badCond
+        - caseOrder
+        - codegenComment
+        - commentedOutCode
+        - deprecatedComment
+        - dupBranchBody
+        - dupCase
+        - dupSubExpr
+        #- exitAfterDefer  # Temporarily disabled
+        - flagName
+        - nilValReturn
+        - weakCond
+        - octalLiteral
+
+        # Performance
+        - appendCombine
+        #- hugeParam  # Crashing.
+        - rangeExprCopy
+        - rangeValCopy
+
+        # Style
+        - boolExprSimplify
+        - captLocal
+        - commentFormatting
+        - commentedOutImport
+        - defaultCaseOrder
+        - docStub
+        - elseif
+        - emptyFallthrough
+        - hexLiteral
+        - ifElseChain
+        - methodExprCall
+        - singleCaseSwitch
+        - typeAssertChain
+        - typeSwitchVar
+        - underef
+        - unlabelStmt
+        - unlambda
+
+        # Opinionated
+        - builtinShadow
+        - importShadow
+        - initClause
+        - nestingReduce
+        - paramTypeCombine
+        - ptrToRefParam
+        - typeUnparen
+        - unnecessaryBlock
+

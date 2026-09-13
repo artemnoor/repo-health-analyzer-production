@@ -1,0 +1,608 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Files Explorer</title>
+    <style>
+        body {
+            font-family: Vollkorn, Ubuntu, Optima, Segoe, Segoe UI, Candara, Calibri, Arial, sans-serif;
+        }
+
+        .group {
+            display: inline-block;
+            border: 1px solid lightgrey;
+            border-radius: 6px;
+            margin: 8px 18px 8px 8px;
+            padding: 5px;
+            background-color: #f8f8f8;
+        }
+
+        a {
+            text-decoration: none;
+        }
+
+        .icon {
+            width: 140px;
+            height: 140px;
+            object-fit: cover;
+            border-radius: 4px;
+            margin-top: 26px;
+            margin-bottom: 20px;
+            filter: grayscale(100%);
+        }
+
+        body {
+            margin: 40px;
+        }
+
+        ::placeholder {
+            color: lightgrey;
+            opacity: 1;
+        }
+
+        :-ms-input-placeholder {
+            color: lightgrey;
+        }
+
+        ::-ms-input-placeholder {
+            color: lightgrey;
+        }
+
+        td {
+            white-space: nowrap;
+            overflow: hidden;
+        }
+
+        .sortable {
+            cursor: pointer;
+            user-select: none;
+        }
+
+        .sortable:hover {
+            color: #333333;
+        }
+
+        .sort-active {
+            color: #303030;
+            font-weight: bold;
+        }
+
+        .sort-arrow {
+            font-size: 80%;
+        }
+
+        /* Loading indicator shown while the embedded data is inflated + the first render runs. */
+        #loading {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            color: grey;
+            font-size: 15px;
+            padding: 40px 4px;
+        }
+
+        #loading .spinner {
+            width: 22px;
+            height: 22px;
+            border: 3px solid #e0e0e0;
+            border-top-color: #4a90d9;
+            border-radius: 50%;
+            animation: sokrates-spin 0.8s linear infinite;
+        }
+
+        @keyframes sokrates-spin {
+            to {
+                transform: rotate(360deg);
+            }
+        }
+    </style>
+    <link rel="stylesheet" target="_blank" href="https://fonts.googleapis.com/css?family=Ubuntu">
+    <link rel="stylesheet" target="_blank" href="https://fonts.googleapis.com/css?family=Lato">
+    ${sokrates-inflate-lib}
+</head>
+<body style="margin: 12px">
+
+<div id="loading">
+    <div class="spinner"></div>
+    <span>Loading files data…</span>
+</div>
+
+<div id="report" style="display: none;">
+    <div style="margin: 0; color: grey">
+        <div>
+            <div style="padding: 0px; margin-bottom: 26px; white-space: nowrap">
+                Scope: &nbsp;
+                <label><input type="checkbox" id="main" checked onchange="update()"><span
+                        id="label_main">main</span></label>&nbsp;&nbsp;
+                <label><input type="checkbox" id="test" checked onchange="update()"><span
+                        id="label_test">test</span></label>&nbsp;&nbsp;
+                <label><input type="checkbox" id="generated" checked onchange="update()"><span id="label_generated">generated</span></label>&nbsp;&nbsp;
+                <label><input type="checkbox" id="build" checked onchange="update()"><span
+                        id="label_build">build</span></label>&nbsp;&nbsp;
+                <label><input type="checkbox" id="other" checked onchange="update()"><span
+                        id="label_other">other</span></label>&nbsp;&nbsp;&nbsp;&nbsp;
+                <span id="scope-summary" style="background-color: #f8f8f8"></span>
+            </div>
+            <input id="filter" type="text" placeholder="search... (use ; for multiple terms)"
+                   style="font-size: 16px; height: 32px; width: 420px; margin-bottom: 10px"
+                   onkeyup="update()">
+            <div id="search-summary" style="display: inline-block"></div>
+        </div>
+    </div>
+
+    <div id="content"></div>
+</div>
+
+<script>
+    let importedFiles = ${data};
+
+    // Map of language/extension -> base64 image data URI, injected at report-generation time.
+    const langIcons = ${langIcons};
+
+    // File-size risk thresholds {low, medium, high, veryHigh} (in lines of code), injected at
+    // report-generation time, used to colour-code the LOC bar. Falls back to sensible defaults if
+    // the placeholder was not substituted.
+    let fileSizeThresholds = ${fileSizeThresholds};
+    if (!fileSizeThresholds || typeof fileSizeThresholds.veryHigh !== 'number') {
+        fileSizeThresholds = {low: 100, medium: 200, high: 500, veryHigh: 1000};
+    }
+
+    // Green (negligible) -> red (very high), matching the risk palette family.
+    const RISK_COLORS = ['#1a9641', '#a6d96a', '#fdae61', '#f03b20', '#bd0026'];
+
+    // Returns a risk color for a value against {low, medium, high, veryHigh} thresholds.
+    function riskColor(value, t) {
+        if (!t) return RISK_COLORS[0];
+        if (value > t.veryHigh) return RISK_COLORS[4];
+        if (value > t.high) return RISK_COLORS[3];
+        if (value > t.medium) return RISK_COLORS[2];
+        if (value > t.low) return RISK_COLORS[1];
+        return RISK_COLORS[0];
+    }
+
+    // File age / freshness / change-frequency / contributors thresholds, injected at generation time
+    // (with defaults), used to colour the corresponding columns like the File Age and File Change
+    // Frequency reports do.
+    function withDefaults(t, def) {
+        return (t && typeof t.veryHigh === 'number') ? t : def;
+    }
+    const fileAgeThresholds = withDefaults(${fileAgeThresholds}, {low: 30, medium: 90, high: 180, veryHigh: 365});
+    const fileFreqThresholds = withDefaults(${fileUpdateFrequencyThresholds}, {low: 5, medium: 20, high: 50, veryHigh: 100});
+    const fileContribThresholds = withDefaults(${fileContributorsCountThresholds}, {low: 1, medium: 5, high: 10, veryHigh: 25});
+
+    // Report palettes (index 0 = very-high band ... index 4 = negligible band), mirroring
+    // Palette.getAgePalette / getFreshnessPalette / getHeatPalette on the Java side.
+    const AGE_PALETTE = ['#4a3c31', '#fac831', '#ffdf44', '#fff18e', '#fcf4cb'];
+    const FRESHNESS_PALETTE = ['#041E02', '#006d2c', '#31a354', '#74c476', '#bae4b3'];
+    const HEAT_PALETTE = ['#b21227', '#f7844e', '#e6f5df', '#b0d8e9', '#6192c3'];
+
+    // Maps a value to its risk band against {low, medium, high, veryHigh} (same boundaries as
+    // RiskDistributionStats.update) and returns the matching palette colour. Palettes are ordered
+    // very-high -> negligible, so band 0 = very-high.
+    function bandColor(value, t, palette) {
+        if (value < 0 || !t) return '';
+        if (value <= t.low) return palette[4];        // negligible
+        if (value <= t.medium) return palette[3];     // low
+        if (value <= t.high) return palette[2];       // medium
+        if (value <= t.veryHigh) return palette[1];   // high
+        return palette[0];                            // very high
+    }
+
+    // Some palette tones are very light; pick a readable text colour for the badge.
+    function textOn(bg) {
+        return (bg === '#fcf4cb' || bg === '#fff18e' || bg === '#ffdf44' || bg === '#e6f5df'
+            || bg === '#bae4b3' || bg === '#b0d8e9') ? '#333' : 'white';
+    }
+
+    // A table cell with a value rendered as a colour-coded badge; shows a muted dash when absent.
+    function colorCell(value, present, bg) {
+        let inner;
+        if (!present) {
+            inner = '<span style="color: lightgrey">-</span>';
+        } else {
+            inner = '<span style="display: inline-block; min-width: 26px; padding: 1px 5px; border-radius: 4px; background-color: '
+                + bg + '; color: ' + textOn(bg) + '">' + value.toLocaleString('en-US') + '</span>';
+        }
+        return '<td style="text-align: center; padding-right: 5px; padding-left: 5px; font-size: 80%;">' + inner + '</td>';
+    }
+
+    // Renders a small round language badge: an icon when one is known, otherwise a text bubble
+    // with the language name (mirrors DataImageUtils.getLangDataImageDiv on the Java side).
+    function langIcon(lang) {
+        if (!lang) {
+            return '';
+        }
+        const key = lang.toLowerCase();
+        const size = 30;
+        if (langIcons[key]) {
+            return '<img title="' + lang + '" style="margin-right: 5px; vertical-align: middle; background-color: #f1f1f1; '
+                + 'border-radius: 50%; border: 1px solid lightgrey; width: ' + size + 'px; height: ' + size + 'px; object-fit: contain;" src="'
+                + langIcons[key] + '">';
+        }
+        const fontSize = lang.length <= 3 ? 9 : 8;
+        return '<div title="' + lang + '" style="margin-right: 5px; display: inline-block; vertical-align: middle; '
+            + 'background-color: #D6E4E1; border-radius: 50%; border: 1px solid grey; overflow: hidden; color: darkblue; '
+            + 'width: ' + size + 'px; height: ' + size + 'px; line-height: ' + size + 'px; '
+            + 'font-size: ' + fontSize + 'px; font-weight: bold; text-align: center;">' + lang + '</div>';
+    }
+
+    importedFiles.forEach(file => {
+        let key = file.scope.replace('.txt', '').replace('aspect_', '').trim().toLowerCase();
+        if (key == 'build_and_deployment') {
+            key = 'build';
+        }
+        if (!document.getElementById(key)) {
+            key = 'other';
+        }
+        file.scope = key;
+    });
+
+
+    const importedFileMap = {};
+
+    let files = [];
+
+    importedFiles.forEach(file => {
+        const key = file.repository + '/' + file.path;
+        if (!importedFileMap[key]) {
+            importedFileMap[key] = true;
+            files.push(file);
+        }
+    });
+
+    function getScopes(files) {
+        const scopeMap = {};
+        const scopes = [];
+        files.forEach(file => {
+            const key = file.scope;
+            if (!scopeMap[key]) {
+                scopeMap[key] = {scope: key, filesCount: 0};
+                scopes.push(scopeMap[key]);
+            }
+
+            scopeMap[key].filesCount += 1;
+        });
+
+        scopes.sort((a, b) => b.filesCount - a.filesCount);
+        return scopes;
+    }
+
+
+    // True when a file carries git-history data; only main files do, so history-only columns
+    // (commits / contributors / age / freshness) have no value for test/build/generated/other files.
+    function hasHistoryData(item) {
+        return (item.commitsCount || 0) > 0 || (item.latestCommitDate || '').length > 0;
+    }
+
+    // Sortable column definitions: each maps a key to a value accessor.
+    // 'dir' is the default direction applied the first time a column is selected.
+    // 'historyOnly' marks columns whose data exists only for main files; files without history are
+    // always sorted to the bottom for these columns (regardless of direction).
+    const sortColumns = {
+        lang: {value: item => (item.mainLang || '').toLowerCase(), type: 'string', dir: 1},
+        repo: {value: item => (item.repository || '').toLowerCase(), type: 'string', dir: 1},
+        name: {value: item => (item.repository + '/' + item.path).toLowerCase(), type: 'string', dir: 1},
+        loc: {value: item => item.linesOfCode, type: 'number', dir: -1},
+        recentCommits: {value: item => item.recentCommitsCount30Days || 0, type: 'number', dir: -1, historyOnly: true},
+        recentCommits90: {value: item => item.recentCommitsCount90Days || 0, type: 'number', dir: -1, historyOnly: true},
+        commits: {value: item => item.commitsCount || 0, type: 'number', dir: -1, historyOnly: true},
+        churn30: {value: item => item.churn30Days || 0, type: 'number', dir: -1, historyOnly: true},
+        churn90: {value: item => item.churn90Days || 0, type: 'number', dir: -1, historyOnly: true},
+        churnTotal: {value: item => item.churnTotal || 0, type: 'number', dir: -1, historyOnly: true},
+        contributors: {value: item => item.contributorsCount || 0, type: 'number', dir: -1, historyOnly: true},
+        age: {value: item => (item.ageDays == null ? -1 : item.ageDays), type: 'number', dir: -1, historyOnly: true},
+        freshness: {value: item => (item.freshnessDays == null ? -1 : item.freshnessDays), type: 'number', dir: 1, historyOnly: true},
+        latestCommit: {value: item => item.latestCommitDate || '', type: 'string', dir: -1, historyOnly: true},
+        scope: {value: item => item.scope || '', type: 'string', dir: 1}
+    };
+
+    let sortKey = 'loc';
+    let sortDir = -1;
+
+    function comparator(a, b) {
+        const column = sortColumns[sortKey];
+        // For history-only columns, files without history always sink to the bottom — their values
+        // (0 / -1 / "") would otherwise interleave meaninglessly with main files.
+        if (column.historyOnly) {
+            const aHas = hasHistoryData(a);
+            const bHas = hasHistoryData(b);
+            if (aHas !== bHas) {
+                return aHas ? -1 : 1;
+            }
+        }
+        const va = column.value(a);
+        const vb = column.value(b);
+        let cmp;
+        if (column.type === 'string') {
+            cmp = String(va).localeCompare(String(vb));
+        } else {
+            cmp = va < vb ? -1 : (va > vb ? 1 : 0);
+        }
+        return cmp * sortDir;
+    }
+
+    function sortHeader(key, label, extraStyle, rowspan) {
+        const active = sortKey === key;
+        const arrow = active ? (sortDir === 1 ? ' ▲' : ' ▼') : '';
+        const cls = 'sortable' + (active ? ' sort-active' : '');
+        const span = rowspan ? ' rowspan="' + rowspan + '"' : '';
+        return '<td class="' + cls + '"' + span + ' style="vertical-align: bottom; ' + (extraStyle || '') + '" onclick="update(\'' + key + '\')">'
+            + label + '<span class="sort-arrow">' + arrow + '</span></td>';
+    }
+
+    // A non-sortable header cell spanning several sub-columns (the first row of the two-row header).
+    function groupHeader(label, colspan) {
+        return '<td colspan="' + colspan + '" style="text-align: center; border-bottom: 1px solid #e0e0e0;">' + label + '</td>';
+    }
+
+    // Base path (from the explorers/ folder) to the per-repository HTML reports / cached source
+    // files, so each file card can link to them. Empty (e.g. in the landscape, where these do not
+    // exist at a single location) suppresses the links.
+    let reportLinkBase = '${reportLinkBase}';
+    if (reportLinkBase.indexOf('${') === 0) {
+        reportLinkBase = '';
+    }
+    // Whether source was cached (into ../src/<aspect>.zip, viewed via ../src/viewer.html).
+    // Suppresses the file-name link when off.
+    let saveSourceFiles = '${saveSourceFiles}' === 'true';
+
+    files = files.sort(comparator);
+
+    function getReposCount(files) {
+        const allReposMap = {};
+        let reposCount = 0;
+
+        files.forEach(file => {
+            if (file.repository && !allReposMap[file.repository]) {
+                allReposMap[file.repository] = true;
+                reposCount++;
+            }
+        });
+
+        return reposCount;
+    }
+
+    function getLoc(files) {
+        return files.map(item => item.linesOfCode).reduce((a, b) => a + b, 0);
+    }
+
+    function update(clickedKey) {
+        if (clickedKey && sortColumns[clickedKey]) {
+            if (sortKey === clickedKey) {
+                sortDir = -sortDir;
+            } else {
+                sortKey = clickedKey;
+                sortDir = sortColumns[clickedKey].dir;
+            }
+        }
+        files = files.sort(comparator);
+        // A search can contain several terms separated by ";"; the result is the UNION of the
+        // individual term matches (search "a;b" returns matches of "a" plus matches of "b").
+        const filters = document.getElementById('filter').value.toLowerCase().trim()
+            .split(';').map(s => s.trim()).filter(s => s.length);
+        let html = '';
+
+        const scopedData = files
+            .filter(item => document.getElementById(item.scope).checked);
+
+        let scopedCount = scopedData.length;
+        let scopedLoc = scopedData.map(item => item.linesOfCode).reduce((a, b) => a + b, 0);
+        const scopedReposCount = getReposCount(scopedData)
+
+        const scopedRepoInfo = scopedReposCount ? ', ' + scopedReposCount + ' repositories' : '';
+        let totalReposCount = getReposCount(files);
+        const totalRepoInfo = totalReposCount ? ', ' + totalReposCount + ' repositories' : '';
+        document.getElementById('scope-summary').innerHTML = '[' + scopedCount.toLocaleString('en-US') + ' ' + (scopedCount === 1 ? 'file' : 'files') + '; ' + scopedLoc.toLocaleString('en-US') + ' LOC' + scopedRepoInfo + '] of ' + '[' + files.length.toLocaleString('en-US') + ' ' + (files.length === 1 ? 'file' : 'files') + '; ' + getLoc(files).toLocaleString('en-US') + ' LOC' + totalRepoInfo + ']';
+
+        const filteredData = scopedData
+            .filter(item => {
+                if (!item.path) {
+                    return false;
+                }
+                if (!filters.length) {
+                    return true;
+                }
+                const haystack = (item.repository + ' ' + item.path).toLowerCase();
+                return filters.some(f => haystack.includes(f));
+            });
+
+        let maxLoc = 1;
+        filteredData.forEach(item => maxLoc = Math.max(maxLoc, item.linesOfCode));
+
+        let filteredCount = filteredData.length;
+        let filteredLoc = filteredData.map(item => item.linesOfCode).reduce((a, b) => a + b, 0);
+        const filteredReposCount = getReposCount(filteredData)
+
+        const repoInfo = filteredReposCount ? ', ' + filteredReposCount + ' repositories' : '';
+
+        document.getElementById('search-summary').innerHTML = ' = ' + filteredCount.toLocaleString('en-US') + ' ' + (filteredCount === 1 ? 'file' : 'files') + ' (' + filteredLoc.toLocaleString('en-US') + ' LOC' + repoInfo + ')';
+
+        if (scopedLoc > filteredLoc) {
+            html += '<div style="width: 400px; margin: 0; padding: 0; white-space: nowrap">';
+            const w1count = Math.round(100 * filteredCount / scopedCount);
+            const w2count = 100 - w1count;
+            html += '<div style="margin: 0; display: inline-block; width: ' + w1count + '%; background-color: #303030; height: 12px"></div>';
+            html += '<div style="margin: 0; display: inline-block; width: ' + w2count + '%; background-color: #c0c0c0; height: 12px"></div>';
+            html += '<div style="margin: 0; display: inline-block; font-size: 80%; width: 100px; color: grey; vertical-align: top">&nbsp;' + (filteredLoc == 0 || w1count > 0 ? w1count : '<1') + '% of scoped files</div>';
+            html += '</div>';
+            if (filteredReposCount) {
+                html += '<div style="width: 400px; margin: 0; padding: 0; white-space: nowrap">';
+                const w1repo = Math.round(100 * filteredReposCount / scopedReposCount);
+                const w2repo = 100 - w1repo;
+                html += '<div style="margin: 0; display: inline-block; width: ' + w1repo + '%; background-color: #303030; height: 12px"></div>';
+                html += '<div style="margin: 0; display: inline-block; width: ' + w2repo + '%; background-color: #c0c0c0; height: 12px"></div>';
+                html += '<div style="margin: 0; display: inline-block; font-size: 80%; width: 100px; color: grey; vertical-align: top">&nbsp;' + (filteredLoc == 0 || w1repo > 0 ? w1repo : '<1') + '% of scoped repositories</div>';
+                html += '</div>';
+            }
+            html += '<div style="width: 400px; margin: 0; padding: 0; white-space: nowrap">';
+            const w1loc = Math.round(100 * filteredLoc / scopedLoc);
+            const w2loc = 100 - w1loc;
+            html += '<div style="margin: 0; display: inline-block; width: ' + w1loc + '%; background-color: skyblue; height: 12px"></div>';
+            html += '<div style="margin: 0; display: inline-block; width: ' + w2loc + '%; background-color: #c0c0c0; height: 12px"></div>';
+            html += '<div style="margin: 0; display: inline-block; font-size: 80%; width: 100px; color: grey; vertical-align: top">&nbsp;' + (filteredLoc == 0 || w1loc > 0 ? w1loc : '<1') + '% of scoped LOC</div>';
+            html += '</div>';
+            html += '<div style="width: 400px; margin: 0; padding: 0; white-space: nowrap">';
+
+        }
+
+        // Only show the git-history columns when at least one file in the (scoped) data has history.
+        const hasHistory = scopedData.some(item => (item.commitsCount || 0) > 0 || (item.latestCommitDate || '').length);
+
+        html += '<table style="width: 100%">';
+
+        if (hasHistory) {
+            // Two-row header: row 1 groups the commits and line-churn sub-columns (each 30d / 90d /
+            // all time); the non-grouped columns span both rows. Row 2 holds the sortable sub-columns.
+            const rs = 2;
+            html += '<tr style="color: #777777; background-color: #f8f8f8">';
+            html += sortHeader('lang', 'lang', 'text-align: center', rs);
+            if (filteredReposCount) {
+                html += sortHeader('repo', 'repo', 'text-align: left', rs);
+            }
+            html += sortHeader('name', 'file', 'text-align: left', rs);
+            html += sortHeader('loc', '&nbsp;LOC', 'text-align: left', rs);
+            html += groupHeader('commits', 3);
+            html += groupHeader('line churn', 3);
+            html += sortHeader('contributors', 'contri-<br>butors', 'text-align: center', rs);
+            html += sortHeader('age', 'age<br>(days)', 'text-align: center', rs);
+            html += sortHeader('freshness', 'freshness<br>(days)', 'text-align: center', rs);
+            html += sortHeader('latestCommit', 'latest<br>commit', 'text-align: center', rs);
+            html += sortHeader('scope', 'scope', 'text-align: center', rs);
+            html += '</tr>';
+
+            html += '<tr style="color: #777777; background-color: #f8f8f8">';
+            html += sortHeader('recentCommits', '30d', 'text-align: center');
+            html += sortHeader('recentCommits90', '90d', 'text-align: center');
+            html += sortHeader('commits', 'all<br>time', 'text-align: center');
+            html += sortHeader('churn30', '30d', 'text-align: center');
+            html += sortHeader('churn90', '90d', 'text-align: center');
+            html += sortHeader('churnTotal', 'all<br>time', 'text-align: center');
+            html += '</tr>';
+        } else {
+            html += '<tr style="color: #777777; background-color: #f8f8f8">';
+            html += sortHeader('lang', 'lang', 'text-align: center');
+            if (filteredReposCount) {
+                html += sortHeader('repo', 'repo', 'text-align: left');
+            }
+            html += sortHeader('name', 'file', 'text-align: left');
+            html += sortHeader('loc', '&nbsp;LOC', 'text-align: left');
+            html += sortHeader('scope', 'scope', 'text-align: center');
+            html += '</tr>';
+        }
+
+        let displayCounter = 0;
+
+        filteredData.forEach(item => {
+            if (displayCounter > 1000) {
+                return;
+            }
+            displayCounter++;
+            html += '<tr>';
+            html += '<td style="text-align: center; vertical-align: middle;">';
+            html += langIcon(item.mainLang);
+            html += '</td>';
+            if (filteredReposCount) {
+                html += '<td>';
+                const pathsRepo = item.repository.split('/');
+                const repoName = pathsRepo[pathsRepo.length - 1];
+                const repoPrefix = pathsRepo.slice(0, pathsRepo.length - 1).join(' / ');
+                html += '<div style="border-left: 1px solid lightgrey; padding-left: 6px">';
+                html += '<div style="font-size: 90%; color: #8f8f8f">' + (repoPrefix ? repoPrefix : '') + '</div>';
+                html += '<div style="margin-bottom: 6px; color: black; font-weight: bold">' + repoName + '</div>';
+                html += '</div>';
+                html += '</td>';
+            }
+            html += '<td>';
+            const paths = item.path.split('/');
+            const fileName = paths[paths.length - 1];
+            let folder = paths.slice(0, paths.length - 1).join('/');
+            html += '<div style="border-left: 1px solid lightgrey; padding-left: 6px">';
+            let displayFolder = '';
+            if (folder && folder.length > 50) {
+                displayFolder = folder.substring(0, 50) + '...';
+            }
+            html += '<div title="' + folder + '" style="font-size: 90%; color: #7f7f7f">' + displayFolder + '</div>';
+            // File name: link to the cached source page when available, otherwise plain bold text.
+            if (saveSourceFiles && item.sourceFileLink) {
+                html += '<div style="margin-bottom: 2px"><a href="' + item.sourceFileLink + '" target="_blank" '
+                    + 'style="color: #0a58ca; font-weight: bold">' + fileName + ' <span style="font-size: 60%; color: #888">&#x2197;</span></a></div>';
+            } else {
+                html += '<div style="margin-bottom: 2px; color: black; font-weight: bold">' + fileName + '</div>';
+            }
+            html += '</div>';
+            html += '</td>';
+
+            let scope = item.scope;
+            html += '<td style="text-align: left; padding-right: 5px; padding-left: 5px">';
+            html += '<div style=" border-radius: 4px; padding 2px;">';
+            const w = maxLoc > 0 ? Math.round(50 * item.linesOfCode / maxLoc + 1) : 0;
+            // Bar colour reflects the file-size risk band; non-main files are muted (lower opacity)
+            // so the scope distinction is preserved.
+            const barColor = riskColor(item.linesOfCode, fileSizeThresholds);
+            const barOpacity = scope === 'main' ? '1' : '0.45';
+            html += '<div style="vertical-align: top; display: inline-block; height: 16px; background-color: ' + barColor + '; opacity: ' + barOpacity + '; width: ' + w + 'px"></div>';
+            html += '<div style="margin-left: 2px; vertical-align: top; display: inline-block; font-size: 80%">' + item.linesOfCode.toLocaleString("en-US") + '</div>';
+            html += '</div>';
+            html += '</td>';
+            if (hasHistory) {
+                const recent = item.recentCommitsCount30Days || 0;
+                const recent90 = item.recentCommitsCount90Days || 0;
+                const total = item.commitsCount || 0;
+                const churn30 = item.churn30Days || 0;
+                const churn90 = item.churn90Days || 0;
+                const churnTotal = item.churnTotal || 0;
+                const contributors = item.contributorsCount || 0;
+                const ageDays = (item.ageDays == null) ? -1 : item.ageDays;
+                const freshnessDays = (item.freshnessDays == null) ? -1 : item.freshnessDays;
+                html += '<td style="text-align: center; padding-right: 5px; padding-left: 5px; font-size: 80%;">'
+                    + (recent > 0 ? recent.toLocaleString('en-US') : '<span style="color: lightgrey">-</span>') + '</td>';
+                html += '<td style="text-align: center; padding-right: 5px; padding-left: 5px; font-size: 80%;">'
+                    + (recent90 > 0 ? recent90.toLocaleString('en-US') : '<span style="color: lightgrey">-</span>') + '</td>';
+                // commits (all time) — coloured by the file change-frequency band (heat palette).
+                html += colorCell(total, total > 0, bandColor(total, fileFreqThresholds, HEAT_PALETTE));
+                // line churn (total lines added+deleted) per window — plain numbers, recent windows
+                // are a muted dash when zero so the eye lands on files with recent churn.
+                html += '<td style="text-align: center; padding-right: 5px; padding-left: 5px; font-size: 80%;">'
+                    + (churn30 > 0 ? churn30.toLocaleString('en-US') : '<span style="color: lightgrey">-</span>') + '</td>';
+                html += '<td style="text-align: center; padding-right: 5px; padding-left: 5px; font-size: 80%;">'
+                    + (churn90 > 0 ? churn90.toLocaleString('en-US') : '<span style="color: lightgrey">-</span>') + '</td>';
+                html += '<td style="text-align: center; padding-right: 5px; padding-left: 5px; font-size: 80%;">'
+                    + (churnTotal > 0 ? churnTotal.toLocaleString('en-US') : '<span style="color: lightgrey">-</span>') + '</td>';
+                // contributors — heat palette.
+                html += colorCell(contributors, contributors > 0, bandColor(contributors, fileContribThresholds, HEAT_PALETTE));
+                // age (days since first commit) — age palette.
+                html += colorCell(ageDays, ageDays >= 0, bandColor(ageDays, fileAgeThresholds, AGE_PALETTE));
+                // freshness (days since last commit) — freshness palette.
+                html += colorCell(freshnessDays, freshnessDays >= 0, bandColor(freshnessDays, fileAgeThresholds, FRESHNESS_PALETTE));
+                html += '<td style="text-align: center; padding-right: 5px; padding-left: 5px; font-size: 80%; color: #5f5f5f;">'
+                    + (item.latestCommitDate ? item.latestCommitDate : '<span style="color: lightgrey">-</span>') + '</td>';
+            }
+            html += '<td style="text-align: center; padding-right: 5px; padding-left: 5px;">';
+            if (scope === 'main') {
+                html += '<div style="border: 1px solid #d0d0d0; border-radius: 4px; padding 2px; color: blue">';
+            } else {
+                html += '<div style="border: 1px solid #d0d0d0; background-color: #f4f4f4; border-radius: 4px; padding 2px;">';
+            }
+            html += scope;
+            html += '</div>';
+            html += '</td>';
+            html += '</tr>';
+        });
+
+        html += '</table>';
+
+        document.getElementById('content').innerHTML = html;
+    }
+
+    // Defer the (synchronous, potentially heavy) first render one frame so the loading
+    // spinner actually paints before the main thread is blocked, then swap it for the report.
+    requestAnimationFrame(function () {
+        requestAnimationFrame(function () {
+            update();
+            document.getElementById('loading').style.display = 'none';
+            document.getElementById('report').style.display = 'block';
+        });
+    });
+</script>
+</body>
+</html>

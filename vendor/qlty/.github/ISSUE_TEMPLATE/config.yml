@@ -1,0 +1,11 @@
+blank_issues_enabled: false
+contact_links:
+  - name: Community support
+    url: https://github.com/orgs/qltysh/discussions/categories/q-a
+    about: Please ask for help here.
+  - name: Feature requests
+    url: https://github.com/orgs/qltysh/discussions/categories/feedback
+    about: Please share your ideas as feedback discussions.
+  - name: Join our Discord
+    url: https://qlty.sh/discord
+    about: Chat with the development team.

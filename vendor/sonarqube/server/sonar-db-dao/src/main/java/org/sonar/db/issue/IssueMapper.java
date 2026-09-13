@@ -1,0 +1,123 @@
+/*
+ * SonarQube
+ * Copyright (C) SonarSource Sàrl
+ * mailto:info AT sonarsource DOT com
+ *
+ * This program is free software; you can redistribute it and/or
+ * modify it under the terms of the GNU Lesser General Public
+ * License as published by the Free Software Foundation; either
+ * version 3 of the License, or (at your option) any later version.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
+ * Lesser General Public License for more details.
+ *
+ * You should have received a copy of the GNU Lesser General Public License
+ * along with this program; if not, write to the Free Software Foundation,
+ * Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
+ */
+package org.sonar.db.issue;
+
+import java.util.Collection;
+import java.util.List;
+import java.util.Set;
+import javax.annotation.Nullable;
+import org.apache.ibatis.annotations.Param;
+import org.apache.ibatis.cursor.Cursor;
+import org.apache.ibatis.session.ResultHandler;
+import org.sonar.db.Pagination;
+import org.sonar.db.component.ComponentDto;
+
+public interface IssueMapper {
+
+  IssueDto selectByKey(String key);
+
+  Set<String> selectComponentUuidsOfOpenIssuesForProjectUuid(String projectUuid);
+
+  List<IssueDto> selectByKeys(List<String> keys);
+
+  List<IssueDto> selectSourceRedactionIssues(@Param("componentUuid") String componentUuid, @Param("ruleKeys") Collection<String> ruleKeys);
+
+  Set<String> selectIssueKeysByComponentUuid(@Param("componentUuid") String componentUuid);
+
+  Set<String> selectIssueKeysByComponentUuidWithFilters(@Param("componentUuid") String componentUuid,
+    @Param("includingRepositories") List<String> includingRepositories,
+    @Param("excludingRepositories") List<String> excludingRepositories,
+    @Param("languages") List<String> languages, @Param("pagination") Pagination pagination);
+
+  Set<String> selectIssueKeysByComponentUuidAndChangedSinceDate(@Param("componentUuid") String componentUuid,
+    @Param("changedSince") long changedSince,
+    @Param("includingRepositories") List<String> includingRepositories,
+    @Param("excludingRepositories") List<String> excludingRepositories,
+    @Param("languages") List<String> languages, @Param("pagination") Pagination pagination);
+
+  List<IssueDto> selectByKeysIfNotUpdatedAt(@Param("keys") List<String> keys, @Param("updatedAt") long updatedAt);
+
+  List<IssueCount> countSandboxIssuesPerProject();
+
+  List<IssueCountByStatusAndResolution> countIssuesByStatusOnMainBranches();
+
+  List<PrIssueDto> selectOpenScannerIssuesByComponentUuids(List<String> componentUuids);
+
+  void insert(IssueDto issue);
+
+  int update(IssueDto issue);
+
+  void insertAsNewCodeOnReferenceBranch(NewCodeReferenceIssueDto issue);
+
+  void insertIssueImpact(@Param("issueKey") String issueKey, @Param("dto") ImpactDto issue);
+
+  void deleteAsNewCodeOnReferenceBranch(String issueKey);
+
+  int updateIfBeforeSelectedDate(IssueDto issue);
+
+  int updateHunterAgentIssue(IssueDto issue);
+
+  void scrollNonClosedByComponentUuid(@Param("componentUuid") String componentUuid, ResultHandler<IssueWithoutRuleInfoDto> handler);
+
+  void scrollNonClosedScannerIssuesByComponentUuid(@Param("componentUuid") String componentUuid, ResultHandler<IssueWithoutRuleInfoDto> handler);
+
+  void scrollNonClosedHunterAgentIssuesByComponentUuid(@Param("componentUuid") String componentUuid, ResultHandler<IssueWithoutRuleInfoDto> handler);
+
+  List<IssueWithoutRuleInfoDto> selectNonClosedHunterAgentIssuesByBranchUuid(@Param("branchUuid") String branchUuid);
+
+  List<IssueWithoutRuleInfoDto> selectClosedHunterAgentIssuesByKeys(@Param("branchUuid") String branchUuid, @Param("keys") Collection<String> keys);
+
+  void scrollClosedByComponentUuid(@Param("componentUuid") String componentUuid, @Param("closeDateAfter") long closeDateAfter, ResultHandler<IssueWithoutRuleInfoDto> handler);
+
+  void scrollClosedScannerIssuesByComponentUuid(@Param("componentUuid") String componentUuid, @Param("closeDateAfter") long closeDateAfter,
+    ResultHandler<IssueWithoutRuleInfoDto> handler);
+
+  Cursor<IndexedIssueDto> scrollIssuesForIndexation(@Nullable @Param("branchUuid") String branchUuid, @Nullable @Param("issueKeys") Collection<String> issueKeys);
+
+  List<HotspotMigrationKeyDto> selectHotspotKeysForMigration(@Nullable @Param("projectUuids") Collection<String> projectUuids,
+    @Nullable @Param("lastBranchUuid") String lastBranchUuid, @Nullable @Param("lastKee") String lastKee,
+    @Param("pagination") Pagination pagination);
+
+  List<HotspotToMigrateDto> selectHotspotsForMigrationByKeys(@Param("keys") List<String> keys);
+
+  int countHotspotsForMigration(@Nullable @Param("projectUuids") Collection<String> projectUuids);
+
+  Cursor<IssueStatsDto> scrollIssuesForIssueStats(@Param("branchUuid") String branchUuid);
+
+  AggregatedIssueStatsDto aggregateIssueStatsForBranchUuidAndRuleKey(@Param("branchUuid") String branchUuid,
+    @Param("ruleRepository") String repository, @Param("ruleKey") String rule);
+
+  Collection<IssueGroupDto> selectIssueGroupsByComponent(@Param("component") ComponentDto component, @Param("leakPeriodBeginningDate") long leakPeriodBeginningDate);
+
+  Collection<IssueImpactGroupDto> selectIssueImpactGroupsByComponent(@Param("component") ComponentDto component, @Param("leakPeriodBeginningDate") long leakPeriodBeginningDate);
+
+  Collection<IssueImpactSeverityGroupDto> selectIssueImpactSeverityGroupsByComponent(@Param("component") ComponentDto component,
+    @Param("leakPeriodBeginningDate") long leakPeriodBeginningDate);
+
+  List<IssueDto> selectByBranch(@Param("keys") Set<String> keys, @Nullable @Param("changedSince") Long changedSince);
+
+  List<String> selectRecentlyClosedIssues(@Param("queryParams") IssueQueryParams issueQueryParams);
+
+  List<String> selectIssueKeysByQuery(@Param("query") IssueListQuery issueListQuery, @Param("pagination") Pagination pagination);
+
+  void deleteIssueImpacts(String issueKey);
+
+  int resetFlagFromSonarQubeUpdate(@Param("now") long now);
+}

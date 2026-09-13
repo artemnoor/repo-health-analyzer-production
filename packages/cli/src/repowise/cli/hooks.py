@@ -1,0 +1,411 @@
+"""Git hook management for repowise auto-sync.
+
+Installs/uninstalls a post-commit hook that runs ``repowise update`` in the
+background after every commit, keeping the wiki in sync automatically.
+
+The hook uses start/end markers so it can safely coexist with other hooks
+in the same file (a lint hook, another tool's index hook).
+"""
+
+from __future__ import annotations
+
+import contextlib
+import re
+import stat
+import subprocess
+from pathlib import Path
+
+_HOOK_MARKER = "# repowise-hook-start"
+_HOOK_MARKER_END = "# repowise-hook-end"
+
+# Fingerprints of pre-marker legacy hook bodies. When ``install`` is called
+# over the top of a file containing these, we strip the legacy block rather
+# than appending a second copy. The legacy block was unreachable due to a
+# trailing ``exit 0`` and on Windows would fail every commit because
+# ``uv run repowise update`` rebuilt the venv from a fresh resolve.
+#
+# DO NOT add fingerprints from *marker-bracketed* old hook bodies here —
+# those are handled by ``_replace_marker_block`` instead. The strip path
+# below walks until it finds ``exit 0``, which marker-bracketed bodies
+# don't have, so a fingerprint match against them would over-delete and
+# clobber unrelated hook content past the marker.
+_LEGACY_HOOK_FINGERPRINTS = (
+    "[repowise] Triggering incremental wiki update",
+    "/tmp/repowise-update.log",
+)
+
+# Post-commit hook contract. Works cross-platform because git always runs
+# hooks under a POSIX shell (``/bin/sh`` on Linux/macOS, git-bash on
+# Windows), so the same script body is correct everywhere — no platform
+# detection needed.
+#
+# Two responsibilities:
+#
+#   1. Drop a ``.update.queued`` marker *before* backgrounding the update.
+#      Closes the race window where the agent-side augment hook would
+#      otherwise warn "wiki is stale" during the ~1–5 second start-up of
+#      ``repowise update`` (Python import, DB open) before the real lock
+#      file lands on disk. The marker is read by ``augment_cmd`` and
+#      treated identically to a held lock.
+#
+#   2. Capture the update's output to ``.repowise/.update.log``. Previously
+#      the hook piped to ``/dev/null``, which made silent failures
+#      impossible to diagnose — the symptom was just "state never moves".
+#      The log is appended; ``update_cmd`` truncates it on its next run
+#      via ``rotate_update_log_if_needed`` so it can't grow without bound.
+#
+# The outer ``{ ... } &`` brace group ensures the queued marker is written
+# synchronously (so the augment hook sees it on the *next* tool call after
+# the commit) before the heavy update spawns into the background.
+#
+# Two gates keep a default-on hook boring. It fires only when
+# ``.repowise/state.json`` exists, which is the precondition ``repowise
+# update`` itself checks, so a dry-run directory or a deleted store does not
+# fail on every commit forever. And when ``repowise`` is not on PATH it looks
+# only in the repo's own ``.venv``; the old ``uv run`` fallback resolved
+# whatever project ``uv`` found above the repo, on every commit, in repos
+# that were not Python projects at all.
+_HOOK_SCRIPT = """\
+# repowise-hook-start
+# Auto-syncs repowise wiki after each commit (background, non-blocking).
+# Installed by: repowise hook install
+{
+  ROOT=$(git rev-parse --show-toplevel 2>/dev/null) || exit 0
+  [ -f "$ROOT/.repowise/state.json" ] || exit 0
+  HEAD=$(git rev-parse HEAD 2>/dev/null) || HEAD=""
+  TS=$(date +%s 2>/dev/null) || TS=""
+  if [ -n "$TS" ]; then
+    printf '{"target_commit":"%s","queued_at":%s}\\n' "$HEAD" "$TS" \\
+      > "$ROOT/.repowise/.update.queued" 2>/dev/null || true
+  fi
+  LOG="$ROOT/.repowise/.update.log"
+  {
+    printf '\\n--- post-commit hook fired at %s for HEAD %s ---\\n' \\
+      "$(date 2>/dev/null)" "$HEAD"
+  } >> "$LOG" 2>/dev/null || true
+  (
+    cd "$ROOT" || exit 1
+    if command -v repowise >/dev/null 2>&1; then
+      repowise update >> "$LOG" 2>&1
+    elif [ -x "$ROOT/.venv/bin/repowise" ]; then
+      "$ROOT/.venv/bin/repowise" update >> "$LOG" 2>&1
+    elif [ -x "$ROOT/.venv/Scripts/repowise.exe" ]; then
+      "$ROOT/.venv/Scripts/repowise.exe" update >> "$LOG" 2>&1
+    fi
+  ) &
+} >/dev/null 2>&1
+# repowise-hook-end
+"""
+
+
+def _git_root(path: Path) -> Path | None:
+    """Walk up to find .git directory."""
+    current = path.resolve()
+    for parent in [current, *current.parents]:
+        if (parent / ".git").exists():
+            return parent
+    return None
+
+
+def _hooks_dir(repo_path: Path) -> Path | None:
+    """Resolve the real hooks directory for *repo_path*.
+
+    A normal repo keeps ``.git/hooks`` under ``.git``, but a git **worktree**
+    stores ``.git`` as a *file* (``gitdir: <path>``) pointing at the shared
+    metadata dir — so ``root / ".git" / "hooks"`` is ``NotADirectoryError``
+    territory. Ask git for the real hooks path so both layouts work, and fall
+    back to the ``.git/hooks`` heuristic when git is unavailable or not a repo.
+
+    ``git rev-parse --git-path hooks`` also honours ``core.hooksPath``, which
+    husky and lefthook both set. A *global* ``core.hooksPath`` (say
+    ``~/.githooks``) resolves outside any repo, so the hook is shared:
+    ``status`` then reports installed from every repo, and ``uninstall`` run
+    in one repo removes it for all of them. Following the config is still
+    correct, because that directory is genuinely where git looks, and the
+    hook body is repo-scoped at runtime -- it resolves its own ``$ROOT`` and
+    returns early unless ``$ROOT/.repowise`` exists -- so a shared hook is
+    inert in repos with no index rather than wrong.
+    """
+    try:
+        result = subprocess.run(
+            ["git", "rev-parse", "--git-path", "hooks"],
+            cwd=str(repo_path),
+            capture_output=True,
+            text=True,
+            timeout=10,
+        )
+        if result.returncode == 0:
+            p = Path(result.stdout.strip())
+            if not p.is_absolute():
+                p = repo_path / p
+            return _husky_user_hook_dir(p)
+    except Exception:
+        pass
+    root = _git_root(repo_path)
+    if root is None:
+        return None
+    return root / ".git" / "hooks"
+
+
+def _is_shell_hook(content: str) -> bool:
+    """Whether an existing hook file can take an appended POSIX sh block.
+
+    A hook with no shebang, or a sh, bash, dash, zsh or ksh one, can. A hook
+    written for node or python cannot, and appending shell to it would break
+    the user's own hook on every commit after this one.
+    """
+    first = content.split("\n", 1)[0].strip()
+    if not first.startswith("#!"):
+        return True
+    return re.search(r"\b(sh|bash|dash|zsh|ksh)\b", first) is not None
+
+
+def _husky_user_hook_dir(hooks_dir: Path) -> Path:
+    """Redirect husky's generated shim directory to its user-hook directory.
+
+    husky points ``core.hooksPath`` at ``.husky/_``, which it regenerates on
+    every install and gitignores wholesale (``.husky/_/.gitignore`` is ``*``), so
+    a hook written there is deleted by the next ``npm install``. husky's shim
+    dispatches to ``.husky/<hook-name>`` one level up, which is the committed,
+    durable location.
+
+    Dispatch does not depend on which user hooks already exist. husky writes a
+    shim for a fixed list of all 14 git hook names on every install, regardless
+    of what is in ``.husky/`` (husky 9.1.7 ``index.js``: the ``l`` array includes
+    ``post-commit``, and ``l.forEach`` writes each one unconditionally), and each
+    shim sources ``_/h``, which execs ``.husky/<name>`` when that file exists and
+    exits 0 when it does not. So a hook written here is picked up immediately
+    rather than waiting for the next ``npm install``.
+
+    The exception is a checkout where husky has never run: ``.husky/_`` does not
+    exist, ``core.hooksPath`` points at a missing directory, and git therefore
+    runs no hooks at all -- husky's own included. Writing to ``.husky/`` is still
+    the right destination, since it survives, but nothing fires until husky is
+    installed. :func:`husky_pending_reason` reports that so it is visible at
+    install time instead of looking like a working hook.
+    """
+    if hooks_dir.name != "_":
+        return hooks_dir
+    # Only remap a directory that really is husky's, not any directory named
+    # "_". The generated helpers are the strongest signal, but they are absent
+    # in a fresh worktree where husky has not been installed yet; there the
+    # parent being a ``.husky`` directory is what identifies the layout.
+    is_husky = any((hooks_dir / marker).exists() for marker in ("h", "husky.sh"))
+    if not (is_husky or hooks_dir.parent.name == ".husky"):
+        return hooks_dir
+    return hooks_dir.parent
+
+
+def husky_pending_reason(hooks_dir: Path) -> str | None:
+    """Why a hook in *hooks_dir* will not run yet, or None if it will.
+
+    Only one case: the husky user-hook directory in a checkout where husky has
+    not been installed, so ``core.hooksPath`` points at a ``_`` that is not there
+    and git runs nothing. Silent in every other layout.
+    """
+    if hooks_dir.name != ".husky":
+        return None
+    if (hooks_dir / "_" / "h").exists():
+        return None
+    return (
+        "husky is not set up in this checkout (no .husky/_), so git runs no hooks "
+        "here yet -- run your package manager's install to activate it"
+    )
+
+
+def _strip_legacy_block(content: str) -> tuple[str, bool]:
+    """Remove a pre-marker repowise hook body from *content*.
+
+    Older versions of repowise wrote a hook body without start/end markers
+    that ended in ``exit 0``, which made the marker block (when later
+    appended) unreachable. We detect those by fingerprint and excise the
+    surrounding shell block. Returns the cleaned content and whether
+    anything was stripped.
+    """
+    if not any(fp in content for fp in _LEGACY_HOOK_FINGERPRINTS):
+        return content, False
+
+    lines = content.splitlines()
+    # The legacy block always starts with a shell comment that mentions the
+    # hook's purpose and ends at the explicit ``exit 0`` line below the
+    # backgrounded subshell. Walk forward until we see ``exit 0`` and drop
+    # everything from the first fingerprint line up to and including it.
+    start = None
+    for i, line in enumerate(lines):
+        if any(fp in line for fp in _LEGACY_HOOK_FINGERPRINTS):
+            # Walk back to the nearest comment header so we drop the whole
+            # block, not just the inner echo line.
+            start = i
+            for j in range(i - 1, -1, -1):
+                stripped = lines[j].strip()
+                if stripped.startswith("# post-commit hook") or stripped.startswith(
+                    "# Auto-syncs"
+                ):
+                    start = j
+                    break
+                if not stripped or stripped.startswith("#!"):
+                    break
+            break
+
+    if start is None:
+        return content, False
+
+    end = start
+    for k in range(start, len(lines)):
+        if lines[k].strip() == "exit 0":
+            end = k
+            break
+        end = k
+
+    cleaned = "\n".join(lines[:start] + lines[end + 1:]).rstrip() + "\n"
+    return cleaned, True
+
+
+def _replace_marker_block(content: str, new_block: str) -> tuple[str, bool]:
+    """Replace an existing repowise marker block in place. Returns (content, replaced).
+
+    Used when the hook is being upgraded: the marker is present but the
+    body differs from the current ``_HOOK_SCRIPT``. We must not just bail
+    with "already installed" — the user expects ``repowise hook install``
+    to ship the latest hook script after a repowise upgrade.
+
+    Only edits the marker-bracketed region; everything before ``_HOOK_MARKER``
+    and after ``_HOOK_MARKER_END`` (other tools' hooks) is preserved.
+
+    Implementation note: we use a *callable* repl with ``re.sub`` rather than
+    passing the new block as a string. ``re.sub`` processes backslash
+    escapes in string repls — so a literal ``\\n`` inside the hook script
+    (e.g. a ``printf '%s\\n'`` format) would silently become a real newline,
+    breaking the shell quoting of the printf format string. A callable
+    bypasses escape processing entirely.
+    """
+    pattern = re.compile(
+        rf"{re.escape(_HOOK_MARKER)}.*?{re.escape(_HOOK_MARKER_END)}\n?",
+        flags=re.DOTALL,
+    )
+    if not pattern.search(content):
+        return content, False
+    replacement_text = new_block.rstrip() + "\n"
+    new_content = pattern.sub(lambda _m: replacement_text, content, count=1)
+    return new_content, new_content != content
+
+
+def install(repo_path: Path) -> str:
+    """Install a repowise post-commit hook in the repo's .git/hooks/.
+
+    Behaves correctly under upgrades: when the marker block exists but its
+    body is older than ``_HOOK_SCRIPT``, the block is replaced in place
+    (preserving any unrelated hook content around it). Pre-marker legacy
+    bodies are stripped before the new block is installed. Returns a
+    human-readable status message describing what changed.
+    """
+    root = _git_root(repo_path)
+    if root is None:
+        return "not a git repository"
+
+    hooks_dir = _hooks_dir(repo_path)
+    if hooks_dir is None:
+        return "not a git repository"
+    hooks_dir.mkdir(parents=True, exist_ok=True)
+    hook_path = hooks_dir / "post-commit"
+
+    pending = husky_pending_reason(hooks_dir)
+
+    def _annotate(state: str) -> str:
+        return f"{state} ({pending})" if pending else state
+
+    migrated_legacy = False
+    if hook_path.exists():
+        content = hook_path.read_text(encoding="utf-8")
+        if not _is_shell_hook(content):
+            return "not installed: the existing post-commit hook is not a shell script"
+        content, migrated_legacy = _strip_legacy_block(content)
+        if migrated_legacy:
+            hook_path.write_text(content, encoding="utf-8")
+
+        if _HOOK_MARKER in content:
+            # Marker block present. Decide whether to leave alone or upgrade.
+            current_block = _HOOK_SCRIPT.rstrip() + "\n"
+            if current_block in content:
+                return _annotate(
+                    "migrated legacy hook" if migrated_legacy else "already installed"
+                )
+            content, replaced = _replace_marker_block(content, _HOOK_SCRIPT)
+            if replaced:
+                hook_path.write_text(content, encoding="utf-8")
+                with contextlib.suppress(OSError):
+                    hook_path.chmod(
+                        hook_path.stat().st_mode
+                        | stat.S_IEXEC | stat.S_IXGRP | stat.S_IXOTH
+                    )
+                return _annotate("upgraded")
+            return _annotate("already installed")
+        # Append to existing hook
+        hook_path.write_text(
+            content.rstrip() + "\n\n" + _HOOK_SCRIPT,
+            encoding="utf-8",
+        )
+    else:
+        hook_path.write_text("#!/bin/sh\n" + _HOOK_SCRIPT, encoding="utf-8")
+
+    # Make executable (no-op on Windows but harmless)
+    with contextlib.suppress(OSError):
+        hook_path.chmod(hook_path.stat().st_mode | stat.S_IEXEC | stat.S_IXGRP | stat.S_IXOTH)
+
+    return _annotate("installed")
+
+
+def uninstall(repo_path: Path) -> str:
+    """Remove the repowise section from the post-commit hook.
+
+    Preserves other tools' hook content. Deletes the file entirely if
+    repowise was the only content.
+    """
+    root = _git_root(repo_path)
+    if root is None:
+        return "not a git repository"
+
+    hooks_dir = _hooks_dir(repo_path)
+    if hooks_dir is None:
+        return "not a git repository"
+    hook_path = hooks_dir / "post-commit"
+    if not hook_path.exists():
+        return "no post-commit hook found"
+
+    content = hook_path.read_text(encoding="utf-8")
+    if _HOOK_MARKER not in content:
+        return "repowise hook not found in post-commit"
+
+    new_content = re.sub(
+        rf"{re.escape(_HOOK_MARKER)}.*?{re.escape(_HOOK_MARKER_END)}\n?",
+        "",
+        content,
+        flags=re.DOTALL,
+    ).strip()
+
+    if not new_content or new_content in ("#!/bin/bash", "#!/bin/sh"):
+        hook_path.unlink()
+        return "removed"
+    else:
+        hook_path.write_text(new_content + "\n", encoding="utf-8")
+        return "removed (other hook content preserved)"
+
+
+def status(repo_path: Path) -> str:
+    """Check if the repowise post-commit hook is installed."""
+    root = _git_root(repo_path)
+    if root is None:
+        return "not a git repository"
+
+    hooks_dir = _hooks_dir(repo_path)
+    if hooks_dir is None:
+        return "not a git repository"
+    hook_path = hooks_dir / "post-commit"
+    if not hook_path.exists():
+        return "not installed"
+
+    content = hook_path.read_text(encoding="utf-8")
+    if _HOOK_MARKER in content:
+        pending = husky_pending_reason(hook_path.parent)
+        return f"installed ({pending})" if pending else "installed"
+    return "not installed"

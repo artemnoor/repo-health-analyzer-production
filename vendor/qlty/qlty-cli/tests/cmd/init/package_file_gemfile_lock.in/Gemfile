@@ -1,0 +1,6 @@
+source "https://rubygems.org"
+
+gem "randomplugin", "0.1.0"
+gem "package-file-gemfile", "0.1.0"
+gem "package-file-gemfile1", "0.1.0"
+gem "rubyplugin3", "0.1.0"

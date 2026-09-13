@@ -1,0 +1,51 @@
+config_version = "0"
+
+[file_types.ripgrep]
+globs = [
+  "*.cjs",
+  "*.cts",
+  "*.css",
+  "*.go",
+  "*.html",
+  "*.java",
+  "*.js",
+  "*.jsx",
+  "*.kt",
+  "*.mjs",
+  "*.mts",
+  "*.php",
+  "*.py",
+  "*.rb",
+  "*.rs",
+  "*.sass",
+  "*.scss",
+  "*.sh",
+  "*.swift",
+  "*.ts",
+  "*.tsx",
+]
+
+[plugins.releases.ripgrep]
+github = "BurntSushi/ripgrep"
+download_type = "targz"
+strip_components = 1
+
+[plugins.definitions.ripgrep]
+releases = ["ripgrep"]
+file_types = ["ripgrep"]
+latest_version = "14.1.1"
+known_good_version = "14.1.1"
+version_command = "rg --version"
+config_files = [".ripgreprc"]
+description = "Line-oriented search tool"
+suggested_mode = "comment"
+
+[plugins.definitions.ripgrep.drivers.lint-fixme]
+script = "rg \"NOTE|OPTIMIZE|TODO|HACK|XXX|FIXME|BUG\" ${target} --json --word-regexp --only-matching"
+success_codes = [0,1]
+output = "stdout"
+output_format = "ripgrep"
+batch = true
+cache_results = true
+suggested = "targets"
+output_missing = "parse"

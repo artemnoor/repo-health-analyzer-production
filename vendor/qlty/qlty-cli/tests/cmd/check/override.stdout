@@ -1,0 +1,10 @@
+[
+  {
+    "tool": "exists",
+    "ruleKey": "fail",
+    "message": "exists failed",
+    "level": "LEVEL_HIGH",
+    "category": "CATEGORY_LINT",
+    "mode": "MODE_MONITOR"
+  }
+]

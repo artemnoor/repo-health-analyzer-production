@@ -1,0 +1,10 @@
+
+
+identical_a.rb
+   1  Found 28 lines of identical code in 2 locations (mass = 81)
+        also found at identical_b.rb
+
+identical_b.rb
+   1  Found 28 lines of identical code in 2 locations (mass = 81)
+        also found at identical_a.rb
+

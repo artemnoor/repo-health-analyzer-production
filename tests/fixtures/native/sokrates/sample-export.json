@@ -1,0 +1,42 @@
+{
+  "exportVersion": "fixture-1",
+  "metricsList": {
+    "metrics": [
+      {"id": "TOTAL_LOC", "value": 1200, "description": "Lines of code"}
+    ]
+  },
+  "mainAspectAnalysisResults": {
+    "name": "main",
+    "filesCount": 18,
+    "linesOfCode": 1200,
+    "numberOfRegexLineMatches": 3
+  },
+  "filesHistoryAnalysisResults": {
+    "filesWithoutCommitHistoryCount": 2,
+    "filesWithoutCommitHistoryLinesOfCode": 40,
+    "daysBetweenFirstAndLastDate": 365,
+    "activeDays": 80,
+    "ageInDays": 365
+  },
+  "duplicationAnalysisResults": {
+    "overallDuplication": {
+      "key": "system",
+      "cleanedLinesOfCode": 1200,
+      "duplicatedLinesOfCode": 180,
+      "numberOfDuplicates": 4,
+      "numberOfFilesWithDuplicates": 6
+    }
+  },
+  "contributorsAnalysisResults": {
+    "contributors": [
+      {"email": "lead@example.invalid", "commitsCount": 8},
+      {"email": "reviewer@example.invalid", "commitsCount": 4}
+    ]
+  },
+  "dependencies": [
+    {"fromComponentName": "api", "toComponentName": "storage", "edgeType": "inferred", "path": "src/api.py", "line": 7}
+  ],
+  "temporalDependencies": {
+    "30": [{"from": "src/api.py", "to": "src/storage.py"}]
+  }
+}

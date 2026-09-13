@@ -1,0 +1,406 @@
+// Jest Snapshot v1, https://goo.gl/fbAQLP
+
+exports[`linter=clippy fixture=nested_basic version=1.77.2 1`] = `
+{
+  "issues": [
+    {
+      "category": "CATEGORY_LINT",
+      "documentationUrl": "https://rust-lang.github.io/rust-clippy/master/index.html#double_comparisons",
+      "level": "LEVEL_MEDIUM",
+      "location": {
+        "path": "random_parent_dir/src/main.rs",
+        "range": {
+          "endByte": 375,
+          "endColumn": 23,
+          "endLine": 13,
+          "startByte": 360,
+          "startColumn": 8,
+          "startLine": 13,
+        },
+      },
+      "message": "this binary expression can be simplified",
+      "mode": "MODE_BLOCK",
+      "ruleKey": "double_comparisons",
+      "snippet": "    if x == y || x < y {}",
+      "snippetWithContext": "// be compiled to actually trigger it.
+pub enum Gibberish {
+    Foo(String),
+    #[doc(hidden)]
+    __Nonexhaustive,
+}
+
+fn main() {
+    let x = 1;
+    let y = 2;
+    if x == y || x < y {}
+    println!("Hello World");
+
+    // empty format literal
+    println!("{}", "empty format literal");
+
+    // needless range loop
+    let vec = vec!['a', 'b', 'c'];
+    for i in 0..vec.len() {
+        println!("{}", vec[i]);
+",
+      "suggestions": [
+        {
+          "patch": "--- original
++++ modified
+@@ -10,7 +10,7 @@
+ fn main() {
+     let x = 1;
+     let y = 2;
+-    if x == y || x < y {}
++    if x <= y {}
+     println!("Hello World");
+
+     // empty format literal
+",
+          "replacements": [
+            {
+              "data": "x <= y",
+              "location": {
+                "path": "random_parent_dir/src/main.rs",
+                "range": {
+                  "endByte": 375,
+                  "endColumn": 14,
+                  "endLine": 13,
+                  "startByte": 360,
+                  "startColumn": 8,
+                  "startLine": 13,
+                },
+              },
+            },
+          ],
+          "source": "SUGGESTION_SOURCE_TOOL",
+        },
+      ],
+      "tool": "clippy",
+    },
+    {
+      "category": "CATEGORY_LINT",
+      "documentationUrl": "https://rust-lang.github.io/rust-clippy/master/index.html#manual_non_exhaustive",
+      "level": "LEVEL_MEDIUM",
+      "location": {
+        "path": "random_parent_dir/src/main.rs",
+        "range": {
+          "endByte": 309,
+          "endColumn": 2,
+          "endLine": 8,
+          "startByte": 230,
+          "startColumn": 1,
+          "startLine": 4,
+        },
+      },
+      "message": "this seems like a manual implementation of the non-exhaustive pattern",
+      "mode": "MODE_BLOCK",
+      "ruleKey": "manual_non_exhaustive",
+      "snippet": "pub enum Gibberish {
+    Foo(String),
+    #[doc(hidden)]
+    __Nonexhaustive,
+}",
+      "snippetWithContext": "// clippy/manual_non_exhaustive has {"suggested_replacement": null} in its JSON, so we want to
+// explicitly test that. Note that a match {} block against this enum in the callgraph needs to
+// be compiled to actually trigger it.
+pub enum Gibberish {
+    Foo(String),
+    #[doc(hidden)]
+    __Nonexhaustive,
+}
+
+fn main() {
+    let x = 1;
+    let y = 2;
+    if x == y || x < y {}
+    println!("Hello World");
+
+    // empty format literal
+    println!("{}", "empty format literal");
+",
+      "tool": "clippy",
+    },
+    {
+      "category": "CATEGORY_LINT",
+      "documentationUrl": "https://rust-lang.github.io/rust-clippy/master/index.html#needless_if",
+      "level": "LEVEL_MEDIUM",
+      "location": {
+        "path": "random_parent_dir/src/main.rs",
+        "range": {
+          "endByte": 378,
+          "endColumn": 26,
+          "endLine": 13,
+          "startByte": 357,
+          "startColumn": 5,
+          "startLine": 13,
+        },
+      },
+      "message": "this \`if\` branch is empty",
+      "mode": "MODE_BLOCK",
+      "ruleKey": "needless_if",
+      "snippet": "    if x == y || x < y {}",
+      "snippetWithContext": "// be compiled to actually trigger it.
+pub enum Gibberish {
+    Foo(String),
+    #[doc(hidden)]
+    __Nonexhaustive,
+}
+
+fn main() {
+    let x = 1;
+    let y = 2;
+    if x == y || x < y {}
+    println!("Hello World");
+
+    // empty format literal
+    println!("{}", "empty format literal");
+
+    // needless range loop
+    let vec = vec!['a', 'b', 'c'];
+    for i in 0..vec.len() {
+        println!("{}", vec[i]);
+",
+      "suggestions": [
+        {
+          "patch": "--- original
++++ modified
+@@ -10,7 +10,7 @@
+ fn main() {
+     let x = 1;
+     let y = 2;
+-    if x == y || x < y {}
++    x == y || x < y;
+     println!("Hello World");
+
+     // empty format literal
+",
+          "replacements": [
+            {
+              "data": "x == y || x < y;",
+              "location": {
+                "path": "random_parent_dir/src/main.rs",
+                "range": {
+                  "endByte": 378,
+                  "endColumn": 21,
+                  "endLine": 13,
+                  "startByte": 357,
+                  "startColumn": 5,
+                  "startLine": 13,
+                },
+              },
+            },
+          ],
+          "source": "SUGGESTION_SOURCE_TOOL",
+        },
+      ],
+      "tool": "clippy",
+    },
+    {
+      "category": "CATEGORY_LINT",
+      "documentationUrl": "https://rust-lang.github.io/rust-clippy/master/index.html#needless_range_loop",
+      "level": "LEVEL_MEDIUM",
+      "location": {
+        "path": "random_parent_dir/src/main.rs",
+        "range": {
+          "endByte": 569,
+          "endColumn": 26,
+          "endLine": 21,
+          "startByte": 557,
+          "startColumn": 14,
+          "startLine": 21,
+        },
+      },
+      "message": "the loop variable \`i\` is only used to index \`vec\`",
+      "mode": "MODE_BLOCK",
+      "ruleKey": "needless_range_loop",
+      "snippet": "    for i in 0..vec.len() {",
+      "snippetWithContext": "    let x = 1;
+    let y = 2;
+    if x == y || x < y {}
+    println!("Hello World");
+
+    // empty format literal
+    println!("{}", "empty format literal");
+
+    // needless range loop
+    let vec = vec!['a', 'b', 'c'];
+    for i in 0..vec.len() {
+        println!("{}", vec[i]);
+
+    }
+    // manual nonexhaustive
+    let z = Gibberish::Foo("fizz".to_string());
+    println!("gibberish is {}", match z {
+        Gibberish::Foo(_) => "buzz",
+        Gibberish::__Nonexhaustive => unreachable!(),
+    });
+}",
+      "tool": "clippy",
+    },
+    {
+      "category": "CATEGORY_LINT",
+      "documentationUrl": "https://rust-lang.github.io/rust-clippy/master/index.html#print_literal",
+      "level": "LEVEL_MEDIUM",
+      "location": {
+        "path": "random_parent_dir/src/main.rs",
+        "range": {
+          "endByte": 478,
+          "endColumn": 42,
+          "endLine": 17,
+          "startByte": 456,
+          "startColumn": 20,
+          "startLine": 17,
+        },
+      },
+      "message": "literal with an empty format string",
+      "mode": "MODE_BLOCK",
+      "ruleKey": "print_literal",
+      "snippet": "    println!("{}", "empty format literal");",
+      "snippetWithContext": "    __Nonexhaustive,
+}
+
+fn main() {
+    let x = 1;
+    let y = 2;
+    if x == y || x < y {}
+    println!("Hello World");
+
+    // empty format literal
+    println!("{}", "empty format literal");
+
+    // needless range loop
+    let vec = vec!['a', 'b', 'c'];
+    for i in 0..vec.len() {
+        println!("{}", vec[i]);
+
+    }
+    // manual nonexhaustive
+    let z = Gibberish::Foo("fizz".to_string());
+    println!("gibberish is {}", match z {",
+      "suggestions": [
+        {
+          "patch": "--- original
++++ modified
+@@ -14,7 +14,7 @@
+     println!("Hello World");
+
+     // empty format literal
+-    println!("{}", "empty format literal");
++    println!("empty format literal");
+
+     // needless range loop
+     let vec = vec!['a', 'b', 'c'];
+",
+          "replacements": [
+            {
+              "data": "empty format literal",
+              "location": {
+                "path": "random_parent_dir/src/main.rs",
+                "range": {
+                  "endByte": 453,
+                  "endColumn": 35,
+                  "endLine": 17,
+                  "startByte": 451,
+                  "startColumn": 15,
+                  "startLine": 17,
+                },
+              },
+            },
+            {
+              "location": {
+                "path": "random_parent_dir/src/main.rs",
+                "range": {
+                  "endByte": 478,
+                  "endColumn": 18,
+                  "endLine": 17,
+                  "startByte": 454,
+                  "startColumn": 18,
+                  "startLine": 17,
+                },
+              },
+            },
+          ],
+          "source": "SUGGESTION_SOURCE_TOOL",
+        },
+      ],
+      "tool": "clippy",
+    },
+    {
+      "category": "CATEGORY_LINT",
+      "documentationUrl": "https://rust-lang.github.io/rust-clippy/master/index.html#useless_vec",
+      "level": "LEVEL_MEDIUM",
+      "location": {
+        "path": "random_parent_dir/src/main.rs",
+        "range": {
+          "endByte": 542,
+          "endColumn": 34,
+          "endLine": 20,
+          "startByte": 523,
+          "startColumn": 15,
+          "startLine": 20,
+        },
+      },
+      "message": "useless use of \`vec!\`",
+      "mode": "MODE_BLOCK",
+      "ruleKey": "useless_vec",
+      "snippet": "    let vec = vec!['a', 'b', 'c'];",
+      "snippetWithContext": "fn main() {
+    let x = 1;
+    let y = 2;
+    if x == y || x < y {}
+    println!("Hello World");
+
+    // empty format literal
+    println!("{}", "empty format literal");
+
+    // needless range loop
+    let vec = vec!['a', 'b', 'c'];
+    for i in 0..vec.len() {
+        println!("{}", vec[i]);
+
+    }
+    // manual nonexhaustive
+    let z = Gibberish::Foo("fizz".to_string());
+    println!("gibberish is {}", match z {
+        Gibberish::Foo(_) => "buzz",
+        Gibberish::__Nonexhaustive => unreachable!(),
+    });",
+      "suggestions": [
+        {
+          "patch": "--- original
++++ modified
+@@ -17,7 +17,7 @@
+     println!("{}", "empty format literal");
+
+     // needless range loop
+-    let vec = vec!['a', 'b', 'c'];
++    let vec = ['a', 'b', 'c'];
+     for i in 0..vec.len() {
+         println!("{}", vec[i]);
+
+",
+          "replacements": [
+            {
+              "data": "['a', 'b', 'c']",
+              "location": {
+                "path": "random_parent_dir/src/main.rs",
+                "range": {
+                  "endByte": 542,
+                  "endColumn": 30,
+                  "endLine": 20,
+                  "startByte": 523,
+                  "startColumn": 15,
+                  "startLine": 20,
+                },
+              },
+            },
+          ],
+          "source": "SUGGESTION_SOURCE_TOOL",
+        },
+      ],
+      "tool": "clippy",
+    },
+  ],
+}
+`;

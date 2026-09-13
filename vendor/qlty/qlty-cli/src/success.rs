@@ -1,0 +1,50 @@
+use crate::errors::CommandError;
+use qlty_config::config::CheckTrigger;
+
+#[derive(clap::ValueEnum, Debug, Clone, Copy, PartialEq, Eq)]
+pub enum Trigger {
+    Manual,
+    Ide,
+    Agent,
+    PreCommit,
+    PrePush,
+    Build,
+}
+
+impl From<Trigger> for CheckTrigger {
+    fn from(trigger: Trigger) -> Self {
+        match trigger {
+            Trigger::Manual => CheckTrigger::Manual,
+            Trigger::Ide => CheckTrigger::Ide,
+            Trigger::Agent => CheckTrigger::Agent,
+            Trigger::PreCommit => CheckTrigger::PreCommit,
+            Trigger::PrePush => CheckTrigger::PrePush,
+            Trigger::Build => CheckTrigger::Build,
+        }
+    }
+}
+
+#[derive(Default, Copy, Clone, Debug)]
+pub struct CommandSuccess {
+    pub trigger: Option<Trigger>,
+    pub unformatted_count: Option<usize>,
+    pub issues_count: Option<usize>,
+    pub security_issues_count: Option<usize>,
+    pub fixed_count: usize,
+    pub fixable_count: usize,
+    pub fail: bool,
+}
+
+impl CommandSuccess {
+    pub fn ok() -> Result<Self, CommandError> {
+        Ok(Self::default())
+    }
+
+    pub fn exit_code(&self) -> i32 {
+        if self.fail {
+            1
+        } else {
+            0
+        }
+    }
+}

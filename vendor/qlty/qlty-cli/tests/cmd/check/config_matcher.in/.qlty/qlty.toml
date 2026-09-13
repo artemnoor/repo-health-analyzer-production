@@ -1,0 +1,22 @@
+config_version = "0"
+
+[plugins.definitions.config-matcher]
+file_types = ["shell"]
+
+[plugins.definitions.config-matcher.drivers.lint]
+prepare_script = "mkdir ${linter} && echo dir %2 > ${linter}/ls.cmd || echo dir %2 > ${linter}/ls.cmd"
+script = "ls -l ${config_file}"
+config_files = ["config.*.json"]
+success_codes = [0]
+output = "pass_fail"
+
+[plugins.definitions.config-matcher.drivers.second]
+prepare_script = "mkdir ${linter} && echo dir %2 > ${linter}/ls.cmd || echo dir %2 > ${linter}/ls.cmd"
+script = "ls -l ${config_file}"
+config_files = ["config.shared.json"]
+success_codes = [0]
+output = "pass_fail"
+
+[[plugin]]
+name = "config-matcher"
+version = "1.0.0"

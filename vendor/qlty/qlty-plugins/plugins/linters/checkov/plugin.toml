@@ -1,0 +1,27 @@
+config_version = "0"
+
+[plugins.definitions.checkov]
+runtime = "python"
+package = "checkov"
+file_types = ["docker", "terraform", "yaml", "json"]
+latest_version = "3.2.495"
+known_good_version = "3.2.495"
+version_command = "checkov --version"
+config_files = [".checkov.yml", ".checkov.yaml"]
+description = "Static code analysis tool for infrastructure as code (IaC) and also a software composition analysis (SCA) tool for images and open source packages"
+security = true
+
+[plugins.definitions.checkov.drivers.format]
+# The comma after ${tmpfile} is absolutely necessary
+script = "checkov --output sarif --output-file-path ${tmpfile}, --soft-fail --quiet --compact --directory ${target}"
+success_codes = [0]
+target = { type = "literal", path = "." }
+runs_from = { type = "root_or_parent_with_any_config" }
+output = "tmpfile"
+output_format = "sarif"
+output_category = "vulnerability"
+output_level = "medium"
+batch = false
+cache_results = true
+suggested = "config"
+output_missing = "parse"

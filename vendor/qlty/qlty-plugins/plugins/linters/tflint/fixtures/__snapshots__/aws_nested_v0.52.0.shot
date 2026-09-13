@@ -1,0 +1,112 @@
+// Jest Snapshot v1, https://goo.gl/fbAQLP
+
+exports[`linter=tflint fixture=aws_nested version=0.52.0 1`] = `
+{
+  "issues": [
+    {
+      "category": "CATEGORY_LINT",
+      "documentationUrl": "https://github.com/terraform-linters/tflint-ruleset-terraform/blob/v<version>/docs/rules/terraform_required_version.md",
+      "level": "LEVEL_MEDIUM",
+      "location": {
+        "path": "nested/aws.in.tf",
+      },
+      "message": "terraform "required_version" attribute is required",
+      "mode": "MODE_BLOCK",
+      "ruleKey": "terraform_required_version",
+      "tool": "tflint",
+    },
+    {
+      "category": "CATEGORY_LINT",
+      "documentationUrl": "https://github.com/terraform-linters/tflint-ruleset-terraform/blob/v<version>/docs/rules/terraform_typed_variables.md",
+      "level": "LEVEL_MEDIUM",
+      "location": {
+        "path": "nested/aws.in.tf",
+        "range": {
+          "endColumn": 15,
+          "endLine": 10,
+          "startColumn": 1,
+          "startLine": 10,
+        },
+      },
+      "message": "\`foo\` variable has no type",
+      "mode": "MODE_BLOCK",
+      "ruleKey": "terraform_typed_variables",
+      "snippet": "variable "foo" {",
+      "snippetWithContext": "variable "region" {
+  type = map(any)
+  default = {
+    "a" = {
+      "region" = "uswest",
+    }
+  }
+}
+
+variable "foo" {
+  default = "bar"
+}",
+      "tool": "tflint",
+    },
+    {
+      "category": "CATEGORY_LINT",
+      "documentationUrl": "https://github.com/terraform-linters/tflint-ruleset-terraform/blob/v<version>/docs/rules/terraform_unused_declarations.md",
+      "level": "LEVEL_MEDIUM",
+      "location": {
+        "path": "nested/aws.in.tf",
+        "range": {
+          "endColumn": 15,
+          "endLine": 10,
+          "startColumn": 1,
+          "startLine": 10,
+        },
+      },
+      "message": "variable "foo" is declared but not used",
+      "mode": "MODE_BLOCK",
+      "ruleKey": "terraform_unused_declarations",
+      "snippet": "variable "foo" {",
+      "snippetWithContext": "variable "region" {
+  type = map(any)
+  default = {
+    "a" = {
+      "region" = "uswest",
+    }
+  }
+}
+
+variable "foo" {
+  default = "bar"
+}",
+      "tool": "tflint",
+    },
+    {
+      "category": "CATEGORY_LINT",
+      "documentationUrl": "https://github.com/terraform-linters/tflint-ruleset-terraform/blob/v<version>/docs/rules/terraform_unused_declarations.md",
+      "level": "LEVEL_MEDIUM",
+      "location": {
+        "path": "nested/aws.in.tf",
+        "range": {
+          "endColumn": 18,
+          "endLine": 1,
+          "startColumn": 1,
+          "startLine": 1,
+        },
+      },
+      "message": "variable "region" is declared but not used",
+      "mode": "MODE_BLOCK",
+      "ruleKey": "terraform_unused_declarations",
+      "snippet": "variable "region" {",
+      "snippetWithContext": "variable "region" {
+  type = map(any)
+  default = {
+    "a" = {
+      "region" = "uswest",
+    }
+  }
+}
+
+variable "foo" {
+  default = "bar"",
+      "tool": "tflint",
+    },
+  ],
+}
+`;

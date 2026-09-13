@@ -1,0 +1,19 @@
+config_version = "0"
+
+[plugins.definitions.multi_driver]
+file_types = ["shell"]
+latest_version = "0.10.0"
+known_good_version = "0.10.0"
+suggested_mode = "block"
+
+[plugins.definitions.multi_driver.drivers.first]
+script = "exit 0"
+success_codes = [0]
+output = "pass_fail"
+suggested = "targets"
+
+[plugins.definitions.multi_driver.drivers.second]
+script = "exit 1"
+success_codes = [0]
+output = "pass_fail"
+suggested = "targets"

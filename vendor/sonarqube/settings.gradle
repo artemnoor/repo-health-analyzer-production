@@ -1,0 +1,233 @@
+pluginManagement {
+  repositories {
+    def artifactoryPassword = System.env.'ARTIFACTORY_ACCESS_TOKEN'
+
+    maven {
+      if (artifactoryPassword) {
+        url 'https://repox.jfrog.io/repox/plugins.gradle.org/'
+        authentication {
+          header(HttpHeaderAuthentication)
+        }
+        credentials(HttpHeaderCredentials) {
+          name = "Authorization"
+          value = "Bearer $artifactoryPassword"
+        }
+      } else {
+        url 'https://plugins.gradle.org/m2/'
+      }
+    }
+  }
+}
+plugins {
+  id("com.gradle.develocity") version("4.5.0")
+  id("com.gradle.common-custom-user-data-gradle-plugin") version "2.8.0"
+}
+
+rootProject.name = 'sonarqube'
+
+include 'plugins:sonar-xoo-plugin'
+include 'plugins:sonar-education-plugin'
+
+include 'server:sonar-auth-common'
+include 'server:sonar-auth-bitbucket'
+include 'server:sonar-auth-github'
+include 'server:sonar-auth-gitlab'
+include 'server:sonar-auth-ldap'
+include 'server:sonar-auth-saml'
+include 'server:sonar-ce'
+include 'server:sonar-ce-common'
+include 'server:sonar-ce-task'
+include 'server:sonar-ce-task-projectanalysis'
+include 'server:sonar-db-dao'
+include 'server:sonar-db-migration'
+include 'server:sonar-db-profiling'
+include 'server:sonar-main'
+include 'server:sonar-process'
+include 'server:sonar-server-common'
+include 'server:sonar-statemachine'
+include 'server:sonar-telemetry'
+include 'server:sonar-telemetry-core'
+include 'server:sonar-webserver'
+include 'server:sonar-webserver-api'
+include 'server:sonar-webserver-auth'
+include 'server:sonar-webserver-common'
+include 'server:sonar-webserver-core'
+include 'server:sonar-webserver-es'
+include 'server:sonar-webserver-webapi'
+include 'server:sonar-webserver-webapi-v2'
+include 'server:sonar-webserver-pushapi'
+include 'server:sonar-webserver-ws'
+include 'server:sonar-alm-client'
+include 'server:sonar-webserver-monitoring'
+include 'server:sonar-events'
+
+include 'sonar-application'
+include 'sonar-core'
+include 'sonar-sarif'
+include 'sonar-duplications'
+include 'sonar-markdown'
+include 'sonar-plugin-api-impl'
+include 'sonar-shutdowner'
+include 'sonar-testing-harness'
+include 'sonar-testing-ldap'
+include 'sonar-ws'
+include 'sonar-ws-generator'
+
+// Registers a local composite build from the sonarqube-unification repo as a substitute for published artifacts.
+// Set the property to true and optionally sonarqubeUnificationPath in ~/.gradle/gradle.properties.
+// Falls back to the SONARQUBE_UNIFICATION_PATH environment variable if the Gradle property is not set.
+// opts: group (default 'org.sonarsource.sonarqube'), projectPaths (map of name -> project path, default ':name')
+def useLocalUnificationModule = { String propName, String subPath, List<String> modules, Map opts = [:] ->
+  if (settings.hasProperty(propName) && settings[propName].toBoolean()) {
+    def basePath = settings.hasProperty('sonarqubeUnificationPath')
+      ? settings['sonarqubeUnificationPath']
+      : System.getenv('SONARQUBE_UNIFICATION_PATH')
+    if (!basePath) {
+      throw new GradleException(
+        "${propName} is enabled but the sonarqube-unification path is not configured.\n" +
+        "Set sonarqubeUnificationPath in ~/.gradle/gradle.properties or export SONARQUBE_UNIFICATION_PATH."
+      )
+    }
+    def group = opts.group ?: 'org.sonarsource.sonarqube'
+    def groups = opts.groups ?: [:]
+    def projectPaths = opts.projectPaths ?: [:]
+    def dir = new File(basePath, subPath)
+    println "Using local build [${propName}] from: ${dir.absolutePath}"
+    if (opts.autoSubstitution) {
+      // Preserve project-to-project variants for composites with mixed public and private modules.
+      includeBuild(dir.absolutePath)
+    } else {
+      includeBuild(dir.absolutePath) {
+        dependencySubstitution {
+          modules.each { name ->
+            def moduleGroup = groups[name] ?: group
+            def projectPath = projectPaths[name] ?: ":${name}"
+            substitute module("${moduleGroup}:${name}") using project(projectPath)
+          }
+        }
+      }
+    }
+  }
+}
+
+useLocalUnificationModule('useLocalOrg', 'organizations', ['organizations-api', 'organizations-server-app'])
+useLocalUnificationModule('useLocalProjects', 'projects', ['projects-api', 'projects-server-app'])
+useLocalUnificationModule('useLocalEntitlements', 'billing/entitlements',
+  ['entitlements-api', 'entitlements-server-app', 'entitlements-server-license'], [
+    groups: [
+      'entitlements-server-app': 'com.sonarsource.sonarqube',
+      'entitlements-server-license': 'com.sonarsource.sonarqube',
+    ],
+    projectPaths: [
+      'entitlements-server-app': ':private:entitlements-server-app',
+      'entitlements-server-license': ':private:entitlements-server-license',
+    ],
+  ])
+useLocalUnificationModule('useLocalConsumption', 'billing/consumption', ['consumption-api', 'consumption-server-app'], [
+  groups: ['consumption-server-app': 'com.sonarsource.sonarqube'],
+  projectPaths: ['consumption-server-app': ':private:consumption-server-app'],
+])
+useLocalUnificationModule('useLocalMetrics', 'analysis-processing/metrics', ['metrics-api', 'metrics-server-app'])
+useLocalUnificationModule('useLocalEvents', 'unified-core', ['sonar-events-api', 'sonar-events-server'], [
+  projectPaths: [
+    'sonar-events-api'   : ':sonar-events:sonar-events-api',
+    'sonar-events-server': ':sonar-events:sonar-events-server',
+  ]
+])
+useLocalUnificationModule('useLocalIssueProcessingEvents', 'workflow-and-standards/issue-processing',
+  ['detection-agent-events', 'issue-workflow-events'], [
+  group: 'com.sonarsource.sonarqube',
+  groups: ['issue-workflow-events': 'org.sonarsource.sonarqube'],
+  projectPaths: [
+    'detection-agent-events': ':private:detection-agent-events',
+    'issue-workflow-events' : ':issue-workflow-events',
+  ]
+])
+useLocalUnificationModule('useLocalArchitecture', 'architecture',
+  ['architecture-server-app', 'architecture-api', 'architecture-unified-app', 'architecture-datastructure'],
+  [
+    group: 'com.sonarsource.sonarqube',
+    projectPaths: [
+      'architecture-server-app': ':private:server:architecture-server-app',
+      'architecture-api'       : ':private:unified:architecture-api',
+      'architecture-unified-app': ':private:unified:architecture-unified-app',
+      'architecture-datastructure': ':private:unified:architecture-datastructure',
+    ]
+  ]
+)
+useLocalUnificationModule('useLocalCagHub', 'cag/hub',
+  ['cag-hub-server-app', 'cag-hub-unified-app', 'cag-hub-api'],
+  [
+    group: 'com.sonarsource.sonarqube',
+    projectPaths: [
+      'cag-hub-server-app' : ':private:cag-hub-server-app',
+      'cag-hub-unified-app': ':private:cag-hub-unified-app',
+      'cag-hub-api'        : ':private:cag-hub-api',
+    ]
+  ]
+)
+
+useLocalUnificationModule('useLocalHistory', 'reporting/history', ['history-api', 'history-server-app', 'history-core', 'history-sca'], [
+  groups: [
+    'history-sca': 'com.sonarsource.sonarqube',
+  ],
+  projectPaths: [
+    'history-sca': ':private:history-sca',
+  ],
+])
+useLocalUnificationModule('useLocalDashboards', 'reporting/dashboards',
+  ['dashboards-api', 'dashboards-core', 'dashboards-built-in-server-app', 'dashboards-server-app'], [
+  groups: [
+    'dashboards-server-app': 'com.sonarsource.sonarqube',
+  ],
+  projectPaths: [
+    'dashboards-api'                : ':dashboards-api',
+    'dashboards-core'               : ':dashboards-core',
+    'dashboards-built-in-server-app': ':dashboards-built-in-server-app',
+    'dashboards-server-app'         : ':private:dashboards-server-app',
+  ]
+])
+useLocalUnificationModule('useLocalDopTranslation', 'integration/dop-translation', ['dop-translation-api'])
+useLocalUnificationModule('useLocalRemediationEnablement', 'agentic-workflows',
+  ['remediation-agent-enablement-api', 'remediation-agent-enablement-server'],
+  [
+    autoSubstitution: true,
+  ]
+)
+useLocalUnificationModule('useLocalAgenticHttpSigning', 'agentic-workflows', ['agentic-http-signing'], [
+  autoSubstitution: true,
+])
+// Growth capabilities. Each one is its own composite build under growth/, so it gets its own flag.
+useLocalUnificationModule('useLocalOnboarding', 'growth/onboarding', ['onboarding-api', 'onboarding-unified-app'])
+useLocalUnificationModule('useLocalContactForm', 'growth/contact-form', ['contact-form-api', 'contact-form-unified-app'])
+
+ext.isCiServer = System.getenv().containsKey("GITHUB_ACTIONS")
+
+develocity {
+  projectId = "sonar-enterprise"
+  server = "https://develocity.sonar.build"
+  buildScan {
+    uploadInBackground.set(!isCiServer)
+    publishing.onlyIf { isCiServer && it.authenticated }
+    if (isCiServer) {
+      buildScan.value 'Branch', System.getenv()["GITHUB_REF_NAME"]
+      buildScan.value 'GitHub Actions Run', "https://github.com/${System.getenv('GITHUB_REPOSITORY')}/actions/runs/${System.getenv('GITHUB_RUN_ID')}"
+    }
+  }
+}
+
+buildCache {
+  local {
+    enabled = !isCiServer
+  }
+  remote(develocity.buildCache) {
+    push = isCiServer
+  }
+}
+
+
+// use Settings.getRootDir() so that it doesn't matter which directory you are executing from
+File extraSettings = new File(rootDir, 'private/private-settings.gradle')
+if (extraSettings.exists()) {
+  apply from: extraSettings
+}

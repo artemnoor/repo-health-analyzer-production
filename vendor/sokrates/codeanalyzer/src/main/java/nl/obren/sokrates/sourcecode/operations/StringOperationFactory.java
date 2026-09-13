@@ -1,0 +1,44 @@
+/*
+ * Copyright (c) 2021 Željko Obrenović. All rights reserved.
+ */
+
+package nl.obren.sokrates.sourcecode.operations;
+
+import nl.obren.sokrates.sourcecode.operations.impl.*;
+
+import java.util.HashMap;
+import java.util.Map;
+
+public class StringOperationFactory {
+    // Op name -> operation class. The mapping is fixed, so build it once and share it across all
+    // factory instances rather than rebuilding the map in every constructor call (this runs on the
+    // contributor-email transform hot path).
+    private static final Map<String, Class> classesMap = new HashMap<>();
+
+    static {
+        classesMap.put("extract", ExtractRegexOperation.class);
+        classesMap.put("remove", RemoveRegexOperation.class);
+        classesMap.put("replace", ReplaceOperation.class);
+        classesMap.put("trim", TrimOperation.class);
+        classesMap.put("uppercase", UpperCaseOperation.class);
+        classesMap.put("lowercase", LowerCaseOperation.class);
+        classesMap.put("append", AppendOperation.class);
+        classesMap.put("prepend", PrependOperation.class);
+    }
+
+    public StringOperation getOperation(OperationStatement operationStatement) {
+        StringOperation operation = null;
+        Class opClass = classesMap.get(operationStatement.getOp().toLowerCase());
+        if (opClass != null) {
+            try {
+                operation = (StringOperation) opClass.newInstance();
+                operation.setParams(operationStatement.getParams());
+            } catch (InstantiationException e) {
+                e.printStackTrace();
+            } catch (IllegalAccessException e) {
+                e.printStackTrace();
+            }
+        }
+        return operation != null ? operation : new NoOpsOperation(operationStatement.getParams());
+    }
+}

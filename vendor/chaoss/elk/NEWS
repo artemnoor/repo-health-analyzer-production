@@ -1,0 +1,1051 @@
+# Releases
+
+## grimoire-elk 1.8.0 - (2026-06-19)
+
+**New features:**
+
+ * Phabricator user enrichment from user.search API\
+   Added support for enriching Phabricator user data using the
+   `user.search` API endpoint alongside `user.query`.
+
+
+  ## grimoire-elk 1.7.4 - (2026-05-06)
+  
+  * Update Poetry's package dependencies
+
+  ## grimoire-elk 1.7.3 - (2026-03-05)
+  
+  * Update Poetry's package dependencies
+
+  ## grimoire-elk 1.7.2 - (2026-03-03)
+  
+  * Update Poetry's package dependencies
+
+## grimoire-elk 1.7.1 - (2026-03-03)
+
+**Bug fixes:**
+
+ * Autorefresh and identity issues in comments\
+   Bugzilla enriched index missed some user names, and identities were
+   not correctly linked to SortingHat.
+
+
+## grimoire-elk 1.7.0 - (2026-01-21)
+
+**New features:**
+
+ * Onion study output index naming update\
+   The Onion study now uses date based index names, ensuring previous
+   data remains available while a new study runs or if it fails.
+
+**Bug fixes:**
+
+ * Unique BugzillaREST ids\
+   Bugzilla IDs now include a prefix to ensure uniqueness and avoid
+   conflicts across item types.
+
+
+## grimoire-elk 1.6.0 - (2025-12-12)
+
+**New features:**
+
+ * Bugzilla REST comments\
+   Bug comments have been added as part of the BugzillaRest enriched
+   index. From now on, this index will have two types of items : 'bug'
+   and 'comment'. The new field 'type' has been added to tag the type of
+   each item.
+
+**Bug fixes:**
+
+ * Git aoc bulk error handling\
+   Improved handling of partial failures during bulk writes for Git Areas
+   of code to prevent errors.
+
+
+## grimoire-elk 1.5.3 - (2025-11-25)
+
+**Bug fixes:**
+
+ * Latest date for incremental collection\
+   Updated the logic for determining the last update date. Now it
+   considers both `from_date` from `setup.cfg` and the last update from
+   Elasticsearch, ensuring to use the most recent date.
+
+
+## grimoire-elk 1.5.2 - (2025-11-11)
+
+**Bug fixes:**
+
+ * UTF-8 handling in OpenSearch for Git Areas of code\
+   Fixed an issue in the OpenSearch integration where some documents in
+   Git areas of code study fail due to invalid UTF-8 characters.
+
+
+  ## grimoire-elk 1.5.1 - (2025-10-31)
+  
+  * Update Poetry's package dependencies
+
+## grimoire-elk 1.5.0 - (2025-10-10)
+
+**Performance improvements:**
+
+ * [github] Raw mapping updated\
+   Update `commit_message`, `body`, and `diff_hunk` fields to non-indexed
+   objects in raw index to improve performance. This change requires
+   reindex of the GitHub index.
+
+
+## grimoire-elk 1.4.0 - (2025-09-23)
+
+**New features:**
+
+ * Increased minimum version for Python to 3.10\
+   Python 3.9 reaches the end of life in October 2025. This means it
+   won't receive new updates or patches to fix security issues.
+   GrimoireLab supports Python 3.10 and higher from now on.
+
+**Bug fixes:**
+
+ * Size parameter for Areas of code\
+   Include block_size parameter to the Areas of code study. It allows a
+   better control over data processing in chunks, and allow to define a
+   lower value when the items to process are big.
+ * GitHub types unified\
+   The item types for pull requests in the GitHub indices had different
+   values. While in `github_pull_requests` the type was `pull request`,
+   the type in `github2_pull_request` was `pull_request` (with
+   underscore). We have fixed this bug unifing the type to
+   `pull_request`. You will have to re-enrich indices in your instance to
+   update old items.
+ * Sync AOC and Git raw indexes error\
+   An error occurred in the Areas of Code study, where syncing the AOC
+   and the Git raw index caused an infinite loop due to using different
+   dates for filtering
+ * [github/raw] huge term in data.auto_merge.commit_message handled\
+   This fixes a potential huge term in the "data.auto
+   merge.commit_message" field during the `github2:pull` backend's
+   collection phase by converting the field to text.
+ * Missing creation_date field in Bugzilla\
+   For some Bugzilla bugs, the creation date was unavailable. In these
+   cases, the first activity date is now used to display the bug's
+   creation date.
+
+**New deprecations:**
+
+ * ElasticSearch 6 no longer supported\
+   Elasticsearch 6 is outdated and no longer receives updates. To
+   continue development with new features and support for later versions
+   of Elasticsearch and OpenSearch, we have had to drop support for ES 6.
+
+
+  ## grimoire-elk 1.3.12 - (2025-08-21)
+  
+  * Update Poetry's package dependencies
+
+## grimoire-elk 1.3.11 - (2025-08-18)
+
+**Bug fixes:**
+
+ * GitHub assignee KeyError in enriched index\
+   Fix the `KeyError` when the issue was assigned to a deleted user. A
+   deleted user don't have `email`, `company`, and `location` fields.
+ * GitHub KeyError in enriched index\
+   Fix the `KeyError` when the issue and/or pull request was assigned to
+   `Copilot` user. The `Copilot` user don't have `email`, `company`, and
+   `location` fields.
+ * GitHub user KeyError in enriched index\
+   Fix the rest of the fields of an AI user to correct `KeyError`
+   (`email`, `company`, and `location`).
+
+
+  ## grimoire-elk 1.3.10 - (2025-06-19)
+  
+  * Update Poetry's package dependencies
+
+  ## grimoire-elk 1.3.9 - (2025-06-18)
+  
+  * Update Poetry's package dependencies
+
+## grimoire-elk 1.3.8 - (2025-06-03)
+
+**Bug fixes:**
+
+ * Incorrect `from-date` behavior for enrich tasks\
+   Enriching no longer uses the `from-date` parameter, which is only
+   intended for collection. This fixes an issue causing all GitHub items
+   to be enriched.
+
+
+## grimoire-elk 1.3.7 - (2025-05-20)
+
+**Bug fixes:**
+
+ * GitHub incremental collection date\
+   GitHub incremantal collection was not working correctly because of an
+   inconsistence between the default dates in Perceval and ELK.
+
+
+  ## grimoire-elk 1.3.6 - (2025-05-09)
+  
+  * Update Poetry's package dependencies
+
+  ## grimoire-elk 1.3.5 - (2025-04-09)
+  
+  * Update Poetry's package dependencies
+
+  ## grimoire-elk 1.3.4 - (2025-01-16)
+  
+  * Update Poetry's package dependencies
+
+  ## grimoire-elk 1.3.3 - (2025-01-15)
+  
+  * Update Poetry's package dependencies
+
+  ## grimoire-elk 1.3.2 - (2024-12-11)
+  
+  * Update Poetry's package dependencies
+
+  ## grimoire-elk 1.3.1 - (2024-11-13)
+  
+  * Update Poetry's package dependencies
+
+## grimoire-elk 1.3.0 - (2024-10-15)
+
+**New features:**
+
+ * Keywords data on enriched items\
+   Keywords field is included now on the enriched items of bugzilla and
+   bugzillarest indices.
+ * New reponse times on bugzilla items\
+   The Bugzilla enriched items include two new fields to track response
+   times on these type of repositories. The field
+   `time_to_first_attention` is the the time expressed in days between
+   the ticket creation and the first comment from a contributor different
+   from the author creating the bug. The field `last_comment_date` is the
+   date of the last comment posted in the bug.
+
+**Bug fixes:**
+
+ * All references processed for the reference analysis study\
+   The `enrich_reference_analysis` study analyzes the cross-references
+   between "issues" and "pull request". When we use an aggregations
+   query, it returns only the first 10 items (ElasticSearch/OpenSearch by
+   default). By using 'composite aggregations', we can paginate the
+   result and thus, obtain all the references.
+
+
+## grimoire-elk 1.2.0 - (2024-09-23)
+
+**New features:**
+
+ * Status in SUMO enriched index\
+   Add the missing status in the SUMO backend. The status could be
+   `solved`, `archived`, `locked` or `open`.
+
+**Bug fixes:**
+
+ * Avoid UNDEFINED values in author fields\
+   Avoid `-- UNDEFINED --` values for all SortingHat fields when Mordred
+   loses connection to the SortingHat server during the enrichment or
+   autorefresh execution. It will keep the values of the `name`, `email`,
+   `id` and `uuid` fields.
+ * Handle OpenSearch page info on pagination\
+   In OpenSearch and ElasticSearch < 7.x the page info on pagination is
+   different. This will handle both of them.
+
+**Dependencies updateds:**
+
+ * Python minimum version updated\
+   Python 3.8 will reach its end of life in October 2024. Python 3.9 is
+   the minimum version required by the project.
+
+
+## grimoire-elk 1.1.5 - (2024-08-30)
+
+**Bug fixes:**
+
+ * Git branches study improved\
+   Previously, while the branches study was running, the `branches` field
+   remained empty or partially filled until the study was completed,
+   leading to incorrect data being displayed on the dashboard. With this
+   change, the branches field is updated only after the study has
+   finished.
+
+
+## grimoire-elk 1.1.4 - (2024-08-13)
+
+**Bug fixes:**
+
+ * Roles attribute not available on some enrichers\
+   The 'roles' attribute wasn't available for all the enrichers. The
+   attribute has been added to the main class 'Enrich' so subclasses will
+   have it available even when they don't use it.
+
+
+## grimoire-elk 1.1.3 - (2024-08-09)
+
+**Bug fixes:**
+
+ * GitHub URL ending with slash failed (#1159)\
+   GrimoireLab failed to run with GitHub URLs ending in a slash
+ * Identity refresh bug for some items (#1161)\
+   Update the filter construction to correctly match UUIDs in OpenSearch,
+   addressing a bug in Mordred that prevented role identities from being
+   refreshed.
+
+
+## grimoire-elk 1.1.2 - (2024-08-02)
+
+**Bug fixes:**
+
+ * Git branches study fixed\
+   Git branches study was assigning branches to wrong commits.
+
+
+## grimoire-elk 1.1.1 - (2024-06-21)
+
+**Bug fixes:**
+
+ * Kitsune mapping updated\
+   Kitsune raw mapping was incorrectly defined with `dynamic: false` in
+   the data attribute.
+
+
+## grimoire-elk 1.1.0 - (2024-05-09)
+
+**New features:**
+
+ * Kitsune fields updated\
+   Include new fields in Kitsune backend enriched index. Include
+   `product` and `url` fields in answers, and
+   `is_kitsune_question_solved`, `time_to_first_reply` and  `url` in
+   questions.
+
+
+## grimoire-elk 1.0.0 - (2024-04-13)
+
+**New features:**
+
+ * First major release\
+   GrimoireLab reached a stable status. This is our first major release.
+
+**Bug fixes:**
+
+ * MBOX origin URL anonymized\
+   Remove credentials from MBOX origin URL and tag fields.
+
+
+## grimoire-elk 0.111.1 - (2024-03-27)
+
+**Bug fixes:**
+
+ * Kitsune inmerse terms error\
+   Update raw mapping of Kitsune indexes to handle immense terms found in
+   `data.answers_data.content`, and `data.content`.
+
+
+## grimoire-elk 0.111.0 - (2024-03-12)
+
+**New features:**
+
+ * Kitsune demography study\
+   Include demography study in Kitsune (SUMO). And update the index to
+   include standard fields such as a unique identifier (`id`) and some
+   missing fields like `origin` or `uuid`.
+
+
+## grimoire-elk 0.110.0 - (2024-03-01)
+
+**New features:**
+
+ * Kitsune raw mapping updated\
+   Update the mapping for Kitsune backend to fix an error inserting
+   Perceval items in the raw index when the field 'data.metadata.value'
+   is too big.
+
+
+  ## grimoire-elk 0.109.8 - (2024-02-19)
+  
+  * Update Poetry's package dependencies
+
+## grimoire-elk 0.109.7 - (2024-02-08)
+
+**Bug fixes:**
+
+ * Bug on some backends enrichment\
+   Mediawiki, Meetup are Jira were failing to retrieve the enrollment for
+   an identity.
+
+
+  ## grimoire-elk 0.109.6 - (2024-02-01)
+  
+  * Update Poetry's package dependencies
+
+  ## grimoire-elk 0.109.5 - (2024-01-30)
+  
+  * Update Poetry's package dependencies
+
+  ## grimoire-elk 0.109.4 - (2023-12-19)
+  
+  * Update Poetry's package dependencies
+
+  ## grimoire-elk 0.109.3 - (2023-11-28)
+  
+  * Update Poetry's package dependencies
+
+  ## grimoire-elk 0.109.2 - (2023-11-17)
+  
+  * Update Poetry's package dependencies
+
+  ## grimoire-elk 0.109.1 - (2023-11-03)
+  
+  * Update Poetry's package dependencies
+
+## grimoire-elk 0.109.0 - (2023-10-20)
+
+**New features:**
+
+ * Anonymize repository URLs in graal backend\
+   The raw data generated by the graal backend had non-anonymized URLs on
+   the meta fields 'origin' and 'tag'. This was necessary to generate
+   enriched data for non-public repositories.
+ * Bug description in Bugzilla\
+   Include the description of the bugs in Bugzilla. The new fields are
+   'description' and 'description_analyzed'. The second allows to query
+   any of the words of the description.
+ * SortingHat backend name per data source\
+   Allow to define the name of the backend for the identities stored in
+   SortingHat. From now on github2 is renamed as github in SortingHat
+   identities.
+
+**Bug fixes:**
+
+ * Individual `id` incorrectly assigned\
+   Correct a bug that results in enriched items using the individual ID
+   as the identity ID, and vice versa.
+ * Error in OpenSearch response stops demography study\
+   Fix an issue that stops demography study when OpenSearch occasionally
+   provides a response without some expected fields.
+ * Undefined identities in GitHub comments\
+   Fix a bug that causes certain identities from commentaries to not be
+   imported into SortingHat, resulting in them appearing as UNDEFINED in
+   OpenSearch.
+
+**Dependencies updateds:**
+
+ * Add Python 3.9 and 3.10 and drop 3.7 support\
+   Python 3.7 reached the end of life phase on June 27 2023 and is no
+   longer supported.
+ * Bump urllib3 version\
+   Bump urllib3 from ^1.26 to ^2.0.7
+ * Remove Python pymsql dependency\
+   Remove the dependency with PyMySQL because it is not used anymore.
+
+
+  ## grimoire-elk 0.108.1 - (2023-08-06)
+  
+  * Update Poetry's package dependencies
+
+## grimoire-elk 0.108.0 - (2023-07-23)
+
+**Bug fixes:**
+
+ * Enrich items with multiple enrollments\
+   The `date` field must be a string since improved performance by
+   decreasing calls to the `str_to_datetime` method.
+
+**Performance improvements:**
+
+ * Load identities performance\
+   Improve the load identities process performance by reducing the number
+   of queries to SortingHat.
+
+
+## grimoire-elk 0.107.0 - (2023-07-11)
+
+**Performance improvements:**
+
+ * Enrichment processing time reduced by 50%\
+   The general performance was improved reducing the number of calls to
+   the identities manager (i.g. `SortingHat`). There were some deprecated
+   calls that weren't needed any longer and also, we increased the cache
+   of individuals in ELKs. We were also able to reduce the processing
+   time of the Git backend by converting commit dates only once.
+
+
+## grimoire-elk 0.106.0 - (2023-06-28)
+
+**Performance improvements:**
+
+ * Refreshing identities performance\
+   Decrease the time required to execute the autorefresh process by
+   reducing the number of queries to SortingHat.
+
+
+## grimoire-elk 0.105.0 - (2023-05-17)
+
+**Breaking changes:**
+
+ * SortingHat configuration\
+   When SortingHat's multi-tenancy is enabled, the tenant is included in
+   all clients during execution.
+
+
+  ## grimoire-elk 0.104.6 - (2023-04-28)
+  
+  * Update Poetry's package dependencies
+
+  ## grimoire-elk 0.104.5 - (2023-04-27)
+  
+  * Update Poetry's package dependencies
+
+  ## grimoire-elk 0.104.4 - (2023-04-26)
+  
+  * Update Poetry's package dependencies
+
+## grimoire-elk 0.104.3 - (2023-04-21)
+
+**Bug fixes:**
+
+ * Fix typo in SortingHat fields\
+   Some fields were not updated from the old version of SortingHat. Now
+   the API returns 'isBot' and 'genderAcc' instead of 'is_bot' and
+   'gender_acc'.
+
+**Breaking changes:**
+
+ * Define date format for Git documents\
+   Git by default uses a custom date format that is not recognized by
+   Elastic/OpenSearch.  Specify the format for the AuthorDate and
+   CommitDate fields in Git documents to support the formats usually
+   returned by `git log`.  This allows us to do proper filtering on these
+   fields such as "all documents with CommitDate before 2020".
+ * Update support for ES/OS versions > 7.X/1.X\
+   Currently the support for ES/OS versions > 7.X/1.X is broken due to a
+   faulty version check.  Add a static method to the Elasticsearch object
+   that correctly checks whether the version is 'legacy' (defined as ES
+   6.X or OS 0.X) and adds this check to various places in the codebase.
+   Additionally, fixes an instance where `interval` is used instead of
+   `fixed_interval`. `interval` was deprecated in ES7.
+
+
+  ## grimoire-elk 0.104.2 - (2023-02-03)
+  
+  * Update Poetry's package dependencies
+
+  ## grimoire-elk 0.104.1 - (2023-02-01)
+  
+  * Update Poetry's package dependencies
+
+## grimoire-elk 0.104.0 - (2023-02-01)
+
+**Bug fixes:**
+
+ * SortingHatClientError exception fixed\
+   Exception raised with SortingHatClientError has been fixed in
+   add_identity method.
+ * SortingHat mandatory parameters\
+   Include SortingHat 0.8.x mandatory parameters. Now `sh_port`,
+   `sh_path`, `sh_ssl` are required.
+
+**Breaking changes:**
+
+ * Support of SortingHat 0.8\
+   GrimoireLab starts using a new version of SortingHat.  SortingHat is
+   now a web service that provides an API to manage identities and
+   organizations. GrimoireELK now connects to the new SortingHat database
+   using GraphQL.  The previous version of SortingHat is now deprecated.
+
+
+## grimoire-elk 0.103.3 - (2022-11-07)
+
+**Bug fixes:**
+
+ * Demographic study on Weblate fixed\
+   Weblate demographic study is now updated to allow passing the study
+   alias name by parameter.
+
+
+## grimoire-elk 0.103.2 - (2022-10-31)
+
+**New features:**
+
+ * Development and reviewing contributors fields for Git items\
+   New information about the participants during the development and the
+   reviewing processes are available in `Git` items. The Git backend
+   extracts these data from `Approved-by`, `Co-authored-by`,  and
+   `Merged-by` trailers that some commit messages might include. For each
+   one of these trailers, new fields will be available with the suffixes:
+   `_bots`, `_domains`, `_names`, `_org_names`, and `_uuids`. Also for
+   each one of these suffixes, there will be extra fields with the prefix
+   `non_authored_`. This is an example of the fields available for the
+   the trailer `Merged-by`:     - merged_by_multi_bots     -
+   merged_by_multi_domains     - merged_by_multi_names     -
+   merged_by_multi_org_names     - merged_by_multi_uuids     -
+   non_authored_merged_by_multi_bots     -
+   non_authored_merged_by_multi_domains     -
+   non_authored_merged_by_multi_names     -
+   non_authored_merged_by_multi_org_names
+ * Option 'to-date' on the backend sections\
+   The option `to-date` on the `setup.cfg` allows fetching data until a
+   specific date. By default, this value is `2100-01-01`.
+
+**Bug fixes:**
+
+ * Onion study on Github pull requests fixed\
+   Github pull requests onion study is now updated to allow passing the
+   study alias name by parameter.
+ * Onion study on Gitlab fixed\
+   Gitlab onion study is now updated to allow passing the study alias
+   name by parameter.
+
+**Dependencies updateds:**
+
+ * New Pandas version\
+   Update Pandas to the newest version compatible with Python 3.7+.
+
+
+## grimoire-elk 0.103.0 - (2022-09-26)
+
+**New features:**
+
+ * git-branches study skip uncloned repo\
+   The git-branches study skips the repository when it is not cloned and
+   continues with the next one.
+ * Configurable study aliases\
+   Before this fix, the name of the study aliases was hard coded. From
+   now on, these values can be configured by passing them as parameters.
+ * Entry points to support enriching plugin mechanism\
+   This plugin mechanism allows ELK to use third-party enriching
+   backends. Developers only need to include the next snippet in their
+   package configuration and ELK will import them as any other core
+   backend.  ``` entry_points={"grimoire_elk": "mybackend =
+   package.subpackage:get_connectors"}, ``` **NOTE**: In the previous
+   example, `get_connectors` is a function that returns the backend
+   classes needed to enrich a datasource. Take the next snipped as an
+   example: ``` def get_connectors():     return {"backend": [MyBackend,
+   MyBackendOcean, MyBackendEnrich, MyBackendCommand]} ```
+
+**Bug fixes:**
+
+ * [raw/slack] Handle fields in "data.file"\
+   Avoid the 'Failed to insert data to ES' error when a document contains
+   at least one immense term in 'data.file' (whose UTF8 encoding is
+   longer than the max length 32766).
+
+
+## grimoire-elk 0.103.0-rc.10 - (2022-09-26)
+
+**New features:**
+
+ * git-branches study skip uncloned repo\
+   The git-branches study skips the repository when it is not cloned and
+   continues with the next one.
+ * Configurable study aliases\
+   Before this fix, the name of the study aliases was hard coded. From
+   now on, these values can be configured by passing them as parameters.
+ * Entry points to support enriching plugin mechanism\
+   This plugin mechanism allows ELK to use third-party enriching
+   backends. Developers only need to include the next snippet in their
+   package configuration and ELK will import them as any other core
+   backend.  ``` entry_points={"grimoire_elk": "mybackend =
+   package.subpackage:get_connectors"}, ``` **NOTE**: In the previous
+   example, `get_connectors` is a function that returns the backend
+   classes needed to enrich a datasource. Take the next snipped as an
+   example: ``` def get_connectors():     return {"backend": [MyBackend,
+   MyBackendOcean, MyBackendEnrich, MyBackendCommand]} ```
+
+**Bug fixes:**
+
+ * [raw/slack] Handle fields in "data.file"\
+   Avoid the 'Failed to insert data to ES' error when a document contains
+   at least one immense term in 'data.file' (whose UTF8 encoding is
+   longer than the max length 32766).
+
+
+## grimoire-elk 0.103.0-rc.9 - (2022-09-26)
+
+**New features:**
+
+ * Configurable study aliases\
+   Before this fix, the name of the study aliases was hard coded. From
+   now on, these values can be configured by passing them as parameters.
+ * git-branches study skip uncloned repo\
+   The git-branches study skips the repository when it is not cloned and
+   continues with the next one.
+ * Entry points to support enriching plugin mechanism\
+   This plugin mechanism allows ELK to use third-party enriching
+   backends. Developers only need to include the next snippet in their
+   package configuration and ELK will import them as any other core
+   backend.  ``` entry_points={"grimoire_elk": "mybackend =
+   package.subpackage:get_connectors"}, ``` **NOTE**: In the previous
+   example, `get_connectors` is a function that returns the backend
+   classes needed to enrich a datasource. Take the next snipped as an
+   example: ``` def get_connectors():     return {"backend": [MyBackend,
+   MyBackendOcean, MyBackendEnrich, MyBackendCommand]} ```
+
+**Bug fixes:**
+
+ * [raw/slack] Handle fields in "data.file"\
+   Avoid the 'Failed to insert data to ES' error when a document contains
+   at least one immense term in 'data.file' (whose UTF8 encoding is
+   longer than the max length 32766).
+
+
+## grimoire-elk 0.103.0-rc.8 - (2022-09-26)
+
+**New features:**
+
+ * git-branches study skip uncloned repo\
+   The git-branches study skips the repository when it is not cloned and
+   continues with the next one.
+ * Configurable study aliases\
+   Before this fix, the name of the study aliases was hard coded. From
+   now on, these values can be configured by passing them as parameters.
+ * Entry points to support enriching plugin mechanism\
+   This plugin mechanism allows ELK to use third-party enriching
+   backends. Developers only need to include the next snippet in their
+   package configuration and ELK will import them as any other core
+   backend.  ``` entry_points={"grimoire_elk": "mybackend =
+   package.subpackage:get_connectors"}, ``` **NOTE**: In the previous
+   example, `get_connectors` is a function that returns the backend
+   classes needed to enrich a datasource. Take the next snipped as an
+   example: ``` def get_connectors():     return {"backend": [MyBackend,
+   MyBackendOcean, MyBackendEnrich, MyBackendCommand]} ```
+
+**Bug fixes:**
+
+ * [raw/slack] Handle fields in "data.file"\
+   Avoid the 'Failed to insert data to ES' error when a document contains
+   at least one immense term in 'data.file' (whose UTF8 encoding is
+   longer than the max length 32766).
+
+
+## grimoire-elk 0.103.0-rc.7 - (2022-09-23)
+
+**New features:**
+
+ * Configurable study aliases\
+   Before this fix, the name of the study aliases was hard coded. From
+   now on, these values can be configured by passing them as parameters.
+ * git-branches study skip uncloned repo\
+   The git-branches study skips the repository when it is not cloned and
+   continues with the next one.
+ * Entry points to support enriching plugin mechanism\
+   This plugin mechanism allows ELK to use third-party enriching
+   backends. Developers only need to include the next snippet in their
+   package configuration and ELK will import them as any other core
+   backend.  ``` entry_points={"grimoire_elk": "mybackend =
+   package.subpackage:get_connectors"}, ``` **NOTE**: In the previous
+   example, `get_connectors` is a function that returns the backend
+   classes needed to enrich a datasource. Take the next snipped as an
+   example: ``` def get_connectors():     return {"backend": [MyBackend,
+   MyBackendOcean, MyBackendEnrich, MyBackendCommand]} ```
+
+**Bug fixes:**
+
+ * [raw/slack] Handle fields in "data.file"\
+   Avoid the 'Failed to insert data to ES' error when a document contains
+   at least one immense term in 'data.file' (whose UTF8 encoding is
+   longer than the max length 32766).
+
+
+## grimoire-elk 0.103.0-rc.6 - (2022-09-23)
+
+**New features:**
+
+ * Configurable study aliases\
+   Before this fix, the name of the study aliases was hard coded. From
+   now on, these values can be configured by passing them as parameters.
+ * git-branches study skip uncloned repo\
+   The git-branches study skips the repository when it is not cloned and
+   continues with the next one.
+ * Entry points to support enriching plugin mechanism\
+   This plugin mechanism allows ELK to use third-party enriching
+   backends. Developers only need to include the next snippet in their
+   package configuration and ELK will import them as any other core
+   backend.  ``` entry_points={"grimoire_elk": "mybackend =
+   package.subpackage:get_connectors"}, ``` **NOTE**: In the previous
+   example, `get_connectors` is a function that returns the backend
+   classes needed to enrich a datasource. Take the next snipped as an
+   example: ``` def get_connectors():     return {"backend": [MyBackend,
+   MyBackendOcean, MyBackendEnrich, MyBackendCommand]} ```
+
+**Bug fixes:**
+
+ * [raw/slack] Handle fields in "data.file"\
+   Avoid the 'Failed to insert data to ES' error when a document contains
+   at least one immense term in 'data.file' (whose UTF8 encoding is
+   longer than the max length 32766).
+
+
+## grimoire-elk 0.103.0-rc.5 - (2022-09-23)
+
+**New features:**
+
+ * Configurable study aliases\
+   Before this fix, the name of the study aliases was hard coded. From
+   now on, these values can be configured by passing them as parameters.
+ * git-branches study skip uncloned repo\
+   The git-branches study skips the repository when it is not cloned and
+   continues with the next one.
+ * Entry points to support enriching plugin mechanism\
+   This plugin mechanism allows ELK to use third-party enriching
+   backends. Developers only need to include the next snippet in their
+   package configuration and ELK will import them as any other core
+   backend.  ``` entry_points={"grimoire_elk": "mybackend =
+   package.subpackage:get_connectors"}, ``` **NOTE**: In the previous
+   example, `get_connectors` is a function that returns the backend
+   classes needed to enrich a datasource. Take the next snipped as an
+   example: ``` def get_connectors():     return {"backend": [MyBackend,
+   MyBackendOcean, MyBackendEnrich, MyBackendCommand]} ```
+
+**Bug fixes:**
+
+ * [raw/slack] Handle fields in "data.file"\
+   Avoid the 'Failed to insert data to ES' error when a document contains
+   at least one immense term in 'data.file' (whose UTF8 encoding is
+   longer than the max length 32766).
+
+
+## grimoire-elk 0.103.0-rc.4 - (2022-09-07)
+
+**New features:**
+
+ * Configurable study aliases\
+   Before this fix, the name of the study aliases was hard coded. From
+   now on, these values can be configured by passing them as parameters.
+ * git-branches study skip uncloned repo\
+   The git-branches study skips the repository when it is not cloned and
+   continues with the next one.
+ * Entry points to support enriching plugin mechanism\
+   This plugin mechanism allows ELK to use third-party enriching
+   backends. Developers only need to include the next snippet in their
+   package configuration and ELK will import them as any other core
+   backend.  ``` entry_points={"grimoire_elk": "mybackend =
+   package.subpackage:get_connectors"}, ``` **NOTE**: In the previous
+   example, `get_connectors` is a function that returns the backend
+   classes needed to enrich a datasource. Take the next snipped as an
+   example: ``` def get_connectors():     return {"backend": [MyBackend,
+   MyBackendOcean, MyBackendEnrich, MyBackendCommand]} ```
+
+**Bug fixes:**
+
+ * [raw/slack] Handle fields in "data.file"\
+   Avoid the 'Failed to insert data to ES' error when a document contains
+   at least one immense term in 'data.file' (whose UTF8 encoding is
+   longer than the max length 32766).
+
+
+## grimoire-elk 0.103.0-rc.3 - (2022-08-23)
+
+**New features:**
+
+ * Configurable study aliases\
+   Before this fix, the name of the study aliases was hard coded. From
+   now on, these values can be configured by passing them as parameters.
+ * Entry points to support enriching plugin mechanism\
+   This plugin mechanism allows ELK to use third-party enriching
+   backends. Developers only need to include the next snippet in their
+   package configuration and ELK will import them as any other core
+   backend.  ``` entry_points={"grimoire_elk": "mybackend =
+   package.subpackage:get_connectors"}, ``` **NOTE**: In the previous
+   example, `get_connectors` is a function that returns the backend
+   classes needed to enrich a datasource. Take the next snipped as an
+   example: ``` def get_connectors():     return {"backend": [MyBackend,
+   MyBackendOcean, MyBackendEnrich, MyBackendCommand]} ```
+
+**Bug fixes:**
+
+ * [raw/slack] Handle fields in "data.file"\
+   Avoid the 'Failed to insert data to ES' error when a document contains
+   at least one immense term in 'data.file' (whose UTF8 encoding is
+   longer than the max length 32766).
+
+
+## grimoire-elk 0.103.0-rc.2 - (2022-07-22)
+
+**New features:**
+
+ * Entry points to support enriching plugin mechanism\
+   This plugin mechanism allows ELK to use third-party enriching
+   backends. Developers only need to include the next snippet in their
+   package configuration and ELK will import them as any other core
+   backend.  ``` entry_points={"grimoire_elk": "mybackend =
+   package.subpackage:get_connectors"}, ``` **NOTE**: In the previous
+   example, `get_connectors` is a function that returns the backend
+   classes needed to enrich a datasource. Take the next snipped as an
+   example: ``` def get_connectors():     return {"backend": [MyBackend,
+   MyBackendOcean, MyBackendEnrich, MyBackendCommand]} ```
+ * Configurable study aliases\
+   Before this fix, the name of the study aliases was hard coded. From
+   now on, these values can be configured by passing them as parameters.
+
+**Bug fixes:**
+
+ * [raw/slack] Handle fields in "data.file"\
+   Avoid the 'Failed to insert data to ES' error when a document contains
+   at least one immense term in 'data.file' (whose UTF8 encoding is
+   longer than the max length 32766).
+
+
+## grimoire-elk 0.103.0-rc.1 - (2022-07-21)
+
+**New features:**
+
+ * Entry points to support enriching plugin mechanism\
+   This plugin mechanism allows ELK to use third-party enriching
+   backends. Developers only need to include the next snippet in their
+   package configuration and ELK will import them as any other core
+   backend.  ``` entry_points={"grimoire_elk": "mybackend =
+   package.subpackage:get_connectors"}, ``` **NOTE**: In the previous
+   example, `get_connectors` is a function that returns the backend
+   classes needed to enrich a datasource. Take the next snipped as an
+   example: ``` def get_connectors():     return {"backend": [MyBackend,
+   MyBackendOcean, MyBackendEnrich, MyBackendCommand]} ```
+ * Configurable study aliases\
+   Before this fix, the name of the study aliases was hard coded. From
+   now on, these values can be configured by passing them as parameters.
+
+**Bug fixes:**
+
+ * [raw/slack] Handle fields in "data.file"\
+   Avoid the 'Failed to insert data to ES' error when a document contains
+   at least one immense term in 'data.file' (whose UTF8 encoding is
+   longer than the max length 32766).
+
+
+## GrimoireELK 0.102.0 - (2022-06-24)
+
+**Bug fixes:**
+
+ * Poetry build version updated\
+   The current version of the `poetry` builder was old and caused some
+   problems when installing packages in developer mode. With this new
+   version, it's possible to install ELK in developer or editable mode
+   without using `setuptools` files (i.e. `setup.cfg` and `setup.py`).
+
+**Others:**
+
+ * GrimoireLab dependencies update\
+   Dependencies have been updated to use the latest versions of
+   GrimoireLab packages:
+     - grimoirelab-toolkit >= 0.3
+     - perceval >= 0.19
+     - perceval-mozilla >= 0.3
+     - perceval-opnfv >=0.2
+     - perceval-puppet >= 0.2
+     - perceval-weblate >= 0.2
+     - graal >= 0.3
+     - cereslib >= 0.3
+
+
+## GrimoireELK 0.101.1 - (2022-06-03)
+
+**Bug fixes:**
+
+ * Pair programming regular expression improvement\
+   The regular expression to detect pair programming authors in git
+   datasource has been improved adding more connectors. The following
+   list shows the current connectors: - `[aA][nN][dD]` - `&` - `+`
+ * Fix fetching authors with min and max dates\
+   The old query only returns 10000 items due to ElasticSearch and
+   OpenSearch now use `composite` aggregation to paginate all buckets.
+
+
+## GrimoireELK 0.101.0 - (2022-06-03)
+
+**New features:**
+
+ * Anonymize parameters\
+   A new API function `anonymize_params(params)` allows to anonymize a
+   list of parameters that developers might consider secrets. It will
+   only take effect for those parameters which their names are defined on
+   `SECRET_PARAMETERS` constant.
+ * Dependencies file for development\
+   Include a new requirements.txt file to install the development version
+   from the repositories.
+ * Support to add identities to SortingHat from Enrich class\
+   New methods `add_identities` and `add_identity` are available on
+   `Enrich` class to add new identities to a `SortingHat` database.
+   Libraries using `elk` won't need to use `sortinghat` library to store
+   new identities while enriching items.
+ * Collect and enrich confluence by spaces\
+   Users can collect and enrich Confluence data from specific spaces
+   only, adding the option `--spaces=[SPACE1, SPACE2, ...]` to their
+   `projects.json`. The following example shows how to collect and to
+   enrich data from only the `DEV` and `SUPP` spaces only. ``` {
+   "project": {         "confluence": [             "http://example.com
+   --spaces=[DEV, SUPP]"         ]     } } ```
+ * Add demographic study to mattermost\
+   Add the demographic study to the mattermost data source.
+
+**Bug fixes:**
+
+ * Skip sources with wrong arguments\
+   Sources won't interrupt collection or enrichment processes when any of
+   their arguments are invalid. Instead, they will be skipped.
+ * Git fix 'is_git_commit_multi_author'\
+   This fixes the `is_git_commit_multi_author` field when the commit has
+   more than one author and `pair-programming` is enabled. This is
+   important for calculating `pair_programming_*` values.
+ * SortingHat as a required package\
+   SortingHat is required for running grimoireelk but it was set as an
+   extra dependency. From now on sortinghat is always installed with
+   grimoireelk.
+ * Confluence credentials not stored in raw indexes\
+   Credentials for Confluence datasource were stored in raw indices as
+   part of the URL. For now on, credentials that are part of URLs are
+   removed before any data is stored.
+
+**Feature removals:**
+
+ * Drop Python 3.6 support\
+   Python 3.6 reached the end of life at the end of 2021. This means it
+   won't receive new updates or patches to fix security issues.
+   Therefore, this package will only work with Python >= 3.7 from now on.
+ * FINOS Meeting backend removed\
+   FINOS Meeting backend is not supported anymore. The Perceval backend
+   was archived in Bitergia repository so it shouldn't be part of the
+   core anymore because it's software not maintained.
+
+
+## GrimoireELK 0.75.0 - (2020-06-20)
+
+**New features:**
+
+ * Add support for RocketChat (#876)\
+   Added support for collecting and enriching the messages of RocketChat
+   instances. The schema of the enriched data has been included. Tests
+   have been added too. This work is a community contribution, which has
+   been possible thanks to Obaro Ikoh and Animesh Kumar.
+
+
+## GrimoireELK 0.72.0 - (2020-04-24)
+
+**New features:**
+
+ * code complexity per language (#782)\
+   Add language differentiation to code complexity analysis (Cocom)
+ * Add support for Gitter (#820)\
+   Added support for creating raw and enriched indexes of message from
+   Gitter. The visualizations and tests for extracted data have also been
+   added.
+ * Add support for Pagure (#821)\
+   Added support for creating raw and enriched indexes of Pagure. Issued
+   from a Pagure repository are enriched. Additionally, the comments of
+   these issues (if present) are also enriched. The schema for this
+   backend has also been added. Tests have been included accordingly.
+ * Store and process GitHub events\
+   ELK is enhanced to process and store events collected from the GitHub
+   API. The events currently supported are - LabeledEvent -
+   UnlabeledEvent - AddedToProjectEvent - MovedColumnsInProjectEvent -
+   RemovedFromProjectEvent - CrossReferencedEvent - ClosedEvent
+
+**Bug fixes:**
+
+ * Fix missing geolocation in Meetup event (#826)\
+   This fix allows to process Meetup events for which geolocation
+   information isn't provided. For these events, the corresponding
+   attribute in the enriched index (`venue_geolocation`) is set to None.
+

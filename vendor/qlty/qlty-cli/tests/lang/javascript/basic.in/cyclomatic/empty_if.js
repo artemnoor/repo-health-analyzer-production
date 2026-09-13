@@ -1,0 +1,4 @@
+function bar() {
+  if (foo) {
+  }
+}

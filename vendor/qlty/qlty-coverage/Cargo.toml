@@ -1,0 +1,47 @@
+[package]
+name = "qlty-coverage"
+version.workspace = true
+authors.workspace = true
+description.workspace = true
+documentation.workspace = true
+homepage.workspace = true
+repository.workspace = true
+keywords.workspace = true
+categories.workspace = true
+edition.workspace = true
+
+[lib]
+doctest = false
+
+[dependencies]
+anyhow.workspace = true
+clap.workspace = true
+ignore.workspace = true
+cli-table.workspace = true
+git2.workspace = true
+globset.workspace = true
+pbjson-types.workspace = true
+qlty-analysis.workspace = true
+qlty-cloud.workspace = true
+qlty-config.workspace = true
+qlty-formats.workspace = true
+qlty-types.workspace = true
+regex.workspace = true
+semver.workspace = true
+serde_json.workspace = true
+serde-xml-rs.workspace = true
+serde.workspace = true
+time.workspace = true
+tracing.workspace = true
+ureq.workspace = true
+xml-rs.workspace = true
+zip.workspace = true
+
+[dev-dependencies]
+insta.workspace = true
+rustls.workspace = true
+tempfile.workspace = true
+tiny_http.workspace = true
+
+[package.metadata.cargo-machete]
+ignored = ["xml-rs"]

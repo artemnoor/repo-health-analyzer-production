@@ -1,0 +1,7 @@
+// Jest Snapshot v1, https://goo.gl/fbAQLP
+
+exports[`linter=clippy fixture=missing_cargo_toml version=1.77.2 1`] = `
+{
+  "issues": [],
+}
+`;

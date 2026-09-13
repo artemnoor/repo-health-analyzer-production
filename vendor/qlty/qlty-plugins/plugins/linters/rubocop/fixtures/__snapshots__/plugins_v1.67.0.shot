@@ -1,0 +1,31 @@
+// Jest Snapshot v1, https://goo.gl/fbAQLP
+
+exports[`linter=rubocop fixture=plugins version=1.67.0 1`] = `
+{
+  "issues": [
+    {
+      "category": "CATEGORY_LINT",
+      "level": "LEVEL_MEDIUM",
+      "location": {
+        "path": "basic.in.rb",
+        "range": {
+          "endColumn": 28,
+          "endLine": 4,
+          "startColumn": 3,
+          "startLine": 4,
+        },
+      },
+      "message": "Use \`value.blank?\` instead of \`value.nil? || value.empty?\`.",
+      "mode": "MODE_BLOCK",
+      "ruleKey": "Rails/Blank",
+      "snippet": "  value.nil? || value.empty?",
+      "snippetWithContext": "# frozen_string_literal: true
+
+def check_blank(value)
+  value.nil? || value.empty?
+end",
+      "tool": "rubocop",
+    },
+  ],
+}
+`;

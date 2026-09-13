@@ -1,0 +1,24 @@
+config_version = "0"
+cli_version = "0.163.0"
+
+[plugins.definitions.exists]
+file_types = ["shell"]
+config_files = ["asd.yml"]
+
+[plugins.definitions.exists.drivers.lint]
+script = "exists --format json ${target}"
+
+[plugins.definitions.rubocop]
+file_types = ["ruby"]
+config_files = [".rubocop.yml"]
+
+[plugins.definitions.rubocop.drivers.lint]
+script = "rubocop --format json ${target}"
+
+[[plugin]]
+name = "rubocop"
+version = "1.0.0"
+
+[[plugin]]
+name = "exists"
+version = "1.0.0"

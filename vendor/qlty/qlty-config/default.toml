@@ -1,0 +1,519 @@
+config_version = "0"
+
+# When these are updated, also update initializer.rs
+exclude_patterns = [
+  "*_min.*",
+  "*-min.*",
+  "*.min.*",
+  "**/.yarn/**",
+  "**/*.d.ts",
+  "**/bower_components/**",
+  "**/build/**",
+  "**/cache/**",
+  "**/config/**",
+  "**/db/**",
+  "**/deps/**",
+  "**/dist/**",
+  "**/extern/**",
+  "**/external/**",
+  "**/fixtures/**",
+  "**/generated/**",
+  "**/Godeps/**",
+  "**/gradlew/**",
+  "**/mvnw/**",
+  "**/node_modules/**",
+  "**/protos/**",
+  "**/seed/**",
+  "**/target/**",
+  "**/testdata/**",
+  "**/vendor/**",
+]
+
+[file_types.ALL]
+globs = ["*.*"]
+
+[file_types.c]
+globs = ["*.c"]
+
+[file_types.cpp]
+globs = ["*.cpp", "*.hpp", "*.cc", "*.cxx", "*.c++", "*.h", "*.h++", "*.hh", "*.hxx"]
+
+[file_types.csharp]
+globs = ["*.cs"]
+
+[file_types.css]
+globs = ["*.css"]
+
+[file_types.docker]
+globs = ["**/Dockerfile", "**/Dockerfile.*", "**/*.Dockerfile"]
+
+[file_types.gemspec]
+globs = ["*.gemspec"]
+
+[file_types.go]
+globs = ["*.go"]
+
+[file_types.graphql]
+globs = ["*.graphql"]
+
+[file_types.html]
+globs = ["*.html"]
+
+[file_types.java]
+globs = ["*.java"]
+
+[file_types.javascript]
+globs = ["*.js", "*.mjs", "*.cjs", "**/Jakefile"]
+interpreters = [
+  "rhino",
+  "gjs",
+  "qjs",
+  "js",
+  "chakra",
+  "v8-shell",
+  "v8",
+  "node",
+  "d8",
+]
+
+[file_types.jsx]
+globs = ["*.jsx", "*.mjsx", "*.cjsx"]
+
+[file_types.json]
+globs = [
+  "*.json",
+  "*.jsonc",
+  "**/.eslintrc.json",
+  "**/.jslintrc",
+  "**/.jscsrc",
+  "**/.arcconfig",
+  "**/jsconfig.json",
+  "**/mcmod.info",
+  "**/.babelrc",
+  "**/tsconfig.json",
+  "**/.tern-project",
+  "**/.watchmanconfig",
+  "**/.tern-config",
+  "**/composer.lock",
+  "**/.htmlhintrc",
+  "**/language-configuration.json",
+  "**/.jshintrc",
+]
+
+[file_types.markdown]
+globs = ["*.md", "*.mdx", "**/contents.lr"]
+
+[file_types.python]
+globs = [
+  "*.py",
+  "*.pyw",
+  "**/DEPS",
+  "**/Snakefile",
+  "**/SConscript",
+  "**/wscript",
+  "**/SConstruct",
+  "**/.gclient",
+]
+interpreters = ["python", "python3", "python2", "pypy"]
+
+[file_types.ruby]
+globs = [
+  "*.rb",
+  "*.rake",
+  "**/.irbrc",
+  "**/.pryrc",
+  "**/Appraisals",
+  "**/Berksfile",
+  "**/Brewfile",
+  "**/buildfile",
+  "**/Buildfile",
+  "**/Capfile",
+  "**/Dangerfile",
+  "**/Deliverfile",
+  "**/Fastfile",
+  "**/Gemfile",
+  "**/Guardfile",
+  "**/Jarfile",
+  "**/Mavenfile",
+  "**/Podfile",
+  "**/Puppetfile",
+  "**/Rakefile",
+  "**/Snapfile",
+  "**/Thorfile",
+  "**/Vagrantfile",
+]
+interpreters = ["jruby", "rbx", "rake", "macruby", "ruby"]
+
+[file_types.gemfile_lock]
+globs = ["**/Gemfile.lock"]
+
+[file_types.rust]
+globs = ["*.rs"]
+
+[file_types.shell]
+globs = [
+  "*.sh",
+  "*.bash",
+  "**/man",
+  "**/PKGBUILD",
+  "**/.zshrc",
+  "**/.profile",
+  "**/.zlogout",
+  "**/zlogout",
+  "**/bash_logout",
+  "**/bash_aliases",
+  "**/.bashrc",
+  "**/bashrc",
+  "**/.zlogin",
+  "**/9fs",
+  "**/zlogin",
+  "**/cshrc",
+  "**/.bash_aliases",
+  "**/.cshrc",
+  "**/.bash_logout",
+  "**/zshrc",
+  "**/zprofile",
+  "**/login",
+  "**/.bash_profile",
+  "**/.login",
+  "**/.zprofile",
+  "**/profile",
+  "**/.bash_history",
+  "**/bash_profile",
+  "**/.zshenv",
+  "**/zshenv",
+  "**/.bash_functions",
+  "**/.bash_completion",
+]
+interpreters = [
+  "pdksh",
+  "dash",
+  "ksh",
+  "zsh",
+  "ash",
+  "sh",
+  "bash",
+  "mksh",
+  "rc",
+  "fish",
+]
+
+[file_types.sass]
+globs = ["*.sass", "*.scss"]
+
+[file_types.toml]
+globs = ["*.toml", "**/Cargo.lock", "**/Gopkg.lock"]
+
+[file_types.typescript]
+globs = ["*.ts", "*.mts", "*.cts"]
+interpreters = ["ts-node", "deno"]
+
+[file_types.tsx]
+globs = ["*.tsx", "*.mtsx", "*.ctsx"]
+
+[file_types.yaml]
+globs = ["*.yml", "*.yaml", "**/.clang-tidy", "**/glide.lock", "**/.gemrc"]
+
+[file_types.kotlin]
+globs = ["*.kt"]
+
+[file_types.php]
+globs = [
+  "*.php",
+  "*.ctp",
+  "*.fcgi",
+  "*.inc",
+  "*.php3",
+  "*.php4",
+  "*.php5",
+  "*.phps",
+  "*.phpt",
+  "*.phtml",
+  "**/.php_cs",
+  "**/.php_cs.dist",
+  "**/Phakefile",
+]
+
+[file_types.sql]
+globs = ["*.sql"]
+
+[file_types.sql-j2]
+globs = ["*.sql-j2"]
+
+[file_types.dml]
+globs = ["*.dml"]
+
+[file_types.ddl]
+globs = ["*.ddl"]
+
+[file_types.terraform]
+globs = ["*.tf", "*.tf.json", "*.tfvars"]
+
+[file_types.lockfile]
+globs = [
+  "**/Cargo.lock",
+
+  # CocoaPods (Swift/Obj-C)
+  "**/Podfile.lock",
+
+  # Composer (PHP)
+  "**/composer.lock",
+
+  # Conan (C++)
+  "**/conan.lock",
+
+  # Golang
+  "**/go.mod",
+  "**/go.sum",
+
+  # Gradle (Android/Java/Kotlin)
+  "**/buildscript-gradle.lockfile",
+  "**/gradle.lockfile",
+
+  # Maven
+  "**/pom.xml",
+
+  # Mix (Erlang/Elixir)
+  "**/mix.lock",
+
+  # Node
+  "**/package-lock.json",
+  "**/pnpm-lock.yaml",
+  "**/yarn.lock",
+
+  # NuGet (.NET)
+  "**/packages.lock.json",
+  "**/packages.config",
+
+  # Pub (Dart)
+  "**/pubspec.lock",
+
+  # Python
+  "**/requirements.txt",
+  "**/Pipfile.lock",
+  "**/poetry.lock",
+
+  # Ruby
+  "**/Gemfile.lock",
+]
+
+[file_types.github-workflow]
+globs = [".github/workflows/*.yaml", ".github/workflows/*.yml"]
+
+[file_types.dotenv]
+globs = ["**/*.env*"]
+
+[file_types.apex]
+globs = ["*.cls", "*.page", "*.tgr"]
+
+[file_types.prisma]
+globs = ["*.prisma"]
+
+[file_types.coffee]
+globs = ["*.coffee"]
+
+[file_types.swift]
+globs = ["*.swift"]
+
+[file_types.openapi]
+globs = ["**/openapi.yaml", "**/openapi.*.yaml"]
+
+[file_types.scala]
+globs = ["*.scala"]
+
+[file_types.objective-c-source]
+globs = ["*.m"]
+
+[file_types.strings]
+globs = ["*.strings", "*.stringsdict"]
+
+[file_types.xib]
+globs = ["*.xib"]
+
+[file_types.storyboard]
+globs = ["*.storyboard"]
+
+[file_types.haml]
+globs = ["*.haml"]
+
+[language.kotlin]
+globs = ["*.kt"]
+
+[language.php]
+globs = [
+  "*.php",
+  "*.ctp",
+  "*.fcgi",
+  "*.inc",
+  "*.php3",
+  "*.php4",
+  "*.php5",
+  "*.phps",
+  "*.phpt",
+  "*.phtml",
+  "**/.php_cs",
+  "**/.php_cs.dist",
+  "**/Phakefile",
+]
+
+[language.go]
+globs = ["*.go"]
+
+[language.python]
+globs = [
+  "*.py",
+  "*.pyw",
+  "**/DEPS",
+  "**/Snakefile",
+  "**/SConscript",
+  "**/wscript",
+  "**/SConstruct",
+  "**/.gclient",
+]
+interpreters = ["python", "python3", "python2", "pypy"]
+smells.duplication.filter_patterns = ["(import_statement _)"]
+
+[language.rust]
+globs = ["*.rs"]
+test_syntax_patterns = ["""
+    (
+      (mod_item
+        name: (identifier) @name)
+      (#eq? @name "test")
+    )
+  """, """
+  (
+    (attribute_item
+      (attribute
+        (identifier) @meta_item))
+    (function_item) @function
+    (#eq? @meta_item "test")
+  )
+  """]
+smells.duplication.filter_patterns = ["(use_declaration _)"]
+smells.duplication.nodes_threshold = 50
+
+[language.swift]
+globs = ["*.swift"]
+
+[language.java]
+globs = ["*.java"]
+smells.duplication.filter_patterns = ["(import_declaration _)"]
+
+[language.javascript]
+globs = ["*.js", "*.mjs", "*.cjs", "*.jsx", "**/Jakefile"]
+interpreters = [
+  "rhino",
+  "gjs",
+  "qjs",
+  "js",
+  "chakra",
+  "v8-shell",
+  "v8",
+  "node",
+  "d8",
+]
+smells.duplication.filter_patterns = [
+  "(import_statement _)",
+  #  JavaScript requires: const name = require("name");
+  """
+    (
+      (_
+        (variable_declarator
+          name: (identifier)
+          value: (call_expression
+            function: (identifier) @function
+            arguments: (arguments (string))))) @declaration
+
+      (#match? @declaration "^(var|const|let)")
+      (#eq? @function "require")
+    )
+  """,
+]
+
+[language.ruby]
+globs = [
+  "*.rb",
+  "*.rake",
+  "**/.irbrc",
+  "**/.pryrc",
+  "**/Appraisals",
+  "**/Berksfile",
+  "**/Brewfile",
+  "**/buildfile",
+  "**/Buildfile",
+  "**/Capfile",
+  "**/Dangerfile",
+  "**/Deliverfile",
+  "**/Fastfile",
+  "**/Gemfile",
+  "**/Guardfile",
+  "**/Jarfile",
+  "**/Mavenfile",
+  "**/Podfile",
+  "**/Puppetfile",
+  "**/Rakefile",
+  "**/Snapfile",
+  "**/Thorfile",
+  "**/Vagrantfile",
+]
+interpreters = ["jruby", "rbx", "rake", "macruby", "ruby"]
+
+[language.typescript]
+globs = ["*.ts", "*.mts", "*.cts"]
+interpreters = ["ts-node", "deno"]
+smells.duplication.filter_patterns = ["(import_statement _)"]
+
+[language.tsx]
+globs = ["*.tsx", "*.mtsx", "*.ctsx"]
+
+[language.c]
+globs = ["*.c"]
+
+[language.cpp]
+globs = ["*.cpp", "*.hpp", "*.cc", "*.cxx", "*.c++", "*.h", "*.h++", "*.hh", "*.hxx"]
+
+[language.csharp]
+globs = ["*.cs"]
+smells.duplication.filter_patterns = ["(using_directive _)"]
+
+[language.elixir]
+globs = ["*.ex", "*.exs"]
+smells.duplication.filter_patterns = [
+  "(call target: (identifier) @_directive (#match? @_directive \"^(alias|import|require)$\"))",
+]
+
+[language.scala]
+globs = ["*.scala", "*.sc"]
+smells.duplication.filter_patterns = ["(import_declaration _)"]
+
+[language.vbnet]
+globs = ["*.vb"]
+smells.duplication.filter_patterns = ["(imports_statement _)"]
+
+[smells.boolean_logic]
+threshold = 4
+
+[smells.nested_control_flow]
+threshold = 5
+
+[smells.function_parameters]
+threshold = 6
+
+[smells.return_statements]
+threshold = 6
+
+[smells.file_complexity]
+threshold = 50
+
+[smells.function_complexity]
+threshold = 18
+
+[smells.identical_code]
+threshold = 15
+
+[smells.similar_code]
+threshold = 15
+
+[smells.duplication]
+nodes_threshold = 64

@@ -1,0 +1,26 @@
+[
+  {
+    "tool": "block_by_default",
+    "ruleKey": "fail",
+    "message": "block_by_default failed",
+    "level": "LEVEL_HIGH",
+    "category": "CATEGORY_LINT",
+    "mode": "MODE_BLOCK"
+  },
+  {
+    "tool": "comment",
+    "ruleKey": "fail",
+    "message": "comment failed",
+    "level": "LEVEL_HIGH",
+    "category": "CATEGORY_LINT",
+    "mode": "MODE_COMMENT"
+  },
+  {
+    "tool": "monitor",
+    "ruleKey": "fail",
+    "message": "monitor failed",
+    "level": "LEVEL_HIGH",
+    "category": "CATEGORY_LINT",
+    "mode": "MODE_MONITOR"
+  }
+]

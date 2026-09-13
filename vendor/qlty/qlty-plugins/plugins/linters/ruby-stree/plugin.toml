@@ -1,0 +1,18 @@
+[plugins.definitions.ruby-stree]
+runtime = "ruby"
+package = "syntax_tree"
+file_types = ["ruby"]
+latest_version = "6.3.0"
+known_good_version = "6.3.0"
+version_command = "stree version"
+config_files = [".streerc"]
+description = "Ruby auto-formatter"
+
+[plugins.definitions.ruby-stree.drivers.format]
+script = "stree write ${target}"
+success_codes = [0, 1]
+output = "rewrite"
+cache_results = true
+batch = true
+driver_type = "formatter"
+suggested = "config"

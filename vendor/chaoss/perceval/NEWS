@@ -1,0 +1,1050 @@
+# Releases
+
+## perceval 1.5.0 - (2026-06-19)
+
+**New features:**
+
+ * Add secrets manager integration for credential retrieval\
+   Perceval can now retrieve backend credentials from external secrets
+   managers (Bitwarden, HashiCorp Vault) instead of passing them directly
+   on the command line.
+
+**Bug fixes:**
+
+ * Updated Phabricator/Phorge API compatibility (#903)\
+   Improved compatibility with newer Phorge Conduit API endpoints. User
+   data from items are different from previous ones.
+
+
+## perceval 1.4.7 - (2026-05-06)
+
+**Bug fixes:**
+
+ * GitHub App token for public repositories (#898)\
+   When no matching GitHub App installation is available for a
+   repository, Perceval now falls back to using another installation
+   token to retrieve public data.
+
+
+  ## perceval 1.4.6 - (2026-03-03)
+  
+  * Update Poetry's package dependencies
+
+  ## perceval 1.4.5 - (2026-01-21)
+  
+  * Update Poetry's package dependencies
+
+  ## perceval 1.4.4 - (2025-12-12)
+  
+  * Update Poetry's package dependencies
+
+  ## perceval 1.4.3 - (2025-11-25)
+  
+  * Update Poetry's package dependencies
+
+  ## perceval 1.4.2 - (2025-11-11)
+  
+  * Update Poetry's package dependencies
+
+  ## perceval 1.4.1 - (2025-10-31)
+  
+  * Update Poetry's package dependencies
+
+## perceval 1.4.0 - (2025-10-10)
+
+**New features:**
+
+ * New trailers for Git commits\
+   The list of recognized trailers in Git has been expanded using the
+   ones listed by the [Git documentation](https://git-
+   scm.com/docs/SubmittingPatches#sign-off).
+
+
+  ## perceval 1.3.4 - (2025-09-23)
+  
+  * Update Poetry's package dependencies
+
+## perceval 1.3.3 - (2025-08-21)
+
+**Bug fixes:**
+
+ * Latest dulwich version contains a bug (#876)\
+   The latest releases of Dulwich contain a bug that prevents Perceval
+   from retrieving the most recent items from repositories. Pin the
+   dependency to the last known working version until a Dulwich release
+   with a fix is available.
+
+
+  ## perceval 1.3.2 - (2025-08-18)
+  
+  * Update Poetry's package dependencies
+
+  ## perceval 1.3.1 - (2025-06-19)
+  
+  * Update Poetry's package dependencies
+
+## perceval 1.3.0 - (2025-06-18)
+
+**New features:**
+
+ * Blacklist option for builds in Jenkins\
+   Add blacklist functionality for builds in Jenkins integration. To
+   ignore a build, you must define the job name and the build id with the
+   following format: `--blacklist-builds job-id:1234`.
+
+
+## perceval 1.2.3 - (2025-06-03)
+
+**Bug fixes:**
+
+ * Git moved file detection issue in stats\
+   Refactored file path resolution logic in the Git parser to better
+   handle complex move and rename cases, including braces patterns and
+   file moves within nested directories.
+
+
+  ## perceval 1.2.2 - (2025-05-20)
+  
+  * Update Poetry's package dependencies
+
+## perceval 1.2.1 - (2025-05-09)
+
+**Bug fixes:**
+
+ * GitHub API not returning issues (#865)\
+   The GitHub API does not return issues when using the epoch time
+   (1970-01-01). This has been temporarily fixed by using 1980-01-01 as
+   the from-date.
+ * GitHub API pagination bug\
+   Fixed a bug where pagination stopped working after the GitHub API
+   stopped providing a reference to the last page.
+ * GitHub user data fallback\
+   When the API returns a 404 for a user, Perceval returns the basic user
+   data available in the related issue, pull request, comment, or review.
+ * Git filename with curly brackets issue\
+   Perceval misinterpreted file paths with curly brackets as rename or
+   move actions, causing new files to be created without an associated
+   action.
+
+
+## perceval 1.2.0 - (2025-04-09)
+
+**New deprecations:**
+
+ * NNTP backend removed for Python > 3.13\
+   nntplib is no longer part of the Python standard library. It was
+   removed in Python 3.13 after being deprecated in Python 3.11 (PEP
+   594). This version raises an exception when trying to use the NNTP
+   backend and nntplib package is not available.
+
+
+  ## perceval 1.1.1 - (2025-01-15)
+  
+  * Update Poetry's package dependencies
+
+## perceval 1.1.0 - (2024-12-11)
+
+**Bug fixes:**
+
+ * Git stats not assigned with their actions\
+   Git stats were not assigned to their actions in a commit for filenames
+   that contain whitespaces. Instead, an empty stat was created like in a
+   merge commit, where actions normally don't take place.
+
+**Performance improvements:**
+
+ * Git sync improved for `--latest-items` flag\
+   The speed updating a git repository when `--lates-items` is set was
+   very poor. The main problem was when the references were updated to
+   the new hashes. All the active refs on the repository were modified,
+   even when they were up-to-date. Now, only references updated on the
+   remote repository are modified on the local one. Repositories are
+   synched 2 times faster than before.
+
+
+  ## perceval 1.0.9 - (2024-11-13)
+  
+  * Update Poetry's package dependencies
+
+  ## perceval 1.0.8 - (2024-10-15)
+  
+  * Update Poetry's package dependencies
+
+## perceval 1.0.7 - (2024-09-23)
+
+**Dependencies updateds:**
+
+ * Python minimum version updated\
+   Python 3.8 will reach its end of life in October 2024. Python 3.9 is
+   the minimum version required by the project.
+
+
+## perceval 1.0.6 - (2024-08-30)
+
+**Bug fixes:**
+
+ * Fix issue #782 (#782)\
+   The issue was that perceval would not delete old tags from upstream
+   references. This change deletes tags locally if tags are deleted
+   upstream.
+
+
+## perceval 1.0.5 - (2024-08-13)
+
+**Bug fixes:**
+
+ * Fixed missing backend name in usage string (#799)\
+   The `perceval` command-line tool now correctly displays the backend
+   name in the usage string when using the `--help` option.
+
+
+  ## perceval 1.0.4 - (2024-08-09)
+  
+  * Update Poetry's package dependencies
+
+  ## perceval 1.0.3 - (2024-08-02)
+  
+  * Update Poetry's package dependencies
+
+## perceval 1.0.2 - (2024-06-21)
+
+**Bug fixes:**
+
+ * Empty stats for moved/copied files in git\
+   Stats about changes on a file were not reported correctly for files
+   that where moved to a subdirectory. They were reported as an invalid
+   entry and without action associated. For example, the file
+   `dir/filename` was moved to `dir/subdir/filename`, but it was reported
+   as `dir//filename`. Therefore, the entry of the file
+   `dir/subdire/filename` didn't have the stats about added and deleted
+   lines. This error has been fixed and stats are reported correctly.
+
+
+  ## perceval 1.0.1 - (2024-05-09)
+  
+  * Update Poetry's package dependencies
+
+## perceval 1.0.0 - (2024-04-13)
+
+**New features:**
+
+ * First major release\
+   GrimoireLab reached a stable status. This is our first major release.
+
+
+## perceval 0.25.0 - (2024-03-27)
+
+**New features:**
+
+ * Include recovery mode for Git backend\
+   Include a new option in Git that allows continuing to fetch commits
+   from the previous execution using the last commit. The option is
+   `--recovery <commit>`. The last commit can be obtained from the offset
+   in the summary object of the last execution or the last item.
+
+
+  ## perceval 0.24.1 - (2024-03-12)
+  
+  * Update Poetry's package dependencies
+
+## perceval 0.24.0 - (2024-03-01)
+
+**New deprecations:**
+
+ * NNTP backend deprecated\
+   NNTP is deprecated. It is not compatible with Python 3.11.8 and will
+   be removed in a future version.
+
+
+  ## perceval 0.23.6 - (2024-02-08)
+  
+  * Update Poetry's package dependencies
+
+  ## perceval 0.23.5 - (2024-01-30)
+  
+  * Update Poetry's package dependencies
+
+  ## perceval 0.23.4 - (2023-12-19)
+  
+  * Update Poetry's package dependencies
+
+  ## perceval 0.23.3 - (2023-11-28)
+  
+  * Update Poetry's package dependencies
+
+  ## perceval 0.23.2 - (2023-11-14)
+  
+  * Update Poetry's package dependencies
+
+  ## perceval 0.23.1 - (2023-11-03)
+  
+  * Update Poetry's package dependencies
+
+## perceval 0.23.0 - (2023-10-20)
+
+**New features:**
+
+ * Jira authentication with token (#813)\
+   Authentication in `jira` backend is supported using personal access
+   tokens. Jira Core/Software (8.14 and later), Jira Service Management
+   (4.15 and later) Data Center and server editions can use personal
+   access tokens without a username. For Jira Cloud, username and token
+   are required. Usage: perceval jira <YOUR_JIRA_SERVER> -u <USERNAME> -p
+   <PASSWORD> perceval jira <YOUR_JIRA_SERVER> -t <PERSONAL_ACCESS_TOKEN>
+   perceval jira <YOUR_JIRA_CLOUD_SITE> -u <USERNAME> -t <TOKEN>
+ * Clonfluence authentication with personal access tokens\
+   Authentication in `confluence` backend is supported using personal
+   access tokens. Confluence Data Center and server editions 7.9 and
+   later can use personal access tokens without a username. For
+   Confluence Cloud, username and token are required.
+
+**Feature removals:**
+
+ * Drop Python 3.7 support\
+   Python 3.7 reaches the end of life in June 2023. This means it won't
+   receive new updates or patches to fix security issues. Therefore, this
+   package only works with Python >= 3.8 from now on.
+
+**Dependencies updateds:**
+
+ * Bump urllib3 version\
+   Bump urllib3 from ^1.26 to ^2.0.7
+
+
+  ## perceval 0.22.3 - (2023-08-06)
+  
+  * Update Poetry's package dependencies
+
+  ## perceval 0.22.2 - (2023-07-23)
+  
+  * Update Poetry's package dependencies
+
+  ## perceval 0.22.1 - (2023-07-11)
+  
+  * Update Poetry's package dependencies
+
+## perceval 0.22.0 - (2023-06-28)
+
+**New features:**
+
+ * Git backend alternates mechanism\
+   Git alternates is a mechanism that lets a repository borrow objects
+   from another repository on the same machine.  Allow to execute Git
+   Perceval backend using this mechanism.
+
+
+  ## perceval 0.21.7 - (2023-05-17)
+  
+  * Update Poetry's package dependencies
+
+  ## perceval 0.21.6 - (2023-04-27)
+  
+  * Update Poetry's package dependencies
+
+  ## perceval 0.21.5 - (2023-04-26)
+  
+  * Update Poetry's package dependencies
+
+## perceval 0.21.4 - (2023-04-21)
+
+**Bug fixes:**
+
+ * Default value for mbox to-date (#810)\
+   Include a default value for `--to-date` argument in mbox backend.
+
+
+  ## perceval 0.21.3 - (2023-02-03)
+  
+  * Update Poetry's package dependencies
+
+  ## perceval 0.21.2 - (2023-02-01)
+  
+  * Update Poetry's package dependencies
+
+## perceval 0.21.1 - (2022-11-07)
+
+**Bug fixes:**
+
+ * Mbox to-date argument fixed\
+   It fixes the `--to-date` argument. This parameter was added to fetch
+   data until a specific date.
+
+
+## perceval 0.21.0 - (2022-10-31)
+
+**New features:**
+
+ * [gitlab] Alias `--url` for `--enterprise-url` argument (#801)\
+   The argument `--enterprise-url` for Gitlab backend has the new alias
+   `--url`. With this argument, users can define the GitLab instance from
+   items will be fetched. This can be set to the SaaS GitLab
+   (`gitlab.com`) or to a self-managed instance (e.g.
+   `gitlab.example.com`). By default, this parameter points to
+   `https://gitlab.com`.
+ * [hyperkitty/mbox] Option `to-date` to fetch until that date\
+   This parameter allows fetching data until a specific date. By default,
+   this value is `2100-01-01`, but this can be changed adding `--to-
+   date`.
+
+
+## perceval 0.20.0 - (2022-09-26)
+
+**New features:**
+
+ * [phabricator] Skip a list of items by id\
+   Perceval will not fetch the items set with the `--blacklist-ids`
+   argument. In the following example, `perceval` will skip the items
+   with ids `123` and `456`: ``` perceval phabricator <PHAB_URL> -t
+   <API_TOKEN> --blacklist-ids 123 456 ```
+
+
+## perceval 0.20.0-rc.15 - (2022-09-26)
+
+**New features:**
+
+ * [phabricator] Skip a list of items by id\
+   Perceval will not fetch the items set with the `--blacklist-ids`
+   argument. In the following example, `perceval` will skip the items
+   with ids `123` and `456`: ``` perceval phabricator <PHAB_URL> -t
+   <API_TOKEN> --blacklist-ids 123 456 ```
+
+
+## perceval 0.20.0-rc.14 - (2022-09-26)
+
+**New features:**
+
+ * [phabricator] Skip a list of items by id\
+   Perceval will not fetch the items set with the `--blacklist-ids`
+   argument. In the following example, `perceval` will skip the items
+   with ids `123` and `456`: ``` perceval phabricator <PHAB_URL> -t
+   <API_TOKEN> --blacklist-ids 123 456 ```
+
+
+## perceval 0.20.0-rc.13 - (2022-09-26)
+
+**New features:**
+
+ * [phabricator] Skip a list of items by id\
+   Perceval will not fetch the items set with the `--blacklist-ids`
+   argument. In the following example, `perceval` will skip the items
+   with ids `123` and `456`: ``` perceval phabricator <PHAB_URL> -t
+   <API_TOKEN> --blacklist-ids 123 456 ```
+
+
+## perceval 0.20.0-rc.12 - (2022-09-23)
+
+**New features:**
+
+ * [phabricator] Skip a list of items by id\
+   Perceval will not fetch the items set with the `--blacklist-ids`
+   argument. In the following example, `perceval` will skip the items
+   with ids `123` and `456`: ``` perceval phabricator <PHAB_URL> -t
+   <API_TOKEN> --blacklist-ids 123 456 ```
+
+
+## perceval 0.20.0-rc.11 - (2022-09-23)
+
+**New features:**
+
+ * [phabricator] Skip a list of items by id\
+   Perceval will not fetch the items set with the `--blacklist-ids`
+   argument. In the following example, `perceval` will skip the items
+   with ids `123` and `456`: ``` perceval phabricator <PHAB_URL> -t
+   <API_TOKEN> --blacklist-ids 123 456 ```
+
+
+## perceval 0.20.0-rc.10 - (2022-09-23)
+
+**New features:**
+
+ * [phabricator] Skip a list of items by id\
+   Perceval will not fetch the items set with the `--blacklist-ids`
+   argument. In the following example, `perceval` will skip the items
+   with ids `123` and `456`: ``` perceval phabricator <PHAB_URL> -t
+   <API_TOKEN> --blacklist-ids 123 456 ```
+
+
+## perceval 0.20.0-rc.9 - (2022-09-09)
+
+**New features:**
+
+ * [phabricator] Skip a list of items by id\
+   Perceval will not fetch the items set with the `--blacklist-ids`
+   argument. In the following example, `perceval` will skip the items
+   with ids `123` and `456`: ``` perceval phabricator <PHAB_URL> -t
+   <API_TOKEN> --blacklist-ids 123 456 ```
+
+
+## perceval 0.20.0-rc.8 - (2022-09-09)
+
+**New features:**
+
+ * [phabricator] Skip a list of items by id\
+   Perceval will not fetch the items set with the `--blacklist-ids`
+   argument. In the following example, `perceval` will skip the items
+   with ids `123` and `456`: ``` perceval phabricator <PHAB_URL> -t
+   <API_TOKEN> --blacklist-ids 123 456 ```
+
+
+## perceval 0.20.0-rc.7 - (2022-09-07)
+
+**New features:**
+
+ * [phabricator] Skip a list of items by id\
+   Perceval will not fetch the items set with the `--blacklist-ids`
+   argument. In the following example, `perceval` will skip the items
+   with ids `123` and `456`: ``` perceval phabricator <PHAB_URL> -t
+   <API_TOKEN> --blacklist-ids 123 456 ```
+
+
+## perceval 0.20.0-rc.6 - (2022-09-07)
+
+**New features:**
+
+ * [phabricator] Skip a list of items by id\
+   Perceval will not fetch the items set with the `--blacklist-ids`
+   argument. In the following example, `perceval` will skip the items
+   with ids `123` and `456`: ``` perceval phabricator <PHAB_URL> -t
+   <API_TOKEN> --blacklist-ids 123 456 ```
+
+
+## perceval 0.20.0-rc.5 - (2022-09-06)
+
+**New features:**
+
+ * [phabricator] Skip a list of items by id\
+   Perceval will not fetch the items set with the `--blacklist-ids`
+   argument. In the following example, `perceval` will skip the items
+   with ids `123` and `456`: ``` perceval phabricator <PHAB_URL> -t
+   <API_TOKEN> --blacklist-ids 123 456 ```
+
+
+## perceval 0.20.0-rc.4 - (2022-09-06)
+
+**New features:**
+
+ * [phabricator] Skip a list of items by id\
+   Perceval will not fetch the items set with the `--blacklist-ids`
+   argument. In the following example, `perceval` will skip the items
+   with ids `123` and `456`: ``` perceval phabricator <PHAB_URL> -t
+   <API_TOKEN> --blacklist-ids 123 456 ```
+
+
+## perceval 0.20.0-rc.3 - (2022-08-23)
+
+**New features:**
+
+ * [phabricator] Skip a list of items by id\
+   Perceval will not fetch the items set with the `--blacklist-ids`
+   argument. In the following example, `perceval` will skip the items
+   with ids `123` and `456`: ``` perceval phabricator <PHAB_URL> -t
+   <API_TOKEN> --blacklist-ids 123 456 ```
+
+
+## perceval 0.20.0-rc.2 - (2022-07-22)
+
+**New features:**
+
+ * [phabricator] Skip a list of items by id\
+   Perceval will not fetch the items set with the `--blacklist-ids`
+   argument. In the following example, `perceval` will skip the items
+   with ids `123` and `456`: ``` perceval phabricator <PHAB_URL> -t
+   <API_TOKEN> --blacklist-ids 123 456 ```
+
+
+## perceval 0.20.0-rc.1 - (2022-07-21)
+
+**New features:**
+
+ * [phabricator] Skip a list of items by id\
+   Perceval will not fetch the items set with the `--blacklist-ids`
+   argument. In the following example, `perceval` will skip the items
+   with ids `123` and `456`: ``` perceval phabricator <PHAB_URL> -t
+   <API_TOKEN> --blacklist-ids 123 456 ```
+
+
+## Perceval 0.19.1 - (2022-06-28)
+
+**Bug fixes:**
+
+ * [confluence] KeyError exception when arguments not passed to 'fetch_items'\
+   Required arguments that weren't passed to 'fetch_items' made the code
+   fail with a KeyError exception.
+
+
+## Perceval 0.19.0 - (2022-06-24)
+
+**New features:**
+
+ * [confluence] Option `max_contents` to limit the number of requested contents\
+   This parameter sets the maximum number of contents requested per
+   query. By default, this number is 200, but this can be changed by
+   adding the `--max-contents` argument. This will help to bypass those
+   instances where the maximum limit is lower than Perceval's default
+   value.
+
+**Bug fixes:**
+
+ * [bugzillarest] Failback when checking custom instances\
+   Some Bugzilla instances return a HTTP 400 error when checking if their
+   are custom instances or not. On those cases, the backend will capture
+   the error and consider the version of that Bugzilla instance as
+   custom.
+ * Slack identifier extraction fixed\
+   Extract the identifier without user information when the user was
+   deleted.
+
+
+## perceval 0.18.0 - (2022-06-01)
+
+**New features:**
+
+ * [bugzillarest] API Key authentication\
+   A new authentication is available in the `bugzillarest` backend using
+   an API Key. This can be provided using the parameter `--api-key` on
+   the command line. Note that this parameter will invalidate `--backend-
+   user` `--backend-password`, and `--api-token` parameters. For
+   developers, this parameter is also available during the initialization
+   of the class `BugzillaRESTClient` under the name `api_key`.
+ * Confluence supports fetch by spaces\
+   This allows fetching confluence by specific spaces. By default it will
+   fetch the entire instance, but adding the `--spaces` argument will
+   fetch only these spaces.
+
+**Feature removals:**
+
+ * Drop Python 3.6 support\
+   Python 3.6 reached the end of life at the end of 2021. This means it
+   won't receive new updates or patches to fix security issues.
+   Therefore, this package will only work with Python >= 3.7 from now on.
+
+
+## Perceval 0.15.0 - (2020-06-13)
+
+**New features:**
+
+ * Add Rocket.Chat backend (#543)\
+   Added support to fetch messages from a Rocket.Chat channel. The
+   messages are fetched in an ascending order based on time when they
+   were last updated. The channel information is also fetched. The tests
+   have been added accordingly. The usage docs have been updated.
+
+## Perceval 0.12 - (2018-10-02)
+
+** New features and improvements: **
+
+ * So far, the JSON items written to the defined output (standard output
+   by default) were difficult to parse. With the option `--json-line`, each
+   item will be written in one line, making easier their consumption by
+   other processes.
+ * New set of backends added:
+   - **GoogleHits**
+   - **Twitter**
+ * Minor bugs were fixed and test coverage was improved.
+
+** Backend improvements: **
+
+ * **gitlab**
+   - add merge request category
+ * **github**
+   - increase the number of items retrieved per page
+   - add the list of commits hashed included in pull requests
+ * **mediawiki**
+   - optimize the number of API calls
+ * **pipermail**
+   - disable SSL verification
+
+
+## Perceval 0.11 - (2018-05-21)
+
+** New features improvements: **
+
+ * Problems with namespaces were fixed. This package was not really using
+   Python namespaces. When other packages, such as `perceval-mozilla` or
+   `perceval-opnfv`, were installed `__init__.py` (inside `perceval`)
+   were overwritten breaking the structure of the main package and making
+   Perceval unusable. This release defines `perceval` as a namespace. Due
+   to it, `fetch`, `find_backends` and other symbols are no longer accessible
+   from the main package.
+ * Mattermost backend added.
+
+
+## Perceval 0.10 - (2018-04-11)
+
+** New features and improvements: **
+
+ * Support for Python 3.5, 3.6.
+ * New set of backends added:
+   - **GitLab**
+   - **Launchpad**
+ * `Cache` was removed in favor of `Archive`. This new feature stores, in
+   SQLite databases, each data response received from a remote source. Thus,
+   it is possible to retrieve original data again without accessing the remote
+   source.
+ * A new generic HTTP client (`HttpClient`) is available and shared by those
+   backends which require to fetch data using that protocol. This client manages
+   rate limits, sleep times and retries in case of error. It is fully extensible
+   and configurable.
+ * With the integration of categories, backends would be able to generate
+   different types of items. For instance, GitHub generates issue and
+   pull request items. The option `--category` allows to set which type of
+   items will be fetched.
+ * Gmane site shut down its activity in July 2016. Although there were some
+   actions to revamp it, it is still down. For these reasons, Gmane backend
+   is no longer maintained and has been removed from the core backends.
+ * Tests were improved, specially, adding unit tests for Gerrit backend.
+ * Perceval and GrimoireLab project are now part of CHAOSS community.
+
+** Backend improvements: **
+
+ * **askbot**
+   - add data about accepted answers
+ * **gerrit**
+   - rename parameter URL to hostname
+ * **git**
+   - add `to-date` option to fetch data up to the given date
+   - run Git commands setting HOME environment variable
+   - clone data into a bare repository instead of a work copy
+ * **github**
+   - fetch issue comments
+   - fetch issue/comments reactions
+   - fetch multiple assignees
+   - fetch pull request category
+   - major refactoring reducing the number of requests sent by the client
+ * **phabricator**
+   - include project/user information in task transactions
+
+** Bugs fixed: **
+
+ * The process for discovering references in Git repositories failed
+   with those repositories which do not have any. (#260)
+ * When a local Git repository was analyzed by Perceval, the directory where
+   it was cloned was created inside the local repository. (#262)
+ * Sleep times when rate limit is in use were wrongly calculated in some
+   cases, generating negative values. (#355)
+ * Pipermail backend failed on inaccessible archive URLs. Now, it skips
+   those URLs generating warning messages. (#358)
+
+** Thanks to: **
+
+ * Anvesh Chaturvedi
+ * David Pose Fernández
+ * Prabhat Sharma
+
+
+## Perceval 0.9 - (2017-07-17)
+
+** New features and improvements: **
+
+ * DockerHub added as new backend.
+ * Fetch the latest commits added in a Git repository using
+   the argument `latest-items`.
+
+** Bugs fixed: **
+
+ * In Slack, comment messages were not processed raising an error
+   when their UUIDs were computed. These messages do not include a
+   'user' field on the top layer, which made the backed to fail.
+   This field can be found inside 'comment' key.
+ * Some versions of gerrit return number review as an integer.
+   This value must be converted to string because UUIDs can only be
+   generated using string values. (#144)
+
+
+## Perceval 0.8 - (2017-05-15)
+
+** New features and improvements: **
+
+ * Common functions used across GrimoireLab projects have been moved
+   to their own package. This package was named `grimoirelab-toolkit`.
+   From this version, Perceval depends on this package.
+
+** Backend improvements: **
+
+  * **askbot**
+    - support new URLs schema for comment queries
+  * **bugzilla**
+    - set `User-Agent` header in HTTP clients
+  * **confluence**
+    - add content URL to each item
+  * **gerrit**
+    - add option to disable SSH host keys checks
+  * **nntp**
+    - raise `ParseError` exceptions when an encoding error is found
+  * **rss**
+    - set `User-Agent` header in HTTP clients
+
+
+## Perceval 0.7 - (2017-03-21)
+
+** New features and improvements: **
+
+ * New set of backends added:
+    - Hyperkitty
+    - NNTP
+    - Slack
+ * `RateLimitError` exception added for handling rate limit errors.
+ * Code was cleaned to follow most of the PEP8 style guidelines.
+
+** Backend improvements: **
+
+  * **git**
+    - retry calls on SSH commands were added to avoid temporal server errors
+  * **github**
+    - HHTP 404 errors are managed when user's organizations are fetched
+    - generic `RateLimitError` exception is used
+
+** Bugs fixed: **
+
+ * In Mediawiki backend, the log messages written when a revision is not
+   found were set to ERROR when the real level should have been WARNING.
+ * The URL used to fetch jobs in Jenkins was not common to all servers.
+ * When UUIDs are generated with some input data, some errors may be raised
+   due to problems encoding invalid characters on the input. To avoid these
+   problems, a surrogate escape control error has been set when data is
+   encoded to UTF8. (#123)
+ * Handle Meetup requests rate limit. (#126)
+
+
+## Perceval 0.6 - (2017-02-02)
+
+** Backend improvements: **
+
+ * **bugzillarest**
+   - messages in client errors were improved
+ * **git**
+   - new method `is_detached()`
+ * **mbox**
+   - ignore messages with invalid dates on `Date` header
+ * **phabricator**
+   - retry requests on HTTP 502 and 503 errors
+
+** Bugs fixed: **
+
+ * The `mbox` class from Python's `mailbox` module fails when it tries to
+   decode non-ascii unix-from headers. This header is used as a separator
+   between messages. When this error is found, the class stops reading messages
+   from the mbox. Wrapping `mbox` class to override the way messages are read
+   was needed to catch the exception and decode the header using UTF-8.
+ * When a user does not exists on Phabricator, the API does not return an
+   error. It returns an empty list. The case where an empty list is returned
+   was not managed by the parser, which raised exceptions.
+ * In gerrit, the identifier of the change, `Change-Id` (or `id`), is not unique.
+   What it is unique in a gerrit sever is the number of each change and review.
+   This `number` is used now instead of `id` as the identifier of a review
+ * When Git repositories are reset to the current status on upstream, some of
+   them cannot deal with `origin` reference because it is ambiguous. Replacing
+   it by `FETCH_HEAD` works on those repositories with defined branches on
+   the origin.
+ * Git repositories in detached state do not need to be reset after `git fetch`
+   is called. This call is now skipped when a repository in this state
+   is in use. (#105)
+
+
+## Perceval 0.5 - (2017-01-17)
+
+** New features and improvements: **
+
+ * New set of backends added:
+    - Askbot
+    - Meetup
+    - RSS
+ * Definition of `perceval.backends` namespace and dynamic loading of backends.
+   These two features allow to have third party backends or packages of
+   backends that can be imported and used at runtime.
+ * Mozilla's backends were moved to their own package: `perceval-mozilla`.
+ * Commands were refactorized generalizing their usage into `BackendCommand`
+   class which can run any type of backend. This was possible thanks to the
+   creation of `BackendCommandArgumentParser` class, that defines, manages and
+   parses those arguments needed to run a command; the definition of `pre_init()`
+   and `post_init()` methods during the initialization of the instance; and to
+   the implementation of `setup_cache()` as a public function of the `cache`
+   module.
+
+** Backend improvements: **
+
+ * **bugzilla**
+   - set maximum number of bugs requested on CSV queries
+ * **git**
+   - parse commit trailers
+   - new methods `is_empty()` and `count_objects()`
+   - set missing encodings for the command output
+   - cleaning up of the module
+ * **jenkins**
+   - ignore invalid job builds
+ * **supybot**
+   - parse action and bot empty lines
+   - parse user actions with the format `*nick msg`
+   - generate item ids using the body of the message
+
+** Bugs fixed: **
+
+ * The field 'timestamp' on metadata was not generated in UTC. The call
+   to `datetime.now()` does not generate a timestamp in UTC. It does using
+   the timezone of the system. The right way is to call to `datetime.utcnow()`
+   method. (#92)
+ * The docker image for Perceval purged the git package after installing
+   `perceval`. This made impossible to run the backend for Git because
+   Perceval needs of `git` command under the hood. (#95)
+ * Git empty repositories threw errors while fetching commits. Those were
+   raised because on empty repositories, those which do not have any history
+   or are only initialized, there are some commands that cannot be run, like
+   a pull or log. If any of this commands is called an error is be returned.
+   It was fixed checking whether the repository is empty and returning
+   an empty list of commits for those cases. (#102 and #107)
+
+
+## Perceval 0.4 - (2016-11-03)
+
+** New features and improvements: **
+
+ * `category` field was added to items metadata to classify the type of
+   the item generated with each backend.
+ * The `tag` attribute added to the backends allows to mark the items
+   with a custom label.
+ * Two class methods, `has_caching` and `has_resuming`, are part now
+   of `Backend` class interface to notify whether a backend supports
+   caching and/or resuming of items.
+
+** Backend improvements: **
+
+ * **jenkins**
+   - support blacklist of jobs
+ * **mediawiki**
+   - use API pages methods by default
+ * **phabricator**
+   - fetch and include projects data assigned to each task
+ * **redmine**
+   - fetch and include users data
+ * **remo**
+   - support new version of the API
+ * **supybot**
+   - parse messages written by special bots
+
+** Bugs fixed: **
+
+ * Filepaths on merge commits were not captured on Git backend. This was
+   neccesary in those cases where merge commits only include data about
+   lines added and removed because the filepaths were not parsed and
+   included on the item data. (#63)
+ * The `url` argument on the Gerrit backend was set to optional. It is
+   mandatory. Thus, it was set to positional on the argument parser. (#60)
+ * Newer versions of Phabricator fixed a bug on API Conduit regarding
+   'constraints' parameter. The Phabricator client was modified to fix
+   this bug, too. (#80)
+ * Python's `requests` library decompresses gzip-encoded responses, but
+   in some cases is only able to decompress some parts due to encoding
+   issues or to mixed contents. This problem was fixed downloading and
+   storing the orinal/raw data (compressed or decompressed) for furthed
+   processing.
+ * Jira backend did not return items in order, from oldest to newest. (#89)
+ * Dates with invalid timezones were not parsed. In those cases, the
+   the dates will be converted usin UTC by default. (#73)
+
+
+## Perceval 0.3 - (2016-09-19)
+
+** New features and improvements: **
+
+ * New set of backends added:
+    - Phabricator
+    - Redmine
+ * Add support for creating PyPi packages
+
+** Backend improvements: **
+
+ * **jira**
+   - fetch additional information about custom fields
+ * **mediawiki**
+   - add a flag which ignores the MAX_RECENT_DAYS constraint when the
+     backend is tested
+
+** Bugs fixed: **
+
+ * Cache tests for Redmine backend checked the values retrieved from the
+   repository but not from the cache.
+ * Timestamps generated to fetch data from a given date included invalid
+   timezone information for Mediawiki API (>=1.27). It only works with Zulu
+   dates. (#54)
+ * Date strings that included information after the timezone were not parsed:
+   `Thu, 14 Aug 2008 02:07:59 +0200 CEST`. (#57)
+
+
+## Perceval 0.2 - (2016-07-20)
+
+** New features and improvements: **
+
+ * New set of backends added:
+    - Bugzilla (REST API)
+    - Confluence
+    - Discourse
+    - Gmane
+    - Jenkins
+    - Kitsune (Mozilla)
+    - Mediawiki
+    - Pipermail
+    - ReMo (Mozilla)
+    - Supybot
+    - Telegram
+ * The origin of the fetched data is configurable.
+ * Unit tests for GitHub, Jira and Stack Exchange were added. Other tests
+   were added and improved. Now, the unit tests framework covers a 83% of
+   the source code.
+
+** Backend improvements: **
+
+ * **gerrit**
+   - support server version 2.8
+ * **git**
+   - filtering by branches
+   - so far, the full log was read before parsing it; now, it is parsed and processed
+     while is being read
+ * **github**
+   - full control of GitHub API rate limit
+   - the program can be sent to sleep until the rate limit is reset again
+ * **mbox**
+   - fetches messages since a given date
+ * **pipermail**
+   - fetches messages from a *mod_mbox* interface (i.e: Apache)
+
+** Bugs fixed: **
+
+ * Dates that included parentheses sections were not parsed:
+   `2005 15:20:32 -0100 (GMT+1)`.
+ * An encoding error was raised when `version.py` module was imported. (#32)
+ * The call in chain of functions `utcnow()` and `timestamp()` from the
+   module `time`, produced wrong timezones on the GitHub backend.
+ * Action IRC messages (leading with a single `*`) were ignored. (#48)
+ * The `backoff` field received in a Stack Exchange API response was
+   ignored. When this field is set, any client must wait the number of
+   seconds specified on it before sending any new request.
+ * The query used in Gerrit to retrieve the reviews was badly formed when
+   the blacklist filter contained two or more reviews. (#50)
+
+
+## Perceval 0.1 - (2016-03-30)
+
+** New features and improvements: **
+
+ * Supports Python 3.4 and newer versions.
+ * Fetches and caches information from several software repositories:
+    - Bugzilla
+    - Gerrit
+    - Git
+    - GitHub
+    - Jira
+    - MBox
+    - Stack Exchange
+ * Metadata fields are added to fetched items.
+ * Dates and times used to request data are always converted to UTC.
+ * Unit testing framework is available. Currently, these
+   unit tests cover the 62% of the source code.
+
+** Bugs fixed: **
+
+ * Some Git commit log entries may not contain information about files.
+   Before this was fixed, Perceval raised an exception with a "_Unexpected
+   end of log stream_" message. (#8)
+ * Empty Git commit logs raised erros when were parsed. (#17)
+ * Character ^M) produced some parsing errors in the Git backend. (#21)
+

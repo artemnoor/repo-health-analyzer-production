@@ -1,0 +1,99 @@
+// Jest Snapshot v1, https://goo.gl/fbAQLP
+
+exports[`linter=coffeelint fixture=basic version=5.2.11 1`] = `
+{
+  "issues": [
+    {
+      "category": "CATEGORY_STYLE",
+      "level": "LEVEL_HIGH",
+      "location": {
+        "path": "basic.coffee",
+        "range": {
+          "endColumn": 5,
+          "endLine": 13,
+          "startColumn": 1,
+          "startLine": 13,
+        },
+      },
+      "message": "Class name should be UpperCamelCased",
+      "mode": "MODE_COMMENT",
+      "ruleKey": "camel_case_classes",
+      "snippet": "class boaConstrictor",
+      "snippetWithContext": "x(-> 3)
+x( -> 3)
+
+# However, this will trigger an error
+x((a,b)-> 3)
+
+# Good!
+class BoaConstrictor
+
+# Bad!
+class boaConstrictor",
+      "tool": "coffeelint",
+    },
+    {
+      "category": "CATEGORY_LINT",
+      "level": "LEVEL_MEDIUM",
+      "location": {
+        "path": "second.coffee",
+        "range": {
+          "endColumn": 9,
+          "endLine": 3,
+          "startColumn": 9,
+          "startLine": 3,
+        },
+      },
+      "message": "parseInt is missing the radix argument",
+      "mode": "MODE_COMMENT",
+      "ruleKey": "missing_parseint_radix",
+      "snippet": "parseInt '08'",
+      "snippetWithContext": "# You would expect this to result in 8, but
+# it might result in 0 (parsed as octal).
+parseInt '08'
+
+# To be safe, specify the radix argument:
+parseInt '08', 10
+
+
+# CoffeeLint will catch this:
+throw "i made a boo boo"
+
+# ... but not this:
+throw getSomeString()",
+      "tool": "coffeelint",
+    },
+    {
+      "category": "CATEGORY_LINT",
+      "level": "LEVEL_HIGH",
+      "location": {
+        "path": "second.coffee",
+        "range": {
+          "endColumn": 5,
+          "endLine": 10,
+          "startColumn": 1,
+          "startLine": 10,
+        },
+      },
+      "message": "Throwing strings is forbidden",
+      "mode": "MODE_COMMENT",
+      "ruleKey": "no_throwing_strings",
+      "snippet": "throw "i made a boo boo"",
+      "snippetWithContext": "# You would expect this to result in 8, but
+# it might result in 0 (parsed as octal).
+parseInt '08'
+
+# To be safe, specify the radix argument:
+parseInt '08', 10
+
+
+# CoffeeLint will catch this:
+throw "i made a boo boo"
+
+# ... but not this:
+throw getSomeString()",
+      "tool": "coffeelint",
+    },
+  ],
+}
+`;

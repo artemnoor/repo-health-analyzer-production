@@ -1,0 +1,10 @@
+
+
+similar_a.rs
+   1  Found 28 lines of similar code in 2 locations (mass = 99)
+        also found at similar_b.rs
+
+similar_b.rs
+   1  Found 28 lines of similar code in 2 locations (mass = 99)
+        also found at similar_a.rs
+

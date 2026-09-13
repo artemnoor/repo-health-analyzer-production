@@ -1,0 +1,74 @@
+// Jest Snapshot v1, https://goo.gl/fbAQLP
+
+exports[`linter=yamllint fixture=basic version=1.35.1 1`] = `
+{
+  "issues": [
+    {
+      "category": "CATEGORY_LINT",
+      "documentationUrl": "https://yamllint.readthedocs.io/en/stable/rules.html#module-yamllint.rules.quoted_strings",
+      "level": "LEVEL_HIGH",
+      "location": {
+        "path": "basic.in.yaml",
+        "range": {
+          "startColumn": 6,
+          "startLine": 2,
+        },
+      },
+      "message": "string value is redundantly quoted with any quotes",
+      "mode": "MODE_BLOCK",
+      "ruleKey": "quoted-strings",
+      "snippet": "foo: 'bar'",
+      "snippetWithContext": "object: {True: 1, 1: True}
+foo: 'bar'
+stuff:
+  - key 2: v
+    key 1: val",
+      "tool": "yamllint",
+    },
+    {
+      "category": "CATEGORY_LINT",
+      "documentationUrl": "https://yamllint.readthedocs.io/en/stable/rules.html#module-yamllint.rules.truthy",
+      "level": "LEVEL_MEDIUM",
+      "location": {
+        "path": "basic.in.yaml",
+        "range": {
+          "startColumn": 10,
+          "startLine": 1,
+        },
+      },
+      "message": "truthy value should be one of [false, true]",
+      "mode": "MODE_BLOCK",
+      "ruleKey": "truthy",
+      "snippet": "object: {True: 1, 1: True}",
+      "snippetWithContext": "object: {True: 1, 1: True}
+foo: 'bar'
+stuff:
+  - key 2: v
+    key 1: val",
+      "tool": "yamllint",
+    },
+    {
+      "category": "CATEGORY_LINT",
+      "documentationUrl": "https://yamllint.readthedocs.io/en/stable/rules.html#module-yamllint.rules.truthy",
+      "level": "LEVEL_MEDIUM",
+      "location": {
+        "path": "basic.in.yaml",
+        "range": {
+          "startColumn": 22,
+          "startLine": 1,
+        },
+      },
+      "message": "truthy value should be one of [false, true]",
+      "mode": "MODE_BLOCK",
+      "ruleKey": "truthy",
+      "snippet": "object: {True: 1, 1: True}",
+      "snippetWithContext": "object: {True: 1, 1: True}
+foo: 'bar'
+stuff:
+  - key 2: v
+    key 1: val",
+      "tool": "yamllint",
+    },
+  ],
+}
+`;

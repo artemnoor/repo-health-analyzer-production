@@ -1,0 +1,62 @@
+/*
+ * SonarQube
+ * Copyright (C) SonarSource Sàrl
+ * mailto:info AT sonarsource DOT com
+ *
+ * This program is free software; you can redistribute it and/or
+ * modify it under the terms of the GNU Lesser General Public
+ * License as published by the Free Software Foundation; either
+ * version 3 of the License, or (at your option) any later version.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
+ * Lesser General Public License for more details.
+ *
+ * You should have received a copy of the GNU Lesser General Public License
+ * along with this program; if not, write to the Free Software Foundation,
+ * Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
+ */
+package org.sonar.server.platform.db.migration;
+
+import org.sonar.core.platform.Module;
+import org.sonar.server.platform.db.migration.history.MigrationHistoryImpl;
+import org.sonar.server.platform.db.migration.history.MigrationHistoryMeddler;
+import org.sonar.server.platform.db.migration.history.MigrationHistoryTableImpl;
+import org.sonar.server.platform.db.migration.sql.DbPrimaryKeyConstraintFinder;
+import org.sonar.server.platform.db.migration.sql.DropPrimaryKeySqlGenerator;
+import org.sonar.server.platform.db.migration.step.MigrationStepRegistryImpl;
+import org.sonar.server.platform.db.migration.step.MigrationStepsProvider;
+import org.sonar.server.platform.db.migration.version.v00.DbVersion00;
+import org.sonar.server.platform.db.migration.version.v202601.DbVersion202601;
+import org.sonar.server.platform.db.migration.version.v202602.DbVersion202602;
+import org.sonar.server.platform.db.migration.version.v202603.DbVersion202603;
+import org.sonar.server.platform.db.migration.version.v202604.DbVersion202604;
+import org.sonar.server.platform.db.migration.version.v202605.DbVersion202605;
+
+public class MigrationConfigurationModule extends Module {
+  @Override
+  protected void configureModule() {
+    add(
+      MigrationHistoryTableImpl.class,
+      // DbVersion implementations
+      DbVersion00.class,
+      DbVersion202601.class,
+      DbVersion202602.class,
+      DbVersion202603.class,
+      DbVersion202604.class,
+      DbVersion202605.class,
+
+      // migration steps
+      MigrationStepRegistryImpl.class,
+      new MigrationStepsProvider(),
+
+      // history
+      MigrationHistoryImpl.class,
+      MigrationHistoryMeddler.class,
+
+      // Utility classes
+      DbPrimaryKeyConstraintFinder.class,
+      DropPrimaryKeySqlGenerator.class);
+  }
+}

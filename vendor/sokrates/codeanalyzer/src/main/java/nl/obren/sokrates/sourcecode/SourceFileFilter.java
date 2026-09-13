@@ -1,0 +1,195 @@
+/*
+ * Copyright (c) 2021 Željko Obrenović. All rights reserved.
+ */
+
+package nl.obren.sokrates.sourcecode;
+
+import com.fasterxml.jackson.annotation.JsonIgnore;
+import nl.obren.sokrates.common.utils.RegexUtils;
+import org.apache.commons.lang3.StringUtils;
+import org.apache.commons.logging.Log;
+import org.apache.commons.logging.LogFactory;
+
+import java.util.List;
+import java.util.regex.Pattern;
+import java.util.regex.PatternSyntaxException;
+
+public class SourceFileFilter {
+    private static final Log LOG = LogFactory.getLog(SourceFileFilter.class);
+
+    // A regex expression applied on the file path
+    private String pathPattern = "";
+
+    // A regex expression to find if any line in the file matches it
+    private String contentPattern = "";
+
+    // Is the rule an exception to other rules in the list (i.e. excludes some of the files included by previous rules)
+    private Boolean exception = false;
+
+    // A simple textual note describing the rule
+    private String note = "";
+
+    @JsonIgnore
+    private int maxLinesForContentSearch = -1;
+
+    public SourceFileFilter() {
+    }
+
+    public SourceFileFilter(String pathPattern, String contentPattern) {
+        this.pathPattern = pathPattern;
+        this.contentPattern = contentPattern;
+    }
+
+    public static boolean matchesAnyLine(List<String> lines, String patternString) {
+        Pattern pattern = compilePatternQuietly(patternString);
+        if (pattern == null) {
+            return false;
+        }
+        for (String text : lines) {
+            if (pattern.matcher(text).matches()) {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    public static int getMatchingLinesCount(List<String> lines, String patternString) {
+        if (StringUtils.isBlank(patternString)) {
+            return 1;
+        }
+
+        Pattern pattern = compilePatternQuietly(patternString);
+        if (pattern == null) {
+            return 0;
+        }
+
+        int count = 0;
+        for (String text : lines) {
+            if (pattern.matcher(text).matches()) {
+                count++;
+            }
+        }
+
+        return count;
+    }
+
+    // Compiles the pattern once (cached across calls), returning null on a bad pattern - so callers
+    // compile at most once per invocation instead of once per line, and reuse the shared cache.
+    private static Pattern compilePatternQuietly(String patternString) {
+        try {
+            return RegexUtils.getCompiledPattern(patternString);
+        } catch (PatternSyntaxException e) {
+            LOG.debug(e);
+            return null;
+        }
+    }
+
+    public String getPathPattern() {
+        return pathPattern;
+    }
+
+    public void setPathPattern(String pathPattern) {
+        this.pathPattern = pathPattern;
+    }
+
+    public String getContentPattern() {
+        return contentPattern;
+    }
+
+    public void setContentPattern(String contentPattern) {
+        this.contentPattern = contentPattern;
+    }
+
+    public Boolean getException() {
+        return exception;
+    }
+
+    public void setException(Boolean exception) {
+        this.exception = exception;
+    }
+
+    public String getNote() {
+        return note;
+    }
+
+    public void setNote(String note) {
+        this.note = note;
+    }
+
+    public boolean matches(SourceFile sourceFile) {
+        return pathMatches(sourceFile.getFile().getPath()) &&
+                (StringUtils.isBlank(contentPattern) || contentMatches(sourceFile.getLines()));
+    }
+
+    public boolean pathMatches(String path) {
+        if (StringUtils.isBlank(pathPattern)) {
+            return true;
+        }
+
+        // A filter written with one slash style must also match paths written with the other, so five
+        // (pattern, path) combinations are tried: the path as given, with "\" replaced by "/", and
+        // with "/" replaced by "\", each against the pattern as given and with "\" replaced by "/".
+        // A combination repeats another whenever the string it rewrites holds no such separator - for
+        // a path and a pattern that contain no backslash (the common case: every git path, and every
+        // path on Linux and macOS) the five collapse to at most two distinct pairs. Testing for the
+        // separator before rewriting evaluates each distinct pair once; which pairs are matched is
+        // unchanged.
+        if (RegexUtils.matchesEntirely(pathPattern, path)) {
+            return true;
+        }
+        if (path.contains("\\") && RegexUtils.matchesEntirely(pathPattern, path.replace("\\", "/"))) {
+            return true;
+        }
+        if (path.contains("/") && RegexUtils.matchesEntirely(pathPattern, path.replace("/", "\\"))) {
+            return true;
+        }
+        if (pathPattern.contains("\\")) {
+            String pathPatternWithForwardSlashes = pathPattern.replace("\\", "/");
+            return RegexUtils.matchesEntirely(pathPatternWithForwardSlashes, path.replace("\\", "/"))
+                    || RegexUtils.matchesEntirely(pathPatternWithForwardSlashes, path.replace("/", "\\"));
+        }
+        return false;
+    }
+
+    boolean contentMatches(List<String> lines) {
+        if (StringUtils.isBlank(contentPattern)) {
+            return true;
+        } else {
+            return SourceFileFilter.matchesAnyLine(getMaxLines(lines), contentPattern);
+        }
+    }
+
+    private List<String> getMaxLines(List<String> lines) {
+        if (maxLinesForContentSearch < 0 || maxLinesForContentSearch > lines.size()) {
+            return lines;
+        } else {
+            return lines.subList(0, maxLinesForContentSearch);
+        }
+    }
+
+    @Override
+    public String toString() {
+        String string = "";
+        if (StringUtils.isNotBlank(pathPattern)) {
+            string += "path like \"" + pathPattern + "\"";
+        }
+        if (StringUtils.isNotBlank(contentPattern)) {
+            if (StringUtils.isNotBlank(string)) {
+                string += " AND ";
+            }
+            string += "content like \"" + contentPattern + "\"";
+        }
+        return string;
+    }
+
+    @JsonIgnore
+    public int getMaxLinesForContentSearch() {
+        return maxLinesForContentSearch;
+    }
+
+    @JsonIgnore
+    public void setMaxLinesForContentSearch(int maxLinesForContentSearch) {
+        this.maxLinesForContentSearch = maxLinesForContentSearch;
+    }
+}

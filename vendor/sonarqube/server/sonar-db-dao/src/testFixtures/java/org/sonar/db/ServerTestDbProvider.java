@@ -1,0 +1,41 @@
+/*
+ * SonarQube
+ * Copyright (C) SonarSource Sàrl
+ * mailto:info AT sonarsource DOT com
+ *
+ * This program is free software; you can redistribute it and/or
+ * modify it under the terms of the GNU Lesser General Public
+ * License as published by the Free Software Foundation; either
+ * version 3 of the License, or (at your option) any later version.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
+ * Lesser General Public License for more details.
+ *
+ * You should have received a copy of the GNU Lesser General Public License
+ * along with this program; if not, write to the Free Software Foundation,
+ * Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
+ */
+package org.sonar.db;
+
+import java.util.Collection;
+import org.sonar.db.testfixtures.TestDb;
+import org.sonar.db.testfixtures.TestDbProvider;
+
+/**
+ * Server TestDb provider that creates TestDbImpl instances with full SonarQube schema.
+ * Loaded via ServiceLoader for standard SonarQube server testing.
+ */
+public class ServerTestDbProvider implements TestDbProvider {
+  @Override
+  public TestDb create() {
+    return TestDbImpl.create(null);
+  }
+
+  @Override
+  public MyBatis createMyBatis(Database db, Collection<BaseMyBatisConfExtension> extensions) {
+    return new DefaultMyBatis(db, extensions.toArray(new BaseMyBatisConfExtension[0]));
+    // Note: NOT calling start() — the DbTester is responsible for lifecycle management
+  }
+}

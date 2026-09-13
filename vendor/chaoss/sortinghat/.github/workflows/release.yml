@@ -1,0 +1,120 @@
+name: release
+
+on:
+  push:
+    tags:
+      - '*.*.*'
+      - '*.*.*-*'
+
+jobs:
+
+  build:
+    runs-on: ubuntu-latest
+    outputs:
+      filename: ${{ steps.build_ui_tgz.outputs.filename }}
+    strategy:
+      matrix:
+        node-version: [24.x]
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+      - name: Setup Node ${{ matrix.node-version }}
+        uses: actions/setup-node@48b55a011bda9f5d6aeb4c2d9c7362e8dae4041e # v6.4.0
+        with:
+          node-version: ${{ matrix.node-version }}
+      - name: Create JS files
+        working-directory: ./ui
+        run: |
+          yarn install
+          yarn build
+      - name: Build package using Poetry and store result
+        uses: chaoss/grimoirelab-github-actions/build@main
+        with:
+          artifact-name: sortinghat-dist
+          artifact-path: dist
+          skip-checkout: yes
+      - name: Build UI package
+        id: build_ui_tgz
+        working-directory: ./ui/package
+        run: |
+          yarn install
+          yarn build
+
+          filename="sortinghat-ui-${{ github.ref_name }}.tgz"
+          yarn pack --filename "$filename"
+
+          tgz_path="$(pwd)/$filename"
+
+          echo "filename=$filename" >> "$GITHUB_OUTPUT"
+          echo "tgz_path=$tgz_path" >> "$GITHUB_OUTPUT"
+      - name: Upload UI artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: sortinghat-ui
+          path: ${{ steps.build_ui_tgz.outputs.tgz_path }}
+
+  tests:
+    needs: [build]
+    runs-on: ubuntu-latest
+
+    name: Python ${{ matrix.python-version }}
+    strategy:
+      matrix:
+        python-version: ['3.10', '3.11', '3.12', '3.13']
+
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+
+      - name: Download distribution artifact
+        uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
+        with:
+          name: sortinghat-dist
+          path: dist
+
+      - name: Set up Python ${{ matrix.python-version }}
+        uses: actions/setup-python@a309ff8b426b58ec0e2a45f0f869d46889d02405 # v6.2.0
+        with:
+          python-version: ${{ matrix.python-version }}
+
+      - name: Install Poetry
+        run: |
+          pipx install poetry
+
+      - name: Install dev dependencies
+        run: |
+          poetry install --only dev --no-root
+
+      - name: Test package backend
+        run: |
+          PACKAGE=`(cd dist && ls *whl)` && echo $PACKAGE
+          poetry run pip install --pre ./dist/$PACKAGE
+          poetry run python manage.py test --settings=config.settings.config_testing
+          poetry run python manage.py test --settings=config.settings.config_testing_tenant
+
+  release:
+    needs: [build, tests]
+    runs-on: ubuntu-latest
+    steps:
+      - name: Create a new release on the repository
+        uses: chaoss/grimoirelab-github-actions/release@main
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+      - name: Download UI package
+        uses: actions/download-artifact@v5
+        with:
+          name: sortinghat-ui
+      - name: Add UI package to the release assets
+        run: |
+          gh release upload ${GITHUB_REF#refs/tags/} ${{ needs.build.outputs.filename }}
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+  publish:
+    needs: [tests]
+    runs-on: ubuntu-latest
+    steps:
+      - name: Publish the package on PyPI
+        uses: chaoss/grimoirelab-github-actions/publish@main
+        with:
+          artifact-name: sortinghat-dist
+          artifact-path: dist
+          pypi-api-token: ${{ secrets.PYPI_API_TOKEN }}

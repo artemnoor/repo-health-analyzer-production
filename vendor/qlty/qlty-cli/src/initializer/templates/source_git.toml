@@ -1,0 +1,4 @@
+[[source]]
+name = "{name}"
+repository = "{repository}"
+{reference_type} = "{reference}"

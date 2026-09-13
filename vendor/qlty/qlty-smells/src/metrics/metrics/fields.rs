@@ -1,0 +1,434 @@
+use qlty_analysis::code::File;
+use qlty_analysis::code::{capture_by_name, capture_source, NodeFilter};
+use std::collections::HashSet;
+use tree_sitter::Node;
+
+pub const QUERY_MATCH_LIMIT: usize = 1024;
+
+pub fn count<'a>(source_file: &'a File, node: &Node<'a>, filter: &NodeFilter) -> usize {
+    let language = source_file.language();
+    let query = language.field_query();
+
+    let mut query_cursor = tree_sitter::QueryCursor::new();
+    query_cursor.set_match_limit(QUERY_MATCH_LIMIT as u32);
+
+    let all_matches = query_cursor.matches(query, *node, source_file.contents.as_bytes());
+
+    // Languages that don't deduplicate field names count field declarations individually
+    // Languages that deduplicate field names count unique field accesses by name
+    let deduplicate = language.deduplicate_field_names();
+    let mut fields = HashSet::new();
+    let mut field_count = 0;
+
+    for field_match in all_matches {
+        let name = capture_source(query, "name", &field_match, source_file);
+        let normalized_name = language.normalize_identifier(&name);
+        let field_capture = capture_by_name(query, "field", &field_match);
+
+        if filter.exclude(&field_capture.node) {
+            continue;
+        }
+
+        if let Some(parent) = field_capture.node.parent() {
+            // In some languages, field nodes appear within call nodes. We don't want to count those.
+            if !language.call_nodes().contains(&parent.kind()) {
+                if deduplicate {
+                    // For languages that deduplicate (field accesses), deduplicate by name
+                    fields.insert(normalized_name);
+                } else {
+                    // For languages that don't deduplicate (field declarations), count each declaration individually
+                    field_count += 1;
+                }
+            }
+        } else if deduplicate {
+            // For languages that deduplicate (field accesses), deduplicate by name
+            fields.insert(normalized_name);
+        } else {
+            // For languages that don't deduplicate (field declarations), count each declaration individually
+            field_count += 1;
+        }
+    }
+
+    if deduplicate {
+        fields.len()
+    } else {
+        field_count
+    }
+}
+
+#[cfg(test)]
+mod test {
+    use super::*;
+
+    mod vbnet {
+        use super::*;
+
+        #[test]
+        fn mixed_case_fields_deduplicate_after_normalization() {
+            let source_file = File::from_string(
+                "vbnet",
+                r#"
+Public Class Foo
+    Public Sub DoWork()
+        Dim x = Me.Foo
+        Dim y = Me.foo
+    End Sub
+End Class
+"#,
+            );
+            assert_eq!(
+                1,
+                count(
+                    &source_file,
+                    &source_file.parse().root_node(),
+                    &NodeFilter::empty()
+                )
+            );
+        }
+
+        #[test]
+        fn distinct_members_on_same_receiver_count_separately() {
+            let source_file = File::from_string(
+                "vbnet",
+                r#"
+Public Class Foo
+    Public Sub DoWork()
+        Dim x = Me.Foo
+        Dim y = Me.Bar
+    End Sub
+End Class
+"#,
+            );
+            assert_eq!(
+                2,
+                count(
+                    &source_file,
+                    &source_file.parse().root_node(),
+                    &NodeFilter::empty()
+                )
+            );
+        }
+    }
+
+    mod rust {
+        use super::*;
+
+        #[test]
+        fn struct_declaration() {
+            let source_file = File::from_string(
+                "rust",
+                r#"
+                struct Foo {
+                    bar: i32,
+                    baz: i32
+                }
+
+                fn do_something() {
+                    let foo = Foo { bar: 42, baz: 0 };
+                    "{} {}", foo.bar, foo.baz);
+                }
+                "#,
+            );
+            assert_eq!(
+                2,
+                count(
+                    &source_file,
+                    &source_file.parse().root_node(),
+                    &NodeFilter::empty()
+                )
+            );
+        }
+
+        #[test]
+        fn read() {
+            let source_file = File::from_string(
+                "rust",
+                r#"
+                self.foo;
+                "#,
+            );
+            assert_eq!(
+                1,
+                count(
+                    &source_file,
+                    &source_file.parse().root_node(),
+                    &NodeFilter::empty()
+                )
+            );
+        }
+
+        #[test]
+        fn write() {
+            let source_file = File::from_string(
+                "rust",
+                r#"
+                self.foo = 1;
+                "#,
+            );
+            assert_eq!(
+                1,
+                count(
+                    &source_file,
+                    &source_file.parse().root_node(),
+                    &NodeFilter::empty()
+                )
+            );
+        }
+
+        #[test]
+        fn unique() {
+            let source_file = File::from_string(
+                "rust",
+                r#"
+                self.foo = 1;
+                self.foo;
+                "#,
+            );
+            assert_eq!(
+                1,
+                count(
+                    &source_file,
+                    &source_file.parse().root_node(),
+                    &NodeFilter::empty()
+                )
+            );
+        }
+
+        #[test]
+        fn multiple() {
+            let source_file = File::from_string(
+                "rust",
+                r#"
+                self.foo;
+                self.bar;
+                "#,
+            );
+            assert_eq!(
+                2,
+                count(
+                    &source_file,
+                    &source_file.parse().root_node(),
+                    &NodeFilter::empty()
+                )
+            );
+        }
+
+        #[test]
+        fn ignore_collaborators() {
+            let source_file = File::from_string(
+                "rust",
+                r#"
+                other.foo = 1;
+                other.bar;
+                "#,
+            );
+            assert_eq!(
+                0,
+                count(
+                    &source_file,
+                    &source_file.parse().root_node(),
+                    &NodeFilter::empty()
+                )
+            );
+        }
+    }
+
+    mod java {
+        use super::*;
+
+        #[test]
+        fn multiple_classes_same_field_names() {
+            let source_file = File::from_string(
+                "java",
+                r#"
+                class BooleanLogic {
+                    int foo;
+                    int bar;
+                }
+
+                class BooleanLogic1 {
+                    boolean foo;
+                    boolean bar;
+                    boolean baz;
+                    boolean qux;
+                }
+                "#,
+            );
+            assert_eq!(
+                6,
+                count(
+                    &source_file,
+                    &source_file.parse().root_node(),
+                    &NodeFilter::empty()
+                )
+            );
+        }
+
+        #[test]
+        fn single_class() {
+            let source_file = File::from_string(
+                "java",
+                r#"
+                class MyClass {
+                    private int field1;
+                    public String field2;
+                }
+                "#,
+            );
+            assert_eq!(
+                2,
+                count(
+                    &source_file,
+                    &source_file.parse().root_node(),
+                    &NodeFilter::empty()
+                )
+            );
+        }
+    }
+
+    mod kotlin {
+        use super::*;
+
+        #[test]
+        fn class_declaration() {
+            let source_file = File::from_string(
+                "kotlin",
+                r#"
+                class Shark {
+                    var name: String = ""
+                    var age: Int = 0
+                }
+
+                fun doSomething() {
+                    val shark = Shark()
+                    shark.name = "Sammy"
+                    shark.age = 5
+                    println(shark.name)
+                    println(shark.age)
+                }
+            "#,
+            );
+            assert_eq!(
+                2,
+                count(
+                    &source_file,
+                    &source_file.parse().root_node(),
+                    &NodeFilter::empty()
+                )
+            );
+        }
+
+        #[test]
+        fn read() {
+            let source_file = File::from_string(
+                "kotlin",
+                r#"
+                this.foo
+            "#,
+            );
+            assert_eq!(
+                1,
+                count(
+                    &source_file,
+                    &source_file.parse().root_node(),
+                    &NodeFilter::empty()
+                )
+            );
+        }
+
+        #[test]
+        fn write() {
+            let source_file = File::from_string(
+                "kotlin",
+                r#"
+                this.foo = 1
+            "#,
+            );
+            assert_eq!(
+                1,
+                count(
+                    &source_file,
+                    &source_file.parse().root_node(),
+                    &NodeFilter::empty()
+                )
+            );
+        }
+
+        #[test]
+        fn unique() {
+            let source_file = File::from_string(
+                "kotlin",
+                r#"
+                this.foo = 1
+                this.foo
+            "#,
+            );
+            assert_eq!(
+                1,
+                count(
+                    &source_file,
+                    &source_file.parse().root_node(),
+                    &NodeFilter::empty()
+                )
+            );
+        }
+
+        #[test]
+        fn multiple() {
+            let source_file = File::from_string(
+                "kotlin",
+                r#"
+                this.foo
+                this.bar
+            "#,
+            );
+            assert_eq!(
+                2,
+                count(
+                    &source_file,
+                    &source_file.parse().root_node(),
+                    &NodeFilter::empty()
+                )
+            );
+        }
+
+        #[test]
+        fn ignore_collaborators() {
+            let source_file = File::from_string(
+                "kotlin",
+                r#"
+                other.foo = 1
+                other.bar
+            "#,
+            );
+            assert_eq!(
+                0,
+                count(
+                    &source_file,
+                    &source_file.parse().root_node(),
+                    &NodeFilter::empty()
+                )
+            );
+        }
+    }
+
+    mod elixir {
+        use super::*;
+
+        #[test]
+        fn counts_user_attributes_and_struct_fields_only() {
+            let source_file = File::from_string(
+                "elixir",
+                "defmodule M do\n @moduledoc \"m\"\n @timeout 5000\n @retries 3\n defstruct [:x, :y]\n @doc \"d\"\n @spec f(integer) :: integer\n def f(x), do: x\nend",
+            );
+            assert_eq!(
+                4,
+                count(
+                    &source_file,
+                    &source_file.parse().root_node(),
+                    &NodeFilter::empty()
+                )
+            );
+        }
+    }
+}

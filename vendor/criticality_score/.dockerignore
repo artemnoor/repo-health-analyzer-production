@@ -1,0 +1,10 @@
+# Ignore irrelevant files
+.github
+infra
+docs
+images
+
+# Ignore Dockerfile - this improve caching.
+**/Dockerfile
+
+!infra/images

@@ -1,0 +1,223 @@
+// Jest Snapshot v1, https://goo.gl/fbAQLP
+
+exports[`linter=clippy fixture=multiple_files version=1.77.2 1`] = `
+{
+  "issues": [
+    {
+      "category": "CATEGORY_LINT",
+      "level": "LEVEL_MEDIUM",
+      "location": {
+        "path": "src/high.rs",
+        "range": {
+          "endByte": 34,
+          "endColumn": 16,
+          "endLine": 2,
+          "startByte": 23,
+          "startColumn": 5,
+          "startLine": 2,
+        },
+      },
+      "message": "this arithmetic operation will overflow",
+      "mode": "MODE_BLOCK",
+      "ruleKey": "arithmetic_overflow",
+      "snippet": "    100u8 << 10;",
+      "snippetWithContext": "fn do_bad_math() {
+    100u8 << 10;
+}",
+      "tool": "clippy",
+    },
+    {
+      "category": "CATEGORY_LINT",
+      "level": "LEVEL_MEDIUM",
+      "location": {
+        "path": "src/high.rs",
+        "range": {
+          "endByte": 14,
+          "endColumn": 15,
+          "endLine": 1,
+          "startByte": 3,
+          "startColumn": 4,
+          "startLine": 1,
+        },
+      },
+      "message": "function \`do_bad_math\` is never used",
+      "mode": "MODE_BLOCK",
+      "ruleKey": "dead_code",
+      "snippet": "fn do_bad_math() {",
+      "snippetWithContext": "fn do_bad_math() {
+    100u8 << 10;
+}",
+      "tool": "clippy",
+    },
+    {
+      "category": "CATEGORY_LINT",
+      "documentationUrl": "https://rust-lang.github.io/rust-clippy/master/index.html#double_comparisons",
+      "level": "LEVEL_MEDIUM",
+      "location": {
+        "path": "src/main.rs",
+        "range": {
+          "endByte": 75,
+          "endColumn": 23,
+          "endLine": 6,
+          "startByte": 60,
+          "startColumn": 8,
+          "startLine": 6,
+        },
+      },
+      "message": "this binary expression can be simplified",
+      "mode": "MODE_BLOCK",
+      "ruleKey": "double_comparisons",
+      "snippet": "    if x == y || x < y {}",
+      "snippetWithContext": "mod high;
+
+fn main() {
+    let x = 1;
+    let y = 2;
+    if x == y || x < y {}
+    println!("Hello World");
+}",
+      "suggestions": [
+        {
+          "patch": "--- original
++++ modified
+@@ -3,6 +3,6 @@
+ fn main() {
+     let x = 1;
+     let y = 2;
+-    if x == y || x < y {}
++    if x <= y {}
+     println!("Hello World");
+ }
+",
+          "replacements": [
+            {
+              "data": "x <= y",
+              "location": {
+                "path": "src/main.rs",
+                "range": {
+                  "endByte": 75,
+                  "endColumn": 14,
+                  "endLine": 6,
+                  "startByte": 60,
+                  "startColumn": 8,
+                  "startLine": 6,
+                },
+              },
+            },
+          ],
+          "source": "SUGGESTION_SOURCE_TOOL",
+        },
+      ],
+      "tool": "clippy",
+    },
+    {
+      "category": "CATEGORY_LINT",
+      "documentationUrl": "https://rust-lang.github.io/rust-clippy/master/index.html#needless_if",
+      "level": "LEVEL_MEDIUM",
+      "location": {
+        "path": "src/main.rs",
+        "range": {
+          "endByte": 78,
+          "endColumn": 26,
+          "endLine": 6,
+          "startByte": 57,
+          "startColumn": 5,
+          "startLine": 6,
+        },
+      },
+      "message": "this \`if\` branch is empty",
+      "mode": "MODE_BLOCK",
+      "ruleKey": "needless_if",
+      "snippet": "    if x == y || x < y {}",
+      "snippetWithContext": "mod high;
+
+fn main() {
+    let x = 1;
+    let y = 2;
+    if x == y || x < y {}
+    println!("Hello World");
+}",
+      "suggestions": [
+        {
+          "patch": "--- original
++++ modified
+@@ -3,6 +3,6 @@
+ fn main() {
+     let x = 1;
+     let y = 2;
+-    if x == y || x < y {}
++    x == y || x < y;
+     println!("Hello World");
+ }
+",
+          "replacements": [
+            {
+              "data": "x == y || x < y;",
+              "location": {
+                "path": "src/main.rs",
+                "range": {
+                  "endByte": 78,
+                  "endColumn": 21,
+                  "endLine": 6,
+                  "startByte": 57,
+                  "startColumn": 5,
+                  "startLine": 6,
+                },
+              },
+            },
+          ],
+          "source": "SUGGESTION_SOURCE_TOOL",
+        },
+      ],
+      "tool": "clippy",
+    },
+    {
+      "category": "CATEGORY_LINT",
+      "documentationUrl": "https://rust-lang.github.io/rust-clippy/master/index.html#no_effect",
+      "level": "LEVEL_MEDIUM",
+      "location": {
+        "path": "src/high.rs",
+        "range": {
+          "endByte": 35,
+          "endColumn": 17,
+          "endLine": 2,
+          "startByte": 23,
+          "startColumn": 5,
+          "startLine": 2,
+        },
+      },
+      "message": "statement with no effect",
+      "mode": "MODE_BLOCK",
+      "ruleKey": "no_effect",
+      "snippet": "    100u8 << 10;",
+      "snippetWithContext": "fn do_bad_math() {
+    100u8 << 10;
+}",
+      "tool": "clippy",
+    },
+    {
+      "category": "CATEGORY_LINT",
+      "level": "LEVEL_MEDIUM",
+      "location": {
+        "path": "src/high.rs",
+        "range": {
+          "endByte": 34,
+          "endColumn": 16,
+          "endLine": 2,
+          "startByte": 23,
+          "startColumn": 5,
+          "startLine": 2,
+        },
+      },
+      "message": "unused bitwise operation that must be used",
+      "mode": "MODE_BLOCK",
+      "ruleKey": "unused_must_use",
+      "snippet": "    100u8 << 10;",
+      "snippetWithContext": "fn do_bad_math() {
+    100u8 << 10;
+}",
+      "tool": "clippy",
+    },
+  ],
+}
+`;

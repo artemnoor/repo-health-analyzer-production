@@ -1,0 +1,32 @@
+config_version = "0"
+
+[plugins.definitions.rubocop]
+runtime = "ruby"
+package = "rubocop"
+file_types = ["ruby", "gemspec"]
+latest_version = "1.81.7"
+known_good_version = "1.81.7"
+version_command = "rubocop --version"
+config_files = [".rubocop.yml", ".rubocop_*.yml", ".rubocop-*.yml"]
+description = "Ruby linter and code formatter"
+package_file_candidate = "Gemfile"
+package_file_candidate_filters = ["rubocop", "standard"]
+
+[plugins.definitions.rubocop.drivers.lint]
+script = "rubocop --force-exclusion --format json ${target}"
+success_codes = [0, 1]
+output = "stdout"
+output_format = "rubocop"
+batch = true
+cache_results = true
+suggested = "targets"
+output_missing = "parse"
+
+[plugins.definitions.rubocop.drivers.format]
+script = "rubocop --force-exclusion --fix-layout ${target}"
+success_codes = [0, 1]
+output = "rewrite"
+cache_results = true
+batch = true
+driver_type = "formatter"
+suggested = "config"

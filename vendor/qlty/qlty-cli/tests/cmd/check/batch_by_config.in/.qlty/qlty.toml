@@ -1,0 +1,16 @@
+config_version = "0"
+
+[plugins.definitions.batch-by]
+file_types = ["shell"]
+
+[plugins.definitions.batch-by.drivers.config]
+prepare_script = "mkdir ${linter} && echo dir %2 > ${linter}/ls.cmd || echo dir %2 > ${linter}/ls.cmd"
+script = "ls -l ${config_file}"
+config_files = ["config.*.json"]
+batch_by = "config_file"
+success_codes = [0]
+output = "pass_fail"
+
+[[plugin]]
+name = "batch-by"
+version = "1.0.0"

@@ -1,0 +1,271 @@
+"""Shared tree-sitter AST helpers used across the walker passes.
+
+Name/text extraction, function-entry naming (including lambdas assigned to
+a variable or passed as a callback), top-level function-node collection, and
+parameter counting. These are the cross-pass primitives; the metric passes
+(cyclomatic, assertions, error-handling, perf, class-analysis) build on them.
+"""
+
+from __future__ import annotations
+
+from typing import TYPE_CHECKING
+
+from .languages import LanguageNodeMap
+
+if TYPE_CHECKING:
+    from tree_sitter import Node
+
+# Suffix shared by tree-sitter identifier node types (``identifier`` /
+# ``field_identifier`` / ``property_identifier`` / ``type_identifier`` ...).
+# Used by both the assertion-callee scan and the class self-member probe.
+_IDENTIFIER_SUFFIX = "identifier"
+
+# Leaf node types that carry a declared name at the bottom of a C/C++
+# ``declarator`` chain.
+_DECLARATOR_NAME_KINDS = frozenset(
+    {"identifier", "field_identifier", "type_identifier", "qualified_identifier"}
+)
+
+
+def _pascal_unwrap_name(name: Node) -> Node:
+    """Pascal: unwrap ``genericDot`` (``TFoo.Bar``) / ``genericTpl`` (``Bar<T>``)
+    name wrappers down to the leaf identifier.
+
+    ``declProc``/``declType``'s ``name`` field is one of four shapes (bare
+    identifier, generic, qualified, qualified+generic — see queries.scm's
+    node-shape reference); only the leaf identifier is the human-readable
+    name, so both wrapper kinds are peeled before falling back to the node
+    itself (never ``None``, so a caller can always read ``.text``).
+    """
+    if name.type == "genericDot":
+        rhs = name.child_by_field_name("rhs")
+        return _pascal_unwrap_name(rhs) if rhs is not None else name
+    if name.type == "genericTpl":
+        entity = name.child_by_field_name("entity")
+        return entity if entity is not None else name
+    return name
+
+
+def _find_name(node: Node) -> str:
+    """Best-effort: return the text of the first identifier child."""
+    # Search a couple of common field names first.
+    for field_name in ("name", "identifier"):
+        child = node.child_by_field_name(field_name)
+        if child is not None and child.text is not None:
+            return child.text.decode("utf-8", errors="replace")
+    # Pascal: a ``defProc``'s name lives two hops down, on its ``header``
+    # field's own ``name`` field (``defProc`` itself carries no ``name``) —
+    # unwrap any qualified/generic wrapper before reading the text.
+    if node.type == "defProc":
+        header = node.child_by_field_name("header")
+        name = header.child_by_field_name("name") if header is not None else None
+        if name is not None and name.text is not None:
+            leaf = _pascal_unwrap_name(name)
+            if leaf.text is not None:
+                return leaf.text.decode("utf-8", errors="replace")
+    # C / C++: the function name is not a direct child but nested inside a
+    # ``declarator`` chain (``function_definition → function_declarator →
+    # field_identifier``). Languages with a ``name`` field never reach here.
+    decl = node.child_by_field_name("declarator")
+    hops = 0
+    while decl is not None and hops < 6:
+        if decl.type in _DECLARATOR_NAME_KINDS and decl.text is not None:
+            return decl.text.decode("utf-8", errors="replace")
+        decl = decl.child_by_field_name("declarator") or decl.child_by_field_name("name")
+        hops += 1
+    for child in node.children:
+        if (
+            child.type in ("identifier", "property_identifier", "field_identifier")
+            and child.text is not None
+        ):
+            return child.text.decode("utf-8", errors="replace")
+    return "<anonymous>"
+
+
+def _node_text(node: Node) -> str:
+    return (node.text or b"").decode("utf-8", errors="replace")
+
+
+def _find_assigned_lambda_name(node: Node) -> str | None:
+    parent = node.parent
+    while parent is not None:
+        if parent.type == "variable_declarator":
+            name = parent.child_by_field_name("name")
+            if name is not None and name.text is not None:
+                return _node_text(name)
+        if parent.type in {"val_definition", "var_definition"}:
+            # Scala ``val f = (x: Int) => ...``: the bound name is the
+            # ``pattern`` field (only simple identifier patterns are named).
+            pattern = parent.child_by_field_name("pattern")
+            if pattern is not None and pattern.type == "identifier" and pattern.text is not None:
+                return _node_text(pattern)
+        if parent.type in {"assignment_expression", "assignment_pattern"}:
+            left = parent.child_by_field_name("left")
+            if left is None:
+                left = next((child for child in parent.children if child is not node), None)
+            if left is not None and left.text is not None:
+                return _node_text(left)
+        if parent.type == "assignment":
+            # Pascal ``Proc := procedure ... end`` — the field is ``lhs``,
+            # not ``left``.
+            lhs = parent.child_by_field_name("lhs")
+            if lhs is not None and lhs.text is not None:
+                return _node_text(lhs)
+        if parent.type not in {"parenthesized_expression", "as_expression", "satisfies_expression"}:
+            return None
+        parent = parent.parent
+    return None
+
+
+def _find_call_callback_callee(node: Node) -> str | None:
+    parent = node.parent
+    while parent is not None and parent.type in {
+        "parenthesized_expression",
+        "as_expression",
+        "satisfies_expression",
+    }:
+        parent = parent.parent
+    if parent is None or parent.type != "arguments":
+        return None
+    call = parent.parent
+    if call is None or call.type != "call_expression":
+        return None
+    callee = call.child_by_field_name("function")
+    if callee is None or callee.text is None:
+        return None
+    return " ".join(_node_text(callee).split())
+
+
+_TEST_SUITE_CALLBACK_CALLEES = frozenset({"describe", "context", "suite"})
+
+
+def _is_test_suite_callback(node: Node, lmap: LanguageNodeMap) -> bool:
+    if node.type not in lmap.lambda_kinds:
+        return False
+    callee_text = _find_call_callback_callee(node)
+    if callee_text is None:
+        return False
+    return any(part in _TEST_SUITE_CALLBACK_CALLEES for part in callee_text.split("."))
+
+
+def _dart_signature_sibling(body: Node) -> Node | None:
+    """Resolve a Dart ``function_body`` back to its signature node.
+
+    Dart's grammar splits a function into a signature node and a SIBLING
+    ``function_body`` (class members additionally wrap the signature in a
+    ``method_signature``); the name and parameter list live on the signature.
+    Returns ``None`` when the preceding sibling is not a signature shape, so
+    non-Dart callers are unaffected (no other mapped grammar collects
+    ``function_body`` nodes).
+    """
+    sib = body.prev_named_sibling
+    if sib is None or not sib.type.endswith("_signature"):
+        return None
+    if sib.type == "method_signature":
+        inner = next((c for c in sib.children if c.is_named), None)
+        return inner or sib
+    return sib
+
+
+def _find_function_entry_name(node: Node, lmap: LanguageNodeMap) -> str:
+    if node.type not in lmap.lambda_kinds:
+        if node.type == "function_body":
+            sig = _dart_signature_sibling(node)
+            if sig is not None:
+                return _find_name(sig)
+        return _find_name(node)
+    assigned = _find_assigned_lambda_name(node)
+    if assigned:
+        return assigned
+    if callee := _find_call_callback_callee(node):
+        return f"{callee} callback"
+    return f"<anonymous@{node.start_point[0] + 1}>"
+
+
+def _collect_function_nodes(root: Node, lmap: LanguageNodeMap) -> list[Node]:
+    """All function / method definition nodes in the file.
+
+    Iterative pre-order traversal. We descend into class / module
+    bodies but do **not** recurse below a function or lambda. Lambdas found
+    before any function boundary are module-level executable units (for
+    example route callbacks) and get their own entry; lambdas inside an
+    already-collected function still roll up into that function.
+    """
+    out: list[Node] = []
+    stack: list[Node] = [root]
+    while stack:
+        node = stack.pop()
+        if node.type in lmap.lambda_kinds and _is_test_suite_callback(node, lmap):
+            stack.extend(node.children)
+            continue
+        if node.type in lmap.function_kinds or node.type in lmap.lambda_kinds:
+            out.append(node)
+            continue
+        for child in node.children:
+            stack.append(child)
+    return out
+
+
+def _count_parameters(fn_node: Node) -> int:
+    """Best-effort parameter-list size for *fn_node*.
+
+    Looks at tree-sitter ``parameters`` / ``parameter_list`` / ``parameters_list`` fields and counts non-punctuation
+    children. Returns 0 when no parameter list is found.
+    """
+    params = fn_node.child_by_field_name("parameters")
+    if params is None:
+        for child in fn_node.children:
+            if child.type in ("parameters", "parameter_list", "formal_parameters"):
+                params = child
+                break
+    if params is None and fn_node.type == "function_body":
+        # Dart: the parameter list lives on the preceding signature sibling.
+        sig = _dart_signature_sibling(fn_node)
+        if sig is not None:
+            params = next((c for c in sig.children if c.type == "formal_parameter_list"), None)
+    if params is None and fn_node.type == "lambda":
+        # Pascal anonymous procedure/function: the arg list is its own
+        # ``args`` field directly (parameterless procedures omit it).
+        params = fn_node.child_by_field_name("args")
+    if params is None and fn_node.type == "defProc":
+        # Pascal named procedure/function: the arg list lives on the
+        # ``header`` field's own ``args`` field, not on ``defProc`` itself.
+        header = fn_node.child_by_field_name("header")
+        if header is not None:
+            params = header.child_by_field_name("args")
+    if params is None:
+        return 0
+    count = 0
+    for child in params.children:
+        # A bare ``*`` (keyword-only marker) and a bare ``/`` (positional-only
+        # marker) parse as named ``keyword_separator`` / ``positional_separator``
+        # nodes but carry no arity, so they must be skipped alongside the
+        # ``*``/``**`` splat tokens and the punctuation. A ``comment`` node is
+        # also named but carries no arity — an explanatory comment block inside
+        # the parameter list (idiomatic for a validation pattern) must not
+        # count as a parameter (#1775).
+        if child.type in (
+            "(",
+            ")",
+            ",",
+            "self",
+            "cls",
+            ":",
+            "*",
+            "**",
+            "keyword_separator",
+            "positional_separator",
+            "comment",
+        ):
+            continue
+        if child.type == "declArg":
+            # Pascal groups same-typed parameters under one ``declArg``
+            # (``A, B, C: Boolean``) -- one node, three names -- so counting
+            # the node itself would undercount; count its direct
+            # ``identifier`` children instead (the trailing ``type`` child
+            # is a different node type and never matches).
+            count += sum(1 for gc in child.children if gc.type == "identifier")
+            continue
+        if child.is_named:
+            count += 1
+    return count

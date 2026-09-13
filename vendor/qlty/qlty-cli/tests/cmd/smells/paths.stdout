@@ -1,0 +1,29 @@
+
+[
+  {
+    "tool": "qlty",
+    "driver": "structure",
+    "ruleKey": "return-statements",
+    "message": "Function with many returns (count = 7): init",
+    "level": "LEVEL_MEDIUM",
+    "language": "LANGUAGE_JAVASCRIPT",
+    "category": "CATEGORY_STRUCTURE",
+    "snippet": "function init() {/n  if (true) {/n    return;/n  }/n  return;/n  return;/n  return;/n  return;/n  return;/n  return;/n}",
+    "snippetWithContext": "function init() {/n  if (true) {/n    return;/n  }/n  return;/n  return;/n  return;/n  return;/n  return;/n  return;/n}",
+    "effortMinutes": 20,
+    "value": 7,
+    "valueDelta": 1,
+    "location": {
+      "path": "app/init.js",
+      "range": {
+        "startLine": 1,
+        "startColumn": 1,
+        "endLine": 11,
+        "endColumn": 2,
+        "startByte": 0,
+        "endByte": 109
+      }
+    },
+    "mode": "MODE_BLOCK"
+  }
+]

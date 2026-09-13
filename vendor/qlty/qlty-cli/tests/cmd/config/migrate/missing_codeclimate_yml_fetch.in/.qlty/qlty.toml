@@ -1,0 +1,17 @@
+config_version = "0"
+cli_version = "0.163.0"
+
+
+[plugins.definitions.rubocop]
+file_types = ["ruby"]
+latest_version = "1.63.2"
+known_good_version = "1.63.2"
+config_files = [".rubocop.yml"]
+
+[plugins.definitions.rubocop.drivers.lint]
+script = "rubocop --format json ${target}"
+success_codes = [0, 1]
+output = "stdout"
+
+[[plugin]]
+name = "rubocop"

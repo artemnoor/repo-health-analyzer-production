@@ -1,0 +1,14 @@
+{
+  "source": {"name": "reviewdog-plugin", "url": "https://example.invalid/plugin"},
+  "severity": "WARNING",
+  "diagnostics": [
+    {
+      "code": {"value": "style/trailing-whitespace", "url": "https://example.invalid/trailing-whitespace"},
+      "location": {
+        "path": "src/main.py",
+        "range": {"start": {"line": 4, "column": 2}, "end": {"line": 4, "column": 8}}
+      },
+      "message": "Trailing whitespace"
+    }
+  ]
+}

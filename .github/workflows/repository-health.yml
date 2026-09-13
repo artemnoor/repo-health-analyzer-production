@@ -1,0 +1,321 @@
+name: repository-health
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [main, develop, 'feature/**']
+  pull_request:
+    branches: [main]
+
+concurrency:
+  group: repository-health-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  source-ledger:
+    name: Pinned source ledger
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v7
+        with:
+          version: latest
+          enable-cache: false
+      - name: Install Python dependencies
+        run: uv sync --all-packages --python 3.12
+      - name: Materialize pinned source metadata
+        run: uv run python scripts/materialize_source_roots.py
+      - name: Verify copied source trees
+        run: |
+          mkdir -p artifacts
+          set -o pipefail
+          timeout --signal=TERM --kill-after=60s 10m uv run python scripts/vendor_sources.py --verify 2>&1 | tee artifacts/vendor-sources.log
+      - name: Publish source ledger
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: repository-health-source-ledger
+          path: |
+            vendor/SOURCES.lock
+            artifacts/vendor-sources.log
+            .sources/**
+          if-no-files-found: ignore
+          include-hidden-files: true
+
+  python:
+    name: Python health contracts and integration
+    runs-on: ubuntu-latest
+    needs: source-ledger
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/download-artifact@v4
+        with:
+          name: repository-health-source-ledger
+          path: .
+      - uses: astral-sh/setup-uv@v7
+        with:
+          version: latest
+          enable-cache: false
+      - name: Cache uv packages
+        uses: actions/cache@v4
+        with:
+          path: ~/.cache/uv
+          key: uv-${{ runner.os }}-${{ hashFiles('uv.lock') }}-${{ hashFiles('vendor/SOURCES.lock') }}
+      - name: Install Python 3.12 dependencies
+        run: uv sync --all-packages --python 3.12
+      - name: Run Python lint
+        run: uv run ruff check packages/ tests/ scripts/
+      - name: Run health unit and integration tests
+        run: >-
+          uv run pytest -q
+          tests/unit/health
+          tests/unit/ingestion
+          tests/unit/persistence
+          tests/unit/server
+          tests/integration/test_health_composition.py
+          tests/integration/test_health_coverage_integration.py
+          tests/integration/test_native_engines.py
+          tests/integration/test_forge_enrichment.py
+          tests/integration/test_persistence.py
+          tests/unit/health/test_score_invariants.py
+          tests/unit/persistence/test_health_ranking_projection.py
+          tests/integration/test_health_completion_matrix.py
+          tests/integration/test_health_batch_scale.py
+          tests/unit/server/test_public_health_compare.py
+      - name: Verify focused health completion contracts
+        run: |
+          mkdir -p artifacts
+          set -o pipefail
+          uv run python scripts/verify_health_completion.py --run-tests 2>&1 | tee artifacts/health-completion.log
+      - name: Build required native binaries
+        run: uv run python scripts/build_native_health.py
+      - name: Verify migrations and replay gate
+        run: |
+          mkdir -p artifacts
+          set -o pipefail
+          timeout --signal=TERM --kill-after=120s 30m uv run python scripts/verify_health_stack.py --full 2>&1 | tee artifacts/health-stack.log
+      - name: Verify completion surface
+        run: uv run python scripts/verify_health_completion.py
+      - name: Publish redacted Python artifacts
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: repository-health-python-${{ github.run_id }}
+          path: |
+            vendor/SOURCES.lock
+            .repowise/health-latest.json
+            artifacts/health-completion.log
+            artifacts/health-stack.log
+          if-no-files-found: ignore
+
+  go:
+    name: Go ${{ matrix.tool }}
+    runs-on: ubuntu-latest
+    needs: source-ledger
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - tool: scorecard
+            path: vendor/scorecard
+            package: .
+            binary: scorecard
+          - tool: repohealth
+            path: vendor/repohealth
+            package: ./cmd/repohealth
+            binary: repohealth
+          - tool: criticality-score
+            path: vendor/criticality_score
+            package: ./cmd/scorer
+            binary: criticality-score
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with:
+          go-version: '1.26.x'
+          cache: false
+      - name: Cache Go modules
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/go/pkg/mod
+            ~/.cache/go-build
+          key: go-${{ runner.os }}-${{ matrix.tool }}-${{ hashFiles('vendor/SOURCES.lock') }}-${{ hashFiles(format('{0}/go.sum', matrix.path)) }}
+      - name: Test copied source
+        working-directory: ${{ matrix.path }}
+        env:
+          TOKEN_TYPE: GITHUB_TOKEN
+          GITHUB_AUTH_TOKEN: ${{ github.token }}
+        # The upstream Ginkgo suites call live GitHub/OSS-Fuzz state and can
+        # drift independently of this pinned source snapshot. Keep the full
+        # deterministic Go test surface in CI and skip only those live suites.
+        run: SKIP_GINKGO=1 go test ./...
+      - name: Build copied binary
+        working-directory: ${{ matrix.path }}
+        run: go build -buildvcs=false -o ../../bin/${{ matrix.binary }} ${{ matrix.package }}
+      - name: Publish binary and test output
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: repository-health-go-${{ matrix.tool }}-${{ github.run_id }}
+          path: |
+            bin/${{ matrix.binary }}
+            vendor/${{ matrix.tool }}/**/*test*.out
+          if-no-files-found: ignore
+
+  rust:
+    name: Rust Qlty
+    runs-on: ubuntu-latest
+    needs: source-ledger
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/cache@v4
+        with:
+          path: |
+            ~/.cargo/registry
+            ~/.cargo/git
+            vendor/qlty/target
+          key: cargo-${{ runner.os }}-${{ hashFiles('vendor/SOURCES.lock') }}-${{ hashFiles('vendor/qlty/Cargo.lock') }}
+      - name: Materialize Qlty test workspace config
+        working-directory: vendor/qlty
+        run: |
+          mkdir -p ../../.qlty
+          cp .qlty/qlty.toml ../../.qlty/qlty.toml
+      - name: Run copied Rust workspace tests
+        working-directory: vendor/qlty
+        # Qlty's upstream trycmd integration suite invokes optional external
+        # linters (including Swift and Elixir) that are not part of this
+        # pinned source snapshot. Keep the complete Rust library coverage and
+        # validate the production binary in the next step.
+        run: cargo test --workspace --lib
+      - name: Build Qlty
+        working-directory: vendor/qlty
+        run: cargo build --release --package qlty
+      - name: Publish Rust artifacts
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: repository-health-rust-${{ github.run_id }}
+          path: vendor/qlty/target/release/qlty
+          if-no-files-found: ignore
+
+  java:
+    name: Java Sokrates and SonarQube primitives
+    runs-on: ubuntu-latest
+    needs: source-ledger
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '21'
+          cache: maven
+      - uses: gradle/actions/setup-gradle@v4
+        with:
+          gradle-version: wrapper
+      - name: Cache copied Java build state
+        uses: actions/cache@v4
+        with:
+          path: |
+            vendor/sokrates/.m2
+            vendor/sokrates/target
+            vendor/sonarqube/.gradle
+            vendor/sonarqube/build
+          key: java-${{ runner.os }}-${{ hashFiles('vendor/SOURCES.lock') }}-${{ hashFiles('vendor/sokrates/**/pom.xml', 'vendor/sonarqube/**/gradle*.properties', 'vendor/sonarqube/**/build.gradle') }}
+      - name: Test and package copied Sokrates
+        working-directory: vendor/sokrates
+        run: mvn -pl cli -am test package
+      - name: Test copied SonarQube primitives
+        working-directory: vendor/sonarqube
+        run: ./gradlew :sonar-duplications:test :sonar-core:test
+      - name: Publish Java artifacts
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: repository-health-java-${{ github.run_id }}
+          path: |
+            vendor/sokrates/cli/target/*.jar
+            vendor/sonarqube/**/build/test-results/**/*.xml
+          if-no-files-found: ignore
+
+  web:
+    name: Web health projection
+    runs-on: ubuntu-latest
+    needs: source-ledger
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: npm
+          cache-dependency-path: package-lock.json
+      - name: Install workspace dependencies
+        run: npm ci
+      - name: Type check web and shared health contracts
+        run: |
+          npm run type-check --workspace packages/web
+          npm run type-check --workspace @repowise-dev/api-client
+          npm run type-check --workspace @repowise-dev/types
+      - name: Run web tests
+        run: npm run test --workspace packages/web
+      - name: Install Chromium for ranking E2E
+        run: npx playwright install --with-deps chromium
+      - name: Run public ranking E2E
+        run: npm run test:e2e --workspace packages/web
+      - name: Run shared import guard
+        run: npm run lint:shared
+      - name: Publish UI test output
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: repository-health-web-${{ github.run_id }}
+          path: packages/web/test-results
+          if-no-files-found: ignore
+
+  composition:
+    name: Composed Repository Health Analyzer
+    runs-on: ubuntu-latest
+    needs: [source-ledger, python, go, rust, java, web]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/download-artifact@v4
+        with:
+          name: repository-health-source-ledger
+          path: .
+      - uses: astral-sh/setup-uv@v7
+        with:
+          version: latest
+          enable-cache: false
+      - name: Install Python dependencies
+        run: uv sync --all-packages --python 3.12
+      - name: Build required local binaries
+        run: make build-native
+      - name: Verify completion contracts and focused tests
+        run: |
+          mkdir -p artifacts
+          set -o pipefail
+          uv run python scripts/verify_health_completion.py --run-tests 2>&1 | tee artifacts/health-completion.log
+      - name: Run the full composition gate
+        run: |
+          set -o pipefail
+          timeout --signal=TERM --kill-after=120s 30m uv run python scripts/verify_health_stack.py --full 2>&1 | tee artifacts/health-stack.log
+      - name: Produce and apply the sample health policy
+        run: |
+          mkdir -p artifacts
+          uv run repowise health tests/fixtures/health/replay_repo --no-workspace --format json --health-mode full --as-of 2026-01-01T00:00:00Z --analyzers repowise.health,repohealth.baseline > artifacts/health-sample.json
+          uv run python scripts/check_health_gate.py --report artifacts/health-sample.json
+      - name: Publish canonical report, ledger and redacted diagnostics
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: repository-health-composition-${{ github.run_id }}
+          path: |
+            artifacts/health-sample.json
+            artifacts/health-completion.log
+            artifacts/health-stack.log
+            vendor/SOURCES.lock
+            .repowise/health-latest.json
+          if-no-files-found: ignore

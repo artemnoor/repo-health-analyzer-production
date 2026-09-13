@@ -1,0 +1,12 @@
+{
+  "dependency_files": [
+    {
+      "path": "pyproject.toml",
+      "content": "[project]\ndependencies = [\"requests>=2\"]\n[project.optional-dependencies]\ndev = [\"pytest\"]\n"
+    },
+    {
+      "path": "package.json",
+      "content": "{\"dependencies\": {\"react\": \"^18\"}, \"devDependencies\": {\"vitest\": \"^1\"}, \"packageManager\": \"pnpm@9\"}"
+    }
+  ]
+}

@@ -1,0 +1,15 @@
+def logical_sequences():
+    (
+        (foo0 and foo1)
+        or (foo2 or foo3)
+        or (foo4 and foo9)
+        or (foo4 or foo9)
+        or (foo6 and foo7)
+        or (foo6 or foo7)
+        or (foo6 or foo7)
+        or (foo6 or foo7)
+        or (foo6 or foo7)
+        or (foo6 or foo7)
+        or (foo6 or foo7)
+        or (foo7 and foo8)
+    )

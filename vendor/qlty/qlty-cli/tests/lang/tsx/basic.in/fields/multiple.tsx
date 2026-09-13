@@ -1,0 +1,2 @@
+this.foo;
+this.bar;

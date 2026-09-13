@@ -1,0 +1,92 @@
+/*
+ * SonarQube
+ * Copyright (C) SonarSource Sàrl
+ * mailto:info AT sonarsource DOT com
+ *
+ * This program is free software; you can redistribute it and/or
+ * modify it under the terms of the GNU Lesser General Public
+ * License as published by the Free Software Foundation; either
+ * version 3 of the License, or (at your option) any later version.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
+ * Lesser General Public License for more details.
+ *
+ * You should have received a copy of the GNU Lesser General Public License
+ * along with this program; if not, write to the Free Software Foundation,
+ * Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
+ */
+package org.sonar.server.permission.index;
+
+import co.elastic.clients.elasticsearch._types.query_dsl.BoolQuery;
+import co.elastic.clients.elasticsearch._types.query_dsl.HasParentQuery;
+import co.elastic.clients.elasticsearch._types.query_dsl.Query;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.Optional;
+import org.sonar.api.server.ServerSide;
+import org.sonar.db.user.GroupDto;
+import org.sonar.server.user.UserSession;
+
+import static org.sonar.server.es.ES8QueryHelper.matchAllQuery;
+import static org.sonar.server.permission.index.IndexAuthorizationConstants.FIELD_ALLOW_ANYONE;
+import static org.sonar.server.permission.index.IndexAuthorizationConstants.FIELD_GROUP_IDS;
+import static org.sonar.server.permission.index.IndexAuthorizationConstants.FIELD_USER_IDS;
+import static org.sonar.server.permission.index.IndexAuthorizationConstants.TYPE_AUTHORIZATION;
+import static org.sonar.server.user.ServiceIdentity.AGENTIC_SHARED;
+
+@ServerSide
+public class WebAuthorizationTypeSupport {
+
+  private final UserSession userSession;
+
+  public WebAuthorizationTypeSupport(UserSession userSession) {
+    this.userSession = userSession;
+  }
+
+  /**
+   * Build a filter to restrict query to the documents on which
+   * user has read access using the new Elasticsearch Java API Client (8.x).
+   */
+  public Query createQueryFilterV2() {
+    if (userSession.getServiceIdentity().orElse(null) == AGENTIC_SHARED) {
+      return Query.of(q -> q.hasParent(HasParentQuery.of(hp -> hp
+        .parentType(TYPE_AUTHORIZATION)
+        .query(matchAllQuery())
+        .score(false))));
+    }
+
+    List<Query> shouldQueries = new ArrayList<>();
+
+    // anyone
+    shouldQueries.add(Query.of(q -> q.term(t -> t
+      .field(FIELD_ALLOW_ANYONE)
+      .value(true))));
+
+    // users
+    if (!userSession.isServiceSession()) {
+      Optional.ofNullable(userSession.getUuid())
+        .ifPresent(uuid -> shouldQueries.add(Query.of(q -> q.term(t -> t
+          .field(FIELD_USER_IDS)
+          .value(uuid)))));
+    }
+
+    // groups
+    shouldQueries.addAll(
+      userSession.getGroups()
+        .stream()
+        .map(GroupDto::getUuid)
+        .map(groupUuid -> Query.of(q -> q.term(t -> t
+          .field(FIELD_GROUP_IDS)
+          .value(groupUuid))))
+        .toList());
+
+    BoolQuery boolQuery = BoolQuery.of(b -> b.should(shouldQueries));
+
+    return Query.of(q -> q.hasParent(HasParentQuery.of(hp -> hp
+      .parentType(TYPE_AUTHORIZATION)
+      .query(Query.of(innerQ -> innerQ.bool(BoolQuery.of(innerB -> innerB.filter(Query.of(filterQ -> filterQ.bool(boolQuery)))))))
+      .score(false))));
+  }
+}

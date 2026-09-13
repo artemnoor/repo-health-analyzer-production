@@ -1,0 +1,1072 @@
+// Jest Snapshot v1, https://goo.gl/fbAQLP
+
+exports[`linter=checkov fixture=basic version=3.2.194 1`] = `
+{
+  "issues": [
+    {
+      "category": "CATEGORY_VULNERABILITY",
+      "documentationUrl": "https://docs.prismacloud.io/en/enterprise-edition/policy-reference/aws-policies/aws-iam-policies/bc-aws-2-40",
+      "level": "LEVEL_MEDIUM",
+      "location": {
+        "path": "basic.in.tf",
+        "range": {
+          "endColumn": 1,
+          "endLine": 55,
+          "startColumn": 1,
+          "startLine": 43,
+        },
+      },
+      "message": "Ensure AWS IAM policy does not allow full IAM privileges",
+      "mode": "MODE_BLOCK",
+      "ruleKey": "CKV2_AWS_40",
+      "snippet": "data "aws_iam_policy_document" "fail" {
+  version = "2012-10-17"
+
+  statement {
+    effect = "Allow"
+    actions = [
+      "*"
+    ]
+    resources = [
+      "*",
+    ]
+  }
+}",
+      "snippetWithContext": "
+  # Support replication ARNs
+  statement = ["\${flatten(data.aws_iam_policy_document.replication.*.statement)}"]
+
+  # Support deployment ARNs
+  statement = ["\${flatten(data.aws_iam_policy_document.deployment.*.statement)}"]
+}
+
+# fail
+
+data "aws_iam_policy_document" "fail" {
+  version = "2012-10-17"
+
+  statement {
+    effect = "Allow"
+    actions = [
+      "*"
+    ]
+    resources = [
+      "*",
+    ]
+  }
+}
+
+data "aws_iam_policy_document" "no_effect" {
+  version = "2012-10-17"
+
+  statement {
+    actions = [
+      "*"
+    ]
+    resources = [
+      "*",",
+      "tool": "checkov",
+    },
+    {
+      "category": "CATEGORY_VULNERABILITY",
+      "documentationUrl": "https://docs.prismacloud.io/en/enterprise-edition/policy-reference/aws-policies/aws-iam-policies/iam-23",
+      "level": "LEVEL_MEDIUM",
+      "location": {
+        "path": "basic.in.tf",
+        "range": {
+          "endColumn": 1,
+          "endLine": 55,
+          "startColumn": 1,
+          "startLine": 43,
+        },
+      },
+      "message": "Ensure IAM policies that allow full "*-*" administrative privileges are not created",
+      "mode": "MODE_BLOCK",
+      "ruleKey": "CKV_AWS_1",
+      "snippet": "data "aws_iam_policy_document" "fail" {
+  version = "2012-10-17"
+
+  statement {
+    effect = "Allow"
+    actions = [
+      "*"
+    ]
+    resources = [
+      "*",
+    ]
+  }
+}",
+      "snippetWithContext": "
+  # Support replication ARNs
+  statement = ["\${flatten(data.aws_iam_policy_document.replication.*.statement)}"]
+
+  # Support deployment ARNs
+  statement = ["\${flatten(data.aws_iam_policy_document.deployment.*.statement)}"]
+}
+
+# fail
+
+data "aws_iam_policy_document" "fail" {
+  version = "2012-10-17"
+
+  statement {
+    effect = "Allow"
+    actions = [
+      "*"
+    ]
+    resources = [
+      "*",
+    ]
+  }
+}
+
+data "aws_iam_policy_document" "no_effect" {
+  version = "2012-10-17"
+
+  statement {
+    actions = [
+      "*"
+    ]
+    resources = [
+      "*",",
+      "tool": "checkov",
+    },
+    {
+      "category": "CATEGORY_VULNERABILITY",
+      "documentationUrl": "https://docs.prismacloud.io/en/enterprise-edition/policy-reference/aws-policies/aws-iam-policies/iam-23",
+      "level": "LEVEL_MEDIUM",
+      "location": {
+        "path": "basic.in.tf",
+        "range": {
+          "endColumn": 1,
+          "endLine": 68,
+          "startColumn": 1,
+          "startLine": 57,
+        },
+      },
+      "message": "Ensure IAM policies that allow full "*-*" administrative privileges are not created",
+      "mode": "MODE_BLOCK",
+      "ruleKey": "CKV_AWS_1",
+      "snippet": "data "aws_iam_policy_document" "no_effect" {
+  version = "2012-10-17"
+
+  statement {
+    actions = [
+      "*"
+    ]
+    resources = [
+      "*",
+    ]
+  }
+}",
+      "snippetWithContext": "    effect = "Allow"
+    actions = [
+      "*"
+    ]
+    resources = [
+      "*",
+    ]
+  }
+}
+
+data "aws_iam_policy_document" "no_effect" {
+  version = "2012-10-17"
+
+  statement {
+    actions = [
+      "*"
+    ]
+    resources = [
+      "*",
+    ]
+  }
+}
+
+# unknown",
+      "tool": "checkov",
+    },
+    {
+      "category": "CATEGORY_VULNERABILITY",
+      "documentationUrl": "https://docs.prismacloud.io/en/enterprise-edition/policy-reference/aws-policies/aws-iam-policies/ensure-iam-policies-do-not-allow-credentials-exposure",
+      "level": "LEVEL_MEDIUM",
+      "location": {
+        "path": "basic.in.tf",
+        "range": {
+          "endColumn": 1,
+          "endLine": 55,
+          "startColumn": 1,
+          "startLine": 43,
+        },
+      },
+      "message": "Ensure IAM policies does not allow credentials exposure",
+      "mode": "MODE_BLOCK",
+      "ruleKey": "CKV_AWS_107",
+      "snippet": "data "aws_iam_policy_document" "fail" {
+  version = "2012-10-17"
+
+  statement {
+    effect = "Allow"
+    actions = [
+      "*"
+    ]
+    resources = [
+      "*",
+    ]
+  }
+}",
+      "snippetWithContext": "
+  # Support replication ARNs
+  statement = ["\${flatten(data.aws_iam_policy_document.replication.*.statement)}"]
+
+  # Support deployment ARNs
+  statement = ["\${flatten(data.aws_iam_policy_document.deployment.*.statement)}"]
+}
+
+# fail
+
+data "aws_iam_policy_document" "fail" {
+  version = "2012-10-17"
+
+  statement {
+    effect = "Allow"
+    actions = [
+      "*"
+    ]
+    resources = [
+      "*",
+    ]
+  }
+}
+
+data "aws_iam_policy_document" "no_effect" {
+  version = "2012-10-17"
+
+  statement {
+    actions = [
+      "*"
+    ]
+    resources = [
+      "*",",
+      "tool": "checkov",
+    },
+    {
+      "category": "CATEGORY_VULNERABILITY",
+      "documentationUrl": "https://docs.prismacloud.io/en/enterprise-edition/policy-reference/aws-policies/aws-iam-policies/ensure-iam-policies-do-not-allow-credentials-exposure",
+      "level": "LEVEL_MEDIUM",
+      "location": {
+        "path": "basic.in.tf",
+        "range": {
+          "endColumn": 1,
+          "endLine": 68,
+          "startColumn": 1,
+          "startLine": 57,
+        },
+      },
+      "message": "Ensure IAM policies does not allow credentials exposure",
+      "mode": "MODE_BLOCK",
+      "ruleKey": "CKV_AWS_107",
+      "snippet": "data "aws_iam_policy_document" "no_effect" {
+  version = "2012-10-17"
+
+  statement {
+    actions = [
+      "*"
+    ]
+    resources = [
+      "*",
+    ]
+  }
+}",
+      "snippetWithContext": "    effect = "Allow"
+    actions = [
+      "*"
+    ]
+    resources = [
+      "*",
+    ]
+  }
+}
+
+data "aws_iam_policy_document" "no_effect" {
+  version = "2012-10-17"
+
+  statement {
+    actions = [
+      "*"
+    ]
+    resources = [
+      "*",
+    ]
+  }
+}
+
+# unknown",
+      "tool": "checkov",
+    },
+    {
+      "category": "CATEGORY_VULNERABILITY",
+      "documentationUrl": "https://docs.prismacloud.io/en/enterprise-edition/policy-reference/aws-policies/aws-iam-policies/ensure-iam-policies-do-not-allow-data-exfiltration",
+      "level": "LEVEL_MEDIUM",
+      "location": {
+        "path": "basic.in.tf",
+        "range": {
+          "endColumn": 1,
+          "endLine": 55,
+          "startColumn": 1,
+          "startLine": 43,
+        },
+      },
+      "message": "Ensure IAM policies does not allow data exfiltration",
+      "mode": "MODE_BLOCK",
+      "ruleKey": "CKV_AWS_108",
+      "snippet": "data "aws_iam_policy_document" "fail" {
+  version = "2012-10-17"
+
+  statement {
+    effect = "Allow"
+    actions = [
+      "*"
+    ]
+    resources = [
+      "*",
+    ]
+  }
+}",
+      "snippetWithContext": "
+  # Support replication ARNs
+  statement = ["\${flatten(data.aws_iam_policy_document.replication.*.statement)}"]
+
+  # Support deployment ARNs
+  statement = ["\${flatten(data.aws_iam_policy_document.deployment.*.statement)}"]
+}
+
+# fail
+
+data "aws_iam_policy_document" "fail" {
+  version = "2012-10-17"
+
+  statement {
+    effect = "Allow"
+    actions = [
+      "*"
+    ]
+    resources = [
+      "*",
+    ]
+  }
+}
+
+data "aws_iam_policy_document" "no_effect" {
+  version = "2012-10-17"
+
+  statement {
+    actions = [
+      "*"
+    ]
+    resources = [
+      "*",",
+      "tool": "checkov",
+    },
+    {
+      "category": "CATEGORY_VULNERABILITY",
+      "documentationUrl": "https://docs.prismacloud.io/en/enterprise-edition/policy-reference/aws-policies/aws-iam-policies/ensure-iam-policies-do-not-allow-data-exfiltration",
+      "level": "LEVEL_MEDIUM",
+      "location": {
+        "path": "basic.in.tf",
+        "range": {
+          "endColumn": 1,
+          "endLine": 68,
+          "startColumn": 1,
+          "startLine": 57,
+        },
+      },
+      "message": "Ensure IAM policies does not allow data exfiltration",
+      "mode": "MODE_BLOCK",
+      "ruleKey": "CKV_AWS_108",
+      "snippet": "data "aws_iam_policy_document" "no_effect" {
+  version = "2012-10-17"
+
+  statement {
+    actions = [
+      "*"
+    ]
+    resources = [
+      "*",
+    ]
+  }
+}",
+      "snippetWithContext": "    effect = "Allow"
+    actions = [
+      "*"
+    ]
+    resources = [
+      "*",
+    ]
+  }
+}
+
+data "aws_iam_policy_document" "no_effect" {
+  version = "2012-10-17"
+
+  statement {
+    actions = [
+      "*"
+    ]
+    resources = [
+      "*",
+    ]
+  }
+}
+
+# unknown",
+      "tool": "checkov",
+    },
+    {
+      "category": "CATEGORY_VULNERABILITY",
+      "documentationUrl": "https://docs.prismacloud.io/en/enterprise-edition/policy-reference/aws-policies/aws-iam-policies/ensure-iam-policies-do-not-allow-permissions-management-resource-exposure-without-constraint",
+      "level": "LEVEL_MEDIUM",
+      "location": {
+        "path": "basic.in.tf",
+        "range": {
+          "endColumn": 1,
+          "endLine": 55,
+          "startColumn": 1,
+          "startLine": 43,
+        },
+      },
+      "message": "Ensure IAM policies does not allow permissions management / resource exposure without constraints",
+      "mode": "MODE_BLOCK",
+      "ruleKey": "CKV_AWS_109",
+      "snippet": "data "aws_iam_policy_document" "fail" {
+  version = "2012-10-17"
+
+  statement {
+    effect = "Allow"
+    actions = [
+      "*"
+    ]
+    resources = [
+      "*",
+    ]
+  }
+}",
+      "snippetWithContext": "
+  # Support replication ARNs
+  statement = ["\${flatten(data.aws_iam_policy_document.replication.*.statement)}"]
+
+  # Support deployment ARNs
+  statement = ["\${flatten(data.aws_iam_policy_document.deployment.*.statement)}"]
+}
+
+# fail
+
+data "aws_iam_policy_document" "fail" {
+  version = "2012-10-17"
+
+  statement {
+    effect = "Allow"
+    actions = [
+      "*"
+    ]
+    resources = [
+      "*",
+    ]
+  }
+}
+
+data "aws_iam_policy_document" "no_effect" {
+  version = "2012-10-17"
+
+  statement {
+    actions = [
+      "*"
+    ]
+    resources = [
+      "*",",
+      "tool": "checkov",
+    },
+    {
+      "category": "CATEGORY_VULNERABILITY",
+      "documentationUrl": "https://docs.prismacloud.io/en/enterprise-edition/policy-reference/aws-policies/aws-iam-policies/ensure-iam-policies-do-not-allow-permissions-management-resource-exposure-without-constraint",
+      "level": "LEVEL_MEDIUM",
+      "location": {
+        "path": "basic.in.tf",
+        "range": {
+          "endColumn": 1,
+          "endLine": 68,
+          "startColumn": 1,
+          "startLine": 57,
+        },
+      },
+      "message": "Ensure IAM policies does not allow permissions management / resource exposure without constraints",
+      "mode": "MODE_BLOCK",
+      "ruleKey": "CKV_AWS_109",
+      "snippet": "data "aws_iam_policy_document" "no_effect" {
+  version = "2012-10-17"
+
+  statement {
+    actions = [
+      "*"
+    ]
+    resources = [
+      "*",
+    ]
+  }
+}",
+      "snippetWithContext": "    effect = "Allow"
+    actions = [
+      "*"
+    ]
+    resources = [
+      "*",
+    ]
+  }
+}
+
+data "aws_iam_policy_document" "no_effect" {
+  version = "2012-10-17"
+
+  statement {
+    actions = [
+      "*"
+    ]
+    resources = [
+      "*",
+    ]
+  }
+}
+
+# unknown",
+      "tool": "checkov",
+    },
+    {
+      "category": "CATEGORY_VULNERABILITY",
+      "documentationUrl": "https://docs.prismacloud.io/en/enterprise-edition/policy-reference/aws-policies/aws-iam-policies/ensure-iam-policies-does-not-allow-privilege-escalation",
+      "level": "LEVEL_MEDIUM",
+      "location": {
+        "path": "basic.in.tf",
+        "range": {
+          "endColumn": 1,
+          "endLine": 55,
+          "startColumn": 1,
+          "startLine": 43,
+        },
+      },
+      "message": "Ensure IAM policies does not allow privilege escalation",
+      "mode": "MODE_BLOCK",
+      "ruleKey": "CKV_AWS_110",
+      "snippet": "data "aws_iam_policy_document" "fail" {
+  version = "2012-10-17"
+
+  statement {
+    effect = "Allow"
+    actions = [
+      "*"
+    ]
+    resources = [
+      "*",
+    ]
+  }
+}",
+      "snippetWithContext": "
+  # Support replication ARNs
+  statement = ["\${flatten(data.aws_iam_policy_document.replication.*.statement)}"]
+
+  # Support deployment ARNs
+  statement = ["\${flatten(data.aws_iam_policy_document.deployment.*.statement)}"]
+}
+
+# fail
+
+data "aws_iam_policy_document" "fail" {
+  version = "2012-10-17"
+
+  statement {
+    effect = "Allow"
+    actions = [
+      "*"
+    ]
+    resources = [
+      "*",
+    ]
+  }
+}
+
+data "aws_iam_policy_document" "no_effect" {
+  version = "2012-10-17"
+
+  statement {
+    actions = [
+      "*"
+    ]
+    resources = [
+      "*",",
+      "tool": "checkov",
+    },
+    {
+      "category": "CATEGORY_VULNERABILITY",
+      "documentationUrl": "https://docs.prismacloud.io/en/enterprise-edition/policy-reference/aws-policies/aws-iam-policies/ensure-iam-policies-does-not-allow-privilege-escalation",
+      "level": "LEVEL_MEDIUM",
+      "location": {
+        "path": "basic.in.tf",
+        "range": {
+          "endColumn": 1,
+          "endLine": 68,
+          "startColumn": 1,
+          "startLine": 57,
+        },
+      },
+      "message": "Ensure IAM policies does not allow privilege escalation",
+      "mode": "MODE_BLOCK",
+      "ruleKey": "CKV_AWS_110",
+      "snippet": "data "aws_iam_policy_document" "no_effect" {
+  version = "2012-10-17"
+
+  statement {
+    actions = [
+      "*"
+    ]
+    resources = [
+      "*",
+    ]
+  }
+}",
+      "snippetWithContext": "    effect = "Allow"
+    actions = [
+      "*"
+    ]
+    resources = [
+      "*",
+    ]
+  }
+}
+
+data "aws_iam_policy_document" "no_effect" {
+  version = "2012-10-17"
+
+  statement {
+    actions = [
+      "*"
+    ]
+    resources = [
+      "*",
+    ]
+  }
+}
+
+# unknown",
+      "tool": "checkov",
+    },
+    {
+      "category": "CATEGORY_VULNERABILITY",
+      "documentationUrl": "https://docs.prismacloud.io/en/enterprise-edition/policy-reference/aws-policies/aws-iam-policies/ensure-iam-policies-do-not-allow-write-access-without-constraint",
+      "level": "LEVEL_MEDIUM",
+      "location": {
+        "path": "basic.in.tf",
+        "range": {
+          "endColumn": 1,
+          "endLine": 55,
+          "startColumn": 1,
+          "startLine": 43,
+        },
+      },
+      "message": "Ensure IAM policies does not allow write access without constraints",
+      "mode": "MODE_BLOCK",
+      "ruleKey": "CKV_AWS_111",
+      "snippet": "data "aws_iam_policy_document" "fail" {
+  version = "2012-10-17"
+
+  statement {
+    effect = "Allow"
+    actions = [
+      "*"
+    ]
+    resources = [
+      "*",
+    ]
+  }
+}",
+      "snippetWithContext": "
+  # Support replication ARNs
+  statement = ["\${flatten(data.aws_iam_policy_document.replication.*.statement)}"]
+
+  # Support deployment ARNs
+  statement = ["\${flatten(data.aws_iam_policy_document.deployment.*.statement)}"]
+}
+
+# fail
+
+data "aws_iam_policy_document" "fail" {
+  version = "2012-10-17"
+
+  statement {
+    effect = "Allow"
+    actions = [
+      "*"
+    ]
+    resources = [
+      "*",
+    ]
+  }
+}
+
+data "aws_iam_policy_document" "no_effect" {
+  version = "2012-10-17"
+
+  statement {
+    actions = [
+      "*"
+    ]
+    resources = [
+      "*",",
+      "tool": "checkov",
+    },
+    {
+      "category": "CATEGORY_VULNERABILITY",
+      "documentationUrl": "https://docs.prismacloud.io/en/enterprise-edition/policy-reference/aws-policies/aws-iam-policies/ensure-iam-policies-do-not-allow-write-access-without-constraint",
+      "level": "LEVEL_MEDIUM",
+      "location": {
+        "path": "basic.in.tf",
+        "range": {
+          "endColumn": 1,
+          "endLine": 68,
+          "startColumn": 1,
+          "startLine": 57,
+        },
+      },
+      "message": "Ensure IAM policies does not allow write access without constraints",
+      "mode": "MODE_BLOCK",
+      "ruleKey": "CKV_AWS_111",
+      "snippet": "data "aws_iam_policy_document" "no_effect" {
+  version = "2012-10-17"
+
+  statement {
+    actions = [
+      "*"
+    ]
+    resources = [
+      "*",
+    ]
+  }
+}",
+      "snippetWithContext": "    effect = "Allow"
+    actions = [
+      "*"
+    ]
+    resources = [
+      "*",
+    ]
+  }
+}
+
+data "aws_iam_policy_document" "no_effect" {
+  version = "2012-10-17"
+
+  statement {
+    actions = [
+      "*"
+    ]
+    resources = [
+      "*",
+    ]
+  }
+}
+
+# unknown",
+      "tool": "checkov",
+    },
+    {
+      "category": "CATEGORY_VULNERABILITY",
+      "documentationUrl": "https://docs.prismacloud.io/en/enterprise-edition/policy-reference/aws-policies/aws-iam-policies/bc-aws-356",
+      "level": "LEVEL_MEDIUM",
+      "location": {
+        "path": "basic.in.tf",
+        "range": {
+          "endColumn": 1,
+          "endLine": 15,
+          "startColumn": 1,
+          "startLine": 3,
+        },
+      },
+      "message": "Ensure no IAM policies documents allow "*" as a statement's resource for restrictable actions",
+      "mode": "MODE_BLOCK",
+      "ruleKey": "CKV_AWS_356",
+      "snippet": "data "aws_iam_policy_document" "pass" {
+  version = "2012-10-17"
+
+  statement {
+    effect = "Allow"
+    actions = [
+      "s3:Describe*",
+    ]
+    resources = [
+      "*",
+    ]
+  }
+}",
+      "snippetWithContext": "# pass
+
+data "aws_iam_policy_document" "pass" {
+  version = "2012-10-17"
+
+  statement {
+    effect = "Allow"
+    actions = [
+      "s3:Describe*",
+    ]
+    resources = [
+      "*",
+    ]
+  }
+}
+
+data "aws_iam_policy_document" "list" {
+  version = "2012-10-17"
+
+  statement = [{
+    actions = [
+      "s3:GetObject"
+    ]
+    resources = [
+      "\${aws_s3_bucket.default.arn}/*"",
+      "tool": "checkov",
+    },
+    {
+      "category": "CATEGORY_VULNERABILITY",
+      "documentationUrl": "https://docs.prismacloud.io/en/enterprise-edition/policy-reference/aws-policies/aws-iam-policies/bc-aws-356",
+      "level": "LEVEL_MEDIUM",
+      "location": {
+        "path": "basic.in.tf",
+        "range": {
+          "endColumn": 1,
+          "endLine": 55,
+          "startColumn": 1,
+          "startLine": 43,
+        },
+      },
+      "message": "Ensure no IAM policies documents allow "*" as a statement's resource for restrictable actions",
+      "mode": "MODE_BLOCK",
+      "ruleKey": "CKV_AWS_356",
+      "snippet": "data "aws_iam_policy_document" "fail" {
+  version = "2012-10-17"
+
+  statement {
+    effect = "Allow"
+    actions = [
+      "*"
+    ]
+    resources = [
+      "*",
+    ]
+  }
+}",
+      "snippetWithContext": "
+  # Support replication ARNs
+  statement = ["\${flatten(data.aws_iam_policy_document.replication.*.statement)}"]
+
+  # Support deployment ARNs
+  statement = ["\${flatten(data.aws_iam_policy_document.deployment.*.statement)}"]
+}
+
+# fail
+
+data "aws_iam_policy_document" "fail" {
+  version = "2012-10-17"
+
+  statement {
+    effect = "Allow"
+    actions = [
+      "*"
+    ]
+    resources = [
+      "*",
+    ]
+  }
+}
+
+data "aws_iam_policy_document" "no_effect" {
+  version = "2012-10-17"
+
+  statement {
+    actions = [
+      "*"
+    ]
+    resources = [
+      "*",",
+      "tool": "checkov",
+    },
+    {
+      "category": "CATEGORY_VULNERABILITY",
+      "documentationUrl": "https://docs.prismacloud.io/en/enterprise-edition/policy-reference/aws-policies/aws-iam-policies/bc-aws-356",
+      "level": "LEVEL_MEDIUM",
+      "location": {
+        "path": "basic.in.tf",
+        "range": {
+          "endColumn": 1,
+          "endLine": 68,
+          "startColumn": 1,
+          "startLine": 57,
+        },
+      },
+      "message": "Ensure no IAM policies documents allow "*" as a statement's resource for restrictable actions",
+      "mode": "MODE_BLOCK",
+      "ruleKey": "CKV_AWS_356",
+      "snippet": "data "aws_iam_policy_document" "no_effect" {
+  version = "2012-10-17"
+
+  statement {
+    actions = [
+      "*"
+    ]
+    resources = [
+      "*",
+    ]
+  }
+}",
+      "snippetWithContext": "    effect = "Allow"
+    actions = [
+      "*"
+    ]
+    resources = [
+      "*",
+    ]
+  }
+}
+
+data "aws_iam_policy_document" "no_effect" {
+  version = "2012-10-17"
+
+  statement {
+    actions = [
+      "*"
+    ]
+    resources = [
+      "*",
+    ]
+  }
+}
+
+# unknown",
+      "tool": "checkov",
+    },
+    {
+      "category": "CATEGORY_VULNERABILITY",
+      "documentationUrl": "https://docs.prismacloud.io/en/enterprise-edition/policy-reference/aws-policies/aws-iam-policies/bc-aws-iam-43",
+      "level": "LEVEL_MEDIUM",
+      "location": {
+        "path": "basic.in.tf",
+        "range": {
+          "endColumn": 1,
+          "endLine": 55,
+          "startColumn": 1,
+          "startLine": 43,
+        },
+      },
+      "message": "Ensure no IAM policies documents allow "*" as a statement's actions",
+      "mode": "MODE_BLOCK",
+      "ruleKey": "CKV_AWS_49",
+      "snippet": "data "aws_iam_policy_document" "fail" {
+  version = "2012-10-17"
+
+  statement {
+    effect = "Allow"
+    actions = [
+      "*"
+    ]
+    resources = [
+      "*",
+    ]
+  }
+}",
+      "snippetWithContext": "
+  # Support replication ARNs
+  statement = ["\${flatten(data.aws_iam_policy_document.replication.*.statement)}"]
+
+  # Support deployment ARNs
+  statement = ["\${flatten(data.aws_iam_policy_document.deployment.*.statement)}"]
+}
+
+# fail
+
+data "aws_iam_policy_document" "fail" {
+  version = "2012-10-17"
+
+  statement {
+    effect = "Allow"
+    actions = [
+      "*"
+    ]
+    resources = [
+      "*",
+    ]
+  }
+}
+
+data "aws_iam_policy_document" "no_effect" {
+  version = "2012-10-17"
+
+  statement {
+    actions = [
+      "*"
+    ]
+    resources = [
+      "*",",
+      "tool": "checkov",
+    },
+    {
+      "category": "CATEGORY_VULNERABILITY",
+      "documentationUrl": "https://docs.prismacloud.io/en/enterprise-edition/policy-reference/aws-policies/aws-iam-policies/bc-aws-iam-43",
+      "level": "LEVEL_MEDIUM",
+      "location": {
+        "path": "basic.in.tf",
+        "range": {
+          "endColumn": 1,
+          "endLine": 68,
+          "startColumn": 1,
+          "startLine": 57,
+        },
+      },
+      "message": "Ensure no IAM policies documents allow "*" as a statement's actions",
+      "mode": "MODE_BLOCK",
+      "ruleKey": "CKV_AWS_49",
+      "snippet": "data "aws_iam_policy_document" "no_effect" {
+  version = "2012-10-17"
+
+  statement {
+    actions = [
+      "*"
+    ]
+    resources = [
+      "*",
+    ]
+  }
+}",
+      "snippetWithContext": "    effect = "Allow"
+    actions = [
+      "*"
+    ]
+    resources = [
+      "*",
+    ]
+  }
+}
+
+data "aws_iam_policy_document" "no_effect" {
+  version = "2012-10-17"
+
+  statement {
+    actions = [
+      "*"
+    ]
+    resources = [
+      "*",
+    ]
+  }
+}
+
+# unknown",
+      "tool": "checkov",
+    },
+  ],
+}
+`;

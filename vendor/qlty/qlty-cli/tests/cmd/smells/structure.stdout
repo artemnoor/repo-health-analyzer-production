@@ -1,0 +1,28 @@
+
+[
+  {
+    "tool": "qlty",
+    "driver": "structure",
+    "ruleKey": "return-statements",
+    "message": "Function with many returns (count = 6): foo",
+    "level": "LEVEL_MEDIUM",
+    "language": "LANGUAGE_JAVASCRIPT",
+    "category": "CATEGORY_STRUCTURE",
+    "snippet": "function foo() {/n  return;/n  return;/n  return;/n  return;/n  return;/n  return;/n}",
+    "snippetWithContext": "function foo() {/n  return;/n  return;/n  return;/n  return;/n  return;/n  return;/n}",
+    "effortMinutes": 15,
+    "value": 6,
+    "location": {
+      "path": "returns.js",
+      "range": {
+        "startLine": 1,
+        "startColumn": 1,
+        "endLine": 8,
+        "endColumn": 2,
+        "startByte": 0,
+        "endByte": 78
+      }
+    },
+    "mode": "MODE_BLOCK"
+  }
+]

@@ -1,0 +1,4 @@
+config_version = "0"
+
+[smells.identical_code]
+enabled = false

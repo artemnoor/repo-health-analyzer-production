@@ -1,0 +1,24 @@
+version: 1
+
+# Metric functions stay in copied CollectOSS modules. The adapter only selects
+# and normalizes their rows into MetricValue without copying SQL/formulas.
+metrics:
+  source: collectoss
+  source_commit: 339edc520e79dd1728ca19255d94a05a4a107df1
+  event_source: perceval
+  event_source_commit: cb07eaafa4c67561ca24ca8f9bb96783c312b5aa9
+  window:
+    default: all
+    supported: [day, week, month, year, all]
+  groups:
+    activity: [committers, code_changes, contributors]
+    issues_prs: [issues_first_time_opened, pull_requests_new]
+    releases: [releases]
+    dependencies: [deps, libyear]
+  timestamp_policy:
+    timezone: UTC
+    preserve_original_offset: true
+  materialized_views:
+    refresh: concurrent
+    stale_after_seconds: 86400
+    stale_state: explicit

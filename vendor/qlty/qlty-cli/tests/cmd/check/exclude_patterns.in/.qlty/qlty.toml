@@ -1,0 +1,20 @@
+config_version = "0"
+
+exclude_patterns = [
+  "ignore.sh",
+  "folder/**",
+  "deep/folder/**"
+]
+
+[plugins.definitions.exists]
+file_types = ["shell"]
+
+[plugins.definitions.exists.drivers.lint]
+script = "exit 0"
+success_codes = [0]
+output = "pass_fail"
+batch = false
+
+[[plugin]]
+name = "exists"
+version = "1.0.0"

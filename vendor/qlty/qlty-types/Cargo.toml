@@ -1,0 +1,25 @@
+[package]
+name = "qlty-types"
+version.workspace = true
+authors.workspace = true
+description.workspace = true
+documentation.workspace = true
+homepage.workspace = true
+repository.workspace = true
+keywords.workspace = true
+categories.workspace = true
+edition.workspace = true
+
+[lib]
+doctest = false
+test = false
+
+[dependencies]
+clap.workspace = true
+pbjson-types.workspace = true
+pbjson.workspace = true
+prost.workspace = true
+schemars.workspace = true
+serde.workspace = true
+serde_json.workspace = true
+tree-sitter.workspace = true

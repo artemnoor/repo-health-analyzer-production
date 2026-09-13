@@ -1,0 +1,23 @@
+version: 1
+
+# SortingHat/CollectOSS-shaped aliases are merged only above this threshold.
+# Lower-confidence matches remain separate contributor IDs and are emitted as
+# review findings instead of silently changing historical raw facts.
+mapping_version: repowise-identity-v1
+min_merge_confidence: 0.80
+review_below: 0.80
+
+manual_overrides: {}
+
+bus_factor:
+  # Minimum cumulative share of the selected population covered by the top
+  # contributors.  The report keeps this policy next to the resulting value.
+  share_threshold: 0.80
+  population_scope: non_bot_events
+
+temporal:
+  timezone: UTC
+  preserve_original_offset: true
+  window_days: 90
+  half_life_days: 30
+  mass_edit_threshold: 1000

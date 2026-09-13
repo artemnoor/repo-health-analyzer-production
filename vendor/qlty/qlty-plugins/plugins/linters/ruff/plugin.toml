@@ -1,0 +1,28 @@
+config_version = "0"
+
+[plugins.definitions.ruff]
+runtime = "python"
+package = "ruff"
+file_types = ["python"]
+latest_version = "0.14.6"
+known_good_version = "0.14.6"
+version_command = "ruff version"
+config_files = ["ruff.toml"]
+description = "Python linter and formatter"
+
+[plugins.definitions.ruff.drivers.lint]
+script = "ruff check --exit-zero --output-format json --output-file ${tmpfile} ${target}"
+success_codes = [0]
+output = "tmpfile"
+output_format = "ruff"
+batch = true
+suggested = "targets"
+output_missing = "parse"
+
+[plugins.definitions.ruff.drivers.format]
+script = "ruff format ${target}"
+success_codes = [0]
+output = "rewrite"
+batch = true
+driver_type = "formatter"
+suggested = "config"

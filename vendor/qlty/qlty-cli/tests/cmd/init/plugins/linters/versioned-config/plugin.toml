@@ -1,0 +1,24 @@
+config_version = "0"
+
+[plugins.definitions.versioned_config]
+file_types = ["shell"]
+latest_version = "0.10.0"
+known_good_version = "0.10.0"
+
+[[plugins.definitions.versioned_config.drivers.lint.version]]
+version_matcher = "<2.0.0"
+known_good_version = "0.9.0"
+script = "exit 0"
+success_codes = [0]
+output = "pass_fail"
+suggested = "config"
+config_files = ["old_config.json"]
+
+[[plugins.definitions.versioned_config.drivers.lint.version]]
+version_matcher = ">2.0.0"
+known_good_version = "2.2.0"
+script = "exit 1"
+success_codes = [0]
+output = "pass_fail"
+suggested = "config"
+config_files = ["new_config.json"]

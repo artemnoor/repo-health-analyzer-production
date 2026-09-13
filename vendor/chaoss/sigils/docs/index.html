@@ -1,0 +1,17 @@
+---
+layout: default
+---
+
+<h2>CHAOSS <abbr title="Growth-Maturity-Decline">GMD</abbr> <abbr title="Working Group">WG</abbr> panels for Code Development</h2>
+<ul>
+  {% for panel in site.chaoss-gmd-cde %}
+   <li><a href="{{ site.baseurl }}{{panel.url}}">{{panel.title}}</a>: {{panel.description}}</li>
+  {% endfor %}
+</ul>
+
+<h2>GrimoireLab Sigils Panels</h2>
+<ul>
+  {% for panel in site.panels %}
+   <li><a href="{{ site.baseurl }}{{panel.url}}">{{panel.title}}</a>: {{panel.description}}</li>
+  {% endfor %}
+</ul>

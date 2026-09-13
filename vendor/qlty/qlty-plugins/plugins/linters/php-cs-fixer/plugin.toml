@@ -1,0 +1,31 @@
+config_version = "0"
+
+[plugins.definitions.php-cs-fixer]
+package = "friendsofphp/php-cs-fixer"
+runtime = "php"
+file_types = ["php"]
+config_files = [".php-cs-fixer.dist.php"]
+latest_version = "3.73.1"
+known_good_version = "3.73.1"
+version_command = "php ${linter}/vendor/bin/php-cs-fixer --version"
+description = "PHP Coding Standards Fixer"
+
+[plugins.definitions.php-cs-fixer.drivers.formatter]
+script = "php -d memory_limit=-1 ${linter}/vendor/bin/php-cs-fixer fix --using-cache=no --show-progress=none ${target}"
+success_codes = [0]
+output = "rewrite"
+cache_results = true
+driver_type = "formatter"
+suggested = "config"
+# Batching with php-cs-fixer requires a config file to be present
+batch = false
+
+# To get the local php config, since php is installed by user and not qlty
+[[plugins.definitions.php-cs-fixer.environment]]
+name = "PHP_INI_SCAN_DIR"
+value = "${env.PHP_INI_SCAN_DIR}"
+
+# Make sure it ignores php version warnings
+[[plugins.definitions.php-cs-fixer.environment]]
+name = "PHP_CS_FIXER_IGNORE_ENV"
+value = "true"

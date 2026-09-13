@@ -1,0 +1,675 @@
+/*
+ * SonarQube
+ * Copyright (C) SonarSource Sàrl
+ * mailto:info AT sonarsource DOT com
+ *
+ * This program is free software; you can redistribute it and/or
+ * modify it under the terms of the GNU Lesser General Public
+ * License as published by the Free Software Foundation; either
+ * version 3 of the License, or (at your option) any later version.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
+ * Lesser General Public License for more details.
+ *
+ * You should have received a copy of the GNU Lesser General Public License
+ * along with this program; if not, write to the Free Software Foundation,
+ * Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
+ */
+package org.sonar.server.permission.ws.template;
+
+import java.util.Date;
+import java.util.Optional;
+import javax.annotation.Nullable;
+import org.junit.Before;
+import org.junit.Test;
+import org.sonar.core.platform.EditionProvider;
+import org.sonar.core.platform.PlatformEditionProvider;
+import org.sonar.core.util.Uuids;
+import org.sonar.db.DbClient;
+import org.sonar.db.DbSession;
+import org.sonar.db.component.ComponentQualifiers;
+import org.sonar.db.permission.ProjectPermission;
+import org.sonar.db.permission.template.PermissionTemplateCharacteristicDto;
+import org.sonar.db.permission.template.PermissionTemplateDto;
+import org.sonar.db.user.GroupDto;
+import org.sonar.db.user.UserDto;
+import org.sonar.server.common.permission.DefaultTemplatesResolver;
+import org.sonar.server.common.permission.DefaultTemplatesResolverImpl;
+import org.sonar.server.component.ComponentTypes;
+import org.sonar.server.component.ComponentTypesRule;
+import org.sonar.server.exceptions.UnauthorizedException;
+import org.sonar.server.l18n.I18nRule;
+import org.sonar.server.permission.PermissionService;
+import org.sonar.server.permission.PermissionServiceImpl;
+import org.sonar.server.permission.ws.BasePermissionWsIT;
+import org.sonar.server.ws.TestRequest;
+import org.sonar.server.ws.WsActionTester;
+
+import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.when;
+import static org.sonar.api.server.ws.WebService.Param.PAGE;
+import static org.sonar.api.server.ws.WebService.Param.PAGE_SIZE;
+import static org.sonar.api.server.ws.WebService.Param.TEXT_QUERY;
+import static org.sonar.core.util.Uuids.UUID_EXAMPLE_01;
+import static org.sonar.core.util.Uuids.UUID_EXAMPLE_02;
+import static org.sonar.core.util.Uuids.UUID_EXAMPLE_10;
+import static org.sonar.db.permission.GlobalPermission.ADMINISTER;
+import static org.sonar.db.permission.template.PermissionTemplateTesting.newPermissionTemplateDto;
+import static org.sonar.test.JsonAssert.assertJson;
+
+public class SearchTemplatesActionIT extends BasePermissionWsIT<SearchTemplatesAction> {
+
+  private I18nRule i18n = new I18nRule();
+  private DbClient dbClient = db.getDbClient();
+  private DbSession dbSession = db.getSession();
+
+  private ComponentTypesRule resourceTypesWithViews = new ComponentTypesRule().setRootQualifiers(ComponentQualifiers.PROJECT, ComponentQualifiers.VIEW, ComponentQualifiers.APP);
+  private ComponentTypesRule resourceTypesWithoutViews = new ComponentTypesRule().setRootQualifiers(ComponentQualifiers.PROJECT);
+  private PermissionService permissionServiceWithViews = developerEditionPermissionService(resourceTypesWithViews);
+  private PermissionService permissionServiceWithoutViews = new PermissionServiceImpl(resourceTypesWithoutViews);
+  private DefaultTemplatesResolver defaultTemplatesResolverWithViews = new DefaultTemplatesResolverImpl(dbClient, resourceTypesWithViews);
+
+  private WsActionTester underTestWithoutViews;
+
+  private static PermissionServiceImpl developerEditionPermissionService(ComponentTypes componentTypes) {
+    PlatformEditionProvider editionProvider = mock(PlatformEditionProvider.class);
+    when(editionProvider.get()).thenReturn(Optional.of(EditionProvider.Edition.DEVELOPER));
+    return new PermissionServiceImpl(componentTypes, editionProvider);
+  }
+
+  @Override
+  protected SearchTemplatesAction buildWsAction() {
+    return new SearchTemplatesAction(dbClient, userSession, i18n, defaultTemplatesResolverWithViews, permissionServiceWithViews);
+  }
+
+  @Before
+  public void setUp() {
+    DefaultTemplatesResolver defaultTemplatesResolverWithoutViews = new DefaultTemplatesResolverImpl(dbClient, resourceTypesWithoutViews);
+    underTestWithoutViews = new WsActionTester(
+      new SearchTemplatesAction(dbClient, userSession, i18n, defaultTemplatesResolverWithoutViews, permissionServiceWithoutViews));
+    i18n.setProjectPermissions();
+    userSession.logIn().addPermission(ADMINISTER);
+  }
+
+  @Test
+  public void search_project_permissions_without_views() {
+    PermissionTemplateDto projectTemplate = insertProjectTemplate();
+
+    UserDto user1 = db.users().insertUser();
+    UserDto user2 = db.users().insertUser();
+    UserDto user3 = db.users().insertUser();
+
+    GroupDto group1 = db.users().insertGroup();
+    db.users().insertGroup();
+    db.users().insertGroup();
+
+    addUserToTemplate(projectTemplate.getUuid(), user1.getUuid(), ProjectPermission.ISSUE_ADMIN, projectTemplate.getName(), user1.getLogin());
+    addUserToTemplate(projectTemplate.getUuid(), user2.getUuid(), ProjectPermission.ISSUE_ADMIN, projectTemplate.getName(), user2.getLogin());
+    addUserToTemplate(projectTemplate.getUuid(), user3.getUuid(), ProjectPermission.ISSUE_ADMIN, projectTemplate.getName(), user3.getLogin());
+    addUserToTemplate(projectTemplate.getUuid(), user1.getUuid(), ProjectPermission.CODEVIEWER, projectTemplate.getName(), user1.getLogin());
+    addGroupToTemplate(projectTemplate.getUuid(), group1.getUuid(), ProjectPermission.ADMIN, projectTemplate.getName(), group1.getName());
+    addPermissionTemplateWithProjectCreator(projectTemplate.getUuid(), ProjectPermission.ADMIN, projectTemplate.getName());
+
+    db.permissionTemplates().setDefaultTemplates(projectTemplate, null, null);
+
+    String result = newRequest(underTestWithoutViews).execute().getInput();
+
+    assertJson(result)
+      .withStrictArrayOrder()
+      .isSimilarTo(getClass().getResource("search_templates-example-without-views.json"));
+  }
+
+  @Test
+  public void search_project_permissions_with_views() {
+    PermissionTemplateDto projectTemplate = insertProjectTemplate();
+    PermissionTemplateDto portfoliosTemplate = insertPortfoliosTemplate();
+    PermissionTemplateDto applicationsTemplate = insertApplicationsTemplate();
+
+    UserDto user1 = db.users().insertUser();
+    UserDto user2 = db.users().insertUser();
+    UserDto user3 = db.users().insertUser();
+
+    GroupDto group1 = db.users().insertGroup();
+    GroupDto group2 = db.users().insertGroup();
+    GroupDto group3 = db.users().insertGroup();
+
+    addUserToTemplate(projectTemplate.getUuid(), user1.getUuid(), ProjectPermission.ISSUE_ADMIN, projectTemplate.getName(), user1.getLogin());
+    addUserToTemplate(projectTemplate.getUuid(), user2.getUuid(), ProjectPermission.ISSUE_ADMIN, projectTemplate.getName(), user2.getLogin());
+    addUserToTemplate(projectTemplate.getUuid(), user3.getUuid(), ProjectPermission.ISSUE_ADMIN, projectTemplate.getName(), user3.getLogin());
+    addUserToTemplate(projectTemplate.getUuid(), user1.getUuid(), ProjectPermission.CODEVIEWER, projectTemplate.getName(), user1.getLogin());
+    addGroupToTemplate(projectTemplate.getUuid(), group1.getUuid(), ProjectPermission.ADMIN, projectTemplate.getName(), group1.getName());
+    addPermissionTemplateWithProjectCreator(projectTemplate.getUuid(), ProjectPermission.ADMIN, projectTemplate.getName());
+
+    addUserToTemplate(portfoliosTemplate.getUuid(), user1.getUuid(), ProjectPermission.USER, portfoliosTemplate.getName(), user1.getLogin());
+    addUserToTemplate(portfoliosTemplate.getUuid(), user2.getUuid(), ProjectPermission.USER, portfoliosTemplate.getName(), user2.getLogin());
+    addGroupToTemplate(portfoliosTemplate.getUuid(), group1.getUuid(), ProjectPermission.ISSUE_ADMIN, portfoliosTemplate.getName(), group1.getName());
+    addGroupToTemplate(portfoliosTemplate.getUuid(), group2.getUuid(), ProjectPermission.ISSUE_ADMIN, portfoliosTemplate.getName(), group2.getName());
+    addGroupToTemplate(portfoliosTemplate.getUuid(), group3.getUuid(), ProjectPermission.ISSUE_ADMIN, portfoliosTemplate.getName(), group3.getName());
+
+    db.permissionTemplates().setDefaultTemplates(projectTemplate, applicationsTemplate, portfoliosTemplate);
+
+    String result = newRequest().execute().getInput();
+
+    assertJson(result)
+      .withStrictArrayOrder()
+      .isSimilarTo(getClass().getResource("search_templates-example-with-views.json"));
+  }
+
+  @Test
+  public void empty_result() {
+    db.permissionTemplates().setDefaultTemplates("AU-Tpxb--iU5OvuD2FLy", "AU-Tpxb--iU5OvuD2FLz", "AU-TpxcA-iU5OvuD2FLx");
+    String result = newRequest(wsTester).execute().getInput();
+
+    assertJson(result)
+      .withStrictArrayOrder()
+      .ignoreFields("permissions")
+      .isSimilarTo("{" +
+        "  \"permissionTemplates\": []," +
+        "  \"defaultTemplates\": [" +
+        "    {" +
+        "      \"templateId\": \"AU-Tpxb--iU5OvuD2FLy\"," +
+        "      \"qualifier\": \"TRK\"" +
+        "    }," +
+        "    {" +
+        "      \"templateId\": \"AU-Tpxb--iU5OvuD2FLz\"," +
+        "      \"qualifier\": \"APP\"" +
+        "    }," +
+        "    {" +
+        "      \"templateId\": \"AU-TpxcA-iU5OvuD2FLx\"," +
+        "      \"qualifier\": \"VW\"" +
+        "    }" +
+        "  ]" +
+        "}");
+  }
+
+  @Test
+  public void empty_result_without_views() {
+    db.permissionTemplates().setDefaultTemplates("AU-Tpxb--iU5OvuD2FLy", "AU-TpxcA-iU5OvuD2FLz", "AU-TpxcA-iU5OvuD2FLx");
+    String result = newRequest(underTestWithoutViews).execute().getInput();
+
+    assertJson(result)
+      .withStrictArrayOrder()
+      .ignoreFields("permissions")
+      .isSimilarTo("{" +
+        "  \"permissionTemplates\": []," +
+        "  \"defaultTemplates\": [" +
+        "    {" +
+        "      \"templateId\": \"AU-Tpxb--iU5OvuD2FLy\"," +
+        "      \"qualifier\": \"TRK\"" +
+        "    }" +
+        "  ]" +
+        "}");
+  }
+
+  @Test
+  public void search_by_name() {
+    db.permissionTemplates().setDefaultTemplates(db.permissionTemplates().insertTemplate(), null, null);
+    insertProjectTemplate();
+    insertPortfoliosTemplate();
+
+    String result = newRequest(wsTester)
+      .setParam(TEXT_QUERY, "portfolio")
+      .execute()
+      .getInput();
+
+    assertThat(result).contains("Default template for Portfolios")
+      .doesNotContain("projects")
+      .doesNotContain("developers");
+  }
+
+  @Test
+  public void fail_if_not_logged_in() {
+    assertThatThrownBy(() -> {
+      userSession.anonymous();
+      newRequest().execute();
+    })
+      .isInstanceOf(UnauthorizedException.class);
+  }
+
+  @Test
+  public void display_all_project_permissions() {
+    db.permissionTemplates().setDefaultTemplates(db.permissionTemplates().insertTemplate(), null, null);
+
+    String result = newRequest(underTestWithoutViews).execute().getInput();
+
+    assertJson(result)
+      .withStrictArrayOrder()
+      .ignoreFields("defaultTemplates", "permissionTemplates")
+      .isSimilarTo(
+        "{" +
+          "  \"permissions\": [" +
+          "    {" +
+          "      \"key\": \"admin\"," +
+          "      \"name\": \"Administer\"," +
+          "      \"description\": \"Ability to access project settings and perform administration tasks. (Users will also need \\\"Browse\\\" permission)\"" +
+          "    }," +
+          "    {" +
+          "      \"key\": \"codeviewer\"," +
+          "      \"name\": \"See Source Code\"," +
+          "      \"description\": \"Ability to view the project\\u0027s source code. (Users will also need \\\"Browse\\\" permission)\"" +
+          "    }," +
+          "    {" +
+          "      \"key\": \"issueadmin\"," +
+          "      \"name\": \"Administer Issues\"," +
+          "      \"description\": \"Grants the permission to perform advanced editing on issues: marking an issue False Positive / Won\\u0027t Fix or changing an Issue\\u0027s severity. (Users will also need \\\"Browse\\\" permission)\""
+          +
+          "    }," +
+          "    {" +
+          "      \"key\": \"securityhotspotadmin\"," +
+          "      \"name\": \"Administer Security Hotspots\"," +
+          "      \"description\": \"Detect a Vulnerability from a \\\"Security Hotspot\\\". Reject, clear, accept, reopen a \\\"Security Hotspot\\\" (users also need \\\"Browse\\\" permissions).\""
+          +
+          "    }," +
+          "    {" +
+          "      \"key\": \"scan\"," +
+          "      \"name\": \"Execute Analysis\"," +
+          "      \"description\": \"Ability to execute analyses, and to get all settings required to perform the analysis, even the secured ones like the scm account password, the jira account password, and so on.\""
+          +
+          "    }," +
+          "    {" +
+          "      \"key\": \"user\"," +
+          "      \"name\": \"Browse\"," +
+          "      \"description\": \"Ability to access a project, browse its measures, and create/edit issues for it.\"" +
+          "    }" +
+          "  ]" +
+          "}");
+  }
+
+  @Test
+  public void display_all_project_permissions_with_views() {
+    db.permissionTemplates().setDefaultTemplates(db.permissionTemplates().insertTemplate(), null, null);
+
+    String result = newRequest().execute().getInput();
+
+    assertJson(result)
+      .withStrictArrayOrder()
+      .ignoreFields("defaultTemplates", "permissionTemplates")
+      .isSimilarTo(
+        "{" +
+          "  \"permissions\": [" +
+          "    {" +
+          "      \"key\": \"admin\"," +
+          "      \"name\": \"Administer\"," +
+          "      \"description\": \"Ability to access project settings and perform administration tasks. (Users will also need \\\"Browse\\\" permission)\"" +
+          "    }," +
+          "    {" +
+          "      \"key\": \"codeviewer\"," +
+          "      \"name\": \"See Source Code\"," +
+          "      \"description\": \"Ability to view the project\\u0027s source code. (Users will also need \\\"Browse\\\" permission)\"" +
+          "    }," +
+          "    {" +
+          "      \"key\": \"issueadmin\"," +
+          "      \"name\": \"Administer Issues\"," +
+          "      \"description\": \"Grants the permission to perform advanced editing on issues: marking an issue False Positive / Won\\u0027t Fix or changing an Issue\\u0027s severity. (Users will also need \\\"Browse\\\" permission)\""
+          +
+          "    }," +
+          "    {" +
+          "      \"key\": \"securityhotspotadmin\"," +
+          "      \"name\": \"Administer Security Hotspots\"," +
+          "      \"description\": \"Detect a Vulnerability from a \\\"Security Hotspot\\\". Reject, clear, accept, reopen a \\\"Security Hotspot\\\" (users also need \\\"Browse\\\" permissions).\""
+          +
+          "    }," +
+          "    {" +
+          "      \"key\": \"architectureadmin\"," +
+          "      \"name\": \"Administer Architecture\"," +
+          "      \"description\": \"Allows to manage intended architecture of a project.\"" +
+          "    }," +
+          "    {" +
+          "      \"key\": \"scan\"," +
+          "      \"name\": \"Execute Analysis\"," +
+          "      \"description\": \"Ability to execute analyses, and to get all settings required to perform the analysis, even the secured ones like the scm account password, the jira account password, and so on.\""
+          +
+          "    }," +
+          "    {" +
+          "      \"key\": \"user\"," +
+          "      \"name\": \"Browse\"," +
+          "      \"description\": \"Ability to access a project, browse its measures, and create/edit issues for it.\"" +
+          "    }" +
+          "  ]" +
+          "}");
+  }
+
+  private PermissionTemplateDto insertProjectTemplate() {
+    return insertProjectTemplate(UUID_EXAMPLE_01);
+  }
+
+  private PermissionTemplateDto insertProjectTemplate(String uuid) {
+    return insertTemplate(newPermissionTemplateDto()
+      .setUuid(uuid)
+      .setName("Default template for Projects")
+      .setDescription("Template for new projects")
+      .setKeyPattern(null)
+      .setCreatedAt(new Date(1_000_000_000_000L))
+      .setUpdatedAt(new Date(1_000_000_000_000L)));
+  }
+
+  private PermissionTemplateDto insertPortfoliosTemplate() {
+    return insertTemplate(newPermissionTemplateDto()
+      .setUuid(UUID_EXAMPLE_02)
+      .setName("Default template for Portfolios")
+      .setDescription("Template for new portfolios")
+      .setKeyPattern(".*sonar.views.*")
+      .setCreatedAt(new Date(1_000_000_000_000L))
+      .setUpdatedAt(new Date(1_100_000_000_000L)));
+  }
+
+  private PermissionTemplateDto insertApplicationsTemplate() {
+    return insertTemplate(newPermissionTemplateDto()
+      .setUuid(UUID_EXAMPLE_10)
+      .setName("Default template for Applications")
+      .setDescription("Template for new applications")
+      .setKeyPattern(".*sonar.views.*")
+      .setCreatedAt(new Date(1_000_000_000_000L))
+      .setUpdatedAt(new Date(1_100_000_000_000L)));
+  }
+
+  private PermissionTemplateDto insertTemplate(PermissionTemplateDto template) {
+    PermissionTemplateDto insert = dbClient.permissionTemplateDao().insert(db.getSession(), template);
+    db.getSession().commit();
+    return insert;
+  }
+
+  private void addGroupToTemplate(String templateUuid, @Nullable String groupUuid, ProjectPermission permission, String templateName, String groupName) {
+    dbClient.permissionTemplateDao().insertGroupPermission(db.getSession(), templateUuid, groupUuid, permission, templateName, groupName);
+    db.getSession().commit();
+  }
+
+  private void addUserToTemplate(String templateUuid, String userId, ProjectPermission permission, String templateName, String userLogin) {
+    dbClient.permissionTemplateDao().insertUserPermission(db.getSession(), templateUuid, userId, permission, templateName, userLogin);
+    db.getSession().commit();
+  }
+
+  private void addPermissionTemplateWithProjectCreator(String templateUuid, ProjectPermission permission, String templateName) {
+    dbClient.permissionTemplateCharacteristicDao().insert(dbSession, new PermissionTemplateCharacteristicDto()
+      .setUuid(Uuids.createFast())
+      .setWithProjectCreator(true)
+      .setTemplateUuid(templateUuid)
+      .setPermission(permission.getKey())
+      .setCreatedAt(1_000_000_000L)
+      .setUpdatedAt(2_000_000_000L),
+      templateName);
+    db.commit();
+  }
+
+  private TestRequest newRequest(WsActionTester underTest) {
+    return underTest.newRequest().setMethod("POST");
+  }
+
+  @Test
+  public void returns_all_results_when_pagination_not_provided() {
+    db.permissionTemplates().setDefaultTemplates(db.permissionTemplates().insertTemplate(), null, null);
+    for (int i = 0; i < 10; i++) {
+      insertTemplate(newPermissionTemplateDto()
+        .setName("Template " + i)
+        .setDescription("Template " + i));
+    }
+
+    String result = newRequest(wsTester).execute().getInput();
+
+    // When pagination params are not provided, all results should be returned without pagination info
+    assertThat(result)
+      .doesNotContain("\"paging\"")
+      .doesNotContain("\"pageSize\"")
+      .doesNotContain("\"pageIndex\"")
+      .doesNotContain("\"total\"")
+      .contains("Template 0")
+      .contains("Template 9");
+  }
+
+  @Test
+  public void pagination_with_default_page_size() {
+    db.permissionTemplates().setDefaultTemplates(db.permissionTemplates().insertTemplate(), null, null);
+    for (int i = 0; i < 10; i++) {
+      insertTemplate(newPermissionTemplateDto()
+        .setName("Template " + i)
+        .setDescription("Template " + i));
+    }
+
+    String result = newRequest(wsTester)
+      .setParam(PAGE, "1")
+      .setParam(PAGE_SIZE, "100")
+      .execute()
+      .getInput();
+
+    // When pagination params are provided, pagination info should be included
+    assertThat(result)
+      .contains("\"paging\"")
+      .contains("\"pageSize\":100")
+      .contains("\"total\":11")
+      .contains("\"pageIndex\":1");
+  }
+
+  @Test
+  public void pagination_with_custom_page_size() {
+    db.permissionTemplates().setDefaultTemplates(db.permissionTemplates().insertTemplate(), null, null);
+    for (int i = 0; i < 10; i++) {
+      insertTemplate(newPermissionTemplateDto()
+        .setName("Template " + i)
+        .setDescription("Template " + i));
+    }
+
+    String result = newRequest(wsTester)
+      .setParam(PAGE, "2")
+      .setParam(PAGE_SIZE, "5")
+      .execute()
+      .getInput();
+
+    // When pagination params ARE provided, they should be respected
+    assertThat(result)
+      .contains("\"paging\"")
+      .contains("\"pageSize\":5")
+      .contains("\"total\":11")
+      .contains("\"pageIndex\":2");
+  }
+
+  @Test
+  public void pagination_returns_correct_templates() {
+    db.permissionTemplates().setDefaultTemplates(db.permissionTemplates().insertTemplate(), null, null);
+    for (int i = 0; i < 10; i++) {
+      insertTemplate(newPermissionTemplateDto()
+        .setName("Template " + String.format("%02d", i))
+        .setDescription("Template " + i));
+    }
+
+    String result = newRequest(wsTester)
+      .setParam(PAGE, "1")
+      .setParam(PAGE_SIZE, "3")
+      .execute()
+      .getInput();
+
+    // When pagination params ARE provided, they should be respected
+    assertThat(result)
+      .contains("\"total\":11")
+      .contains("\"pageSize\":3");
+  }
+
+  @Test
+  public void pagination_with_name_filter() {
+    db.permissionTemplates().setDefaultTemplates(db.permissionTemplates().insertTemplate(), null, null);
+    for (int i = 0; i < 10; i++) {
+      insertTemplate(newPermissionTemplateDto()
+        .setName("Template " + i)
+        .setDescription("Template " + i));
+    }
+    for (int i = 0; i < 5; i++) {
+      insertTemplate(newPermissionTemplateDto()
+        .setName("Special " + i)
+        .setDescription("Special " + i));
+    }
+
+    String result = newRequest(wsTester)
+      .setParam(TEXT_QUERY, "Special")
+      .setParam(PAGE_SIZE, "3")
+      .execute()
+      .getInput();
+
+    // When pagination params ARE provided, they should be respected
+    assertThat(result)
+      .contains("\"paging\"")
+      .contains("\"total\":5")
+      .contains("\"pageSize\":3")
+      .contains("Special");
+  }
+
+  @Test
+  public void fail_when_page_is_zero() {
+    db.permissionTemplates().setDefaultTemplates(db.permissionTemplates().insertTemplate(), null, null);
+
+    TestRequest request = newRequest(wsTester)
+      .setParam(PAGE, "0")
+      .setParam(PAGE_SIZE, "10");
+    assertThatThrownBy(request::execute)
+      .isInstanceOf(IllegalArgumentException.class)
+      .hasMessageContaining("page index must be >= 1");
+  }
+
+  @Test
+  public void fail_when_page_is_negative() {
+    db.permissionTemplates().setDefaultTemplates(db.permissionTemplates().insertTemplate(), null, null);
+
+    TestRequest request = newRequest(wsTester)
+      .setParam(PAGE, "-1")
+      .setParam(PAGE_SIZE, "10");
+    assertThatThrownBy(request::execute)
+      .isInstanceOf(IllegalArgumentException.class)
+      .hasMessageContaining("page index must be >= 1");
+  }
+
+  @Test
+  public void return_only_count_when_page_size_is_zero() {
+    db.permissionTemplates().setDefaultTemplates(db.permissionTemplates().insertTemplate(), null, null);
+    for (int i = 0; i < 10; i++) {
+      insertTemplate(newPermissionTemplateDto()
+        .setName("Template " + i)
+        .setDescription("Template " + i));
+    }
+
+    String result = newRequest(wsTester)
+      .setParam(PAGE, "1")
+      .setParam(PAGE_SIZE, "0")
+      .execute()
+      .getInput();
+
+    // pageSize=0 should return no results but include the total count
+    assertThat(result)
+      .contains("\"paging\"")
+      .contains("\"pageSize\":0")
+      .contains("\"pageIndex\":1")
+      .contains("\"total\":11")
+      .contains("\"permissionTemplates\":[]");
+  }
+
+  @Test
+  public void backwards_compatibility_no_pagination_params_returns_all() {
+    db.permissionTemplates().setDefaultTemplates(db.permissionTemplates().insertTemplate(), null, null);
+    for (int i = 0; i < 5; i++) {
+      insertTemplate(newPermissionTemplateDto()
+        .setName("Template " + i)
+        .setDescription("Template " + i));
+    }
+
+    String result = newRequest(wsTester).execute().getInput();
+
+    // No pagination params = backwards compatible, returns all results, no paging info
+    assertThat(result)
+      .doesNotContain("\"paging\"")
+      .contains("Template 0")
+      .contains("Template 1")
+      .contains("Template 2")
+      .contains("Template 3")
+      .contains("Template 4");
+  }
+
+  @Test
+  public void return_only_count_when_only_page_size_zero_provided() {
+    db.permissionTemplates().setDefaultTemplates(db.permissionTemplates().insertTemplate(), null, null);
+    for (int i = 0; i < 10; i++) {
+      insertTemplate(newPermissionTemplateDto()
+        .setName("Template " + i)
+        .setDescription("Template " + i));
+    }
+
+    String result = newRequest(wsTester)
+      .setParam(PAGE_SIZE, "0")
+      .execute()
+      .getInput();
+
+    // pageSize=0 without page should use default page=1 and return count only
+    assertThat(result)
+      .contains("\"paging\"")
+      .contains("\"pageSize\":0")
+      .contains("\"pageIndex\":1")
+      .contains("\"total\":11")
+      .contains("\"permissionTemplates\":[]");
+  }
+
+  @Test
+  public void fail_when_page_size_is_negative() {
+    db.permissionTemplates().setDefaultTemplates(db.permissionTemplates().insertTemplate(), null, null);
+
+    TestRequest request = newRequest(wsTester)
+      .setParam(PAGE, "1")
+      .setParam(PAGE_SIZE, "-1");
+    assertThatThrownBy(request::execute)
+      .isInstanceOf(IllegalArgumentException.class)
+      .hasMessageContaining("Page size must be >= 0");
+  }
+
+  @Test
+  public void fail_when_page_size_exceeds_maximum() {
+    db.permissionTemplates().setDefaultTemplates(db.permissionTemplates().insertTemplate(), null, null);
+
+    TestRequest request = newRequest(wsTester)
+      .setParam(PAGE, "1")
+      .setParam(PAGE_SIZE, "501");
+    assertThatThrownBy(request::execute)
+      .isInstanceOf(IllegalArgumentException.class)
+      .hasMessageContaining("Page size must not exceed 500");
+  }
+
+  @Test
+  public void use_default_page_size_when_only_page_provided() {
+    db.permissionTemplates().setDefaultTemplates(db.permissionTemplates().insertTemplate(), null, null);
+    for (int i = 0; i < 10; i++) {
+      insertTemplate(newPermissionTemplateDto()
+        .setName("Template " + i)
+        .setDescription("Template " + i));
+    }
+
+    String result = newRequest(wsTester)
+      .setParam(PAGE, "1")
+      .execute()
+      .getInput();
+
+    assertThat(result)
+      .contains("\"paging\"")
+      .contains("\"pageSize\":100")
+      .contains("\"pageIndex\":1")
+      .contains("\"total\":11");
+  }
+
+  @Test
+  public void return_empty_results_when_page_beyond_available() {
+    db.permissionTemplates().setDefaultTemplates(db.permissionTemplates().insertTemplate(), null, null);
+    insertTemplate(newPermissionTemplateDto()
+      .setName("Template 1")
+      .setDescription("Template 1"));
+
+    String result = newRequest(wsTester)
+      .setParam(PAGE, "999")
+      .setParam(PAGE_SIZE, "10")
+      .execute()
+      .getInput();
+
+    assertThat(result)
+      .contains("\"paging\"")
+      .contains("\"pageSize\":10")
+      .contains("\"pageIndex\":999")
+      .contains("\"total\":2")
+      .contains("\"permissionTemplates\":[]");
+  }
+}

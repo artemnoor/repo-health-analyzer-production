@@ -1,0 +1,108 @@
+// Jest Snapshot v1, https://goo.gl/fbAQLP
+
+exports[`linter=shellcheck fixture=basic version=0.8.0 1`] = `
+{
+  "issues": [
+    {
+      "category": "CATEGORY_LINT",
+      "documentationUrl": "https://github.com/koalaman/shellcheck/wiki/SC2086",
+      "level": "LEVEL_LOW",
+      "location": {
+        "path": "basic.in.sh",
+        "range": {
+          "endColumn": 8,
+          "endLine": 4,
+          "startColumn": 6,
+          "startLine": 4,
+        },
+      },
+      "message": "Double quote to prevent globbing and word splitting.",
+      "mode": "MODE_BLOCK",
+      "ruleKey": "2086",
+      "snippet": "echo $x",
+      "snippetWithContext": "#!/bin/sh
+
+x = 1
+echo $x",
+      "suggestions": [
+        {
+          "replacements": [
+            {
+              "data": """,
+              "location": {
+                "path": "basic.in.sh",
+                "range": {
+                  "endColumn": 6,
+                  "endLine": 4,
+                  "startColumn": 6,
+                  "startLine": 4,
+                },
+              },
+            },
+            {
+              "data": """,
+              "location": {
+                "path": "basic.in.sh",
+                "range": {
+                  "endColumn": 8,
+                  "endLine": 4,
+                  "startColumn": 8,
+                  "startLine": 4,
+                },
+              },
+            },
+          ],
+          "source": "SUGGESTION_SOURCE_TOOL",
+        },
+      ],
+      "tool": "shellcheck",
+    },
+    {
+      "category": "CATEGORY_LINT",
+      "documentationUrl": "https://github.com/koalaman/shellcheck/wiki/SC2154",
+      "level": "LEVEL_MEDIUM",
+      "location": {
+        "path": "basic.in.sh",
+        "range": {
+          "endColumn": 8,
+          "endLine": 4,
+          "startColumn": 6,
+          "startLine": 4,
+        },
+      },
+      "message": "x is referenced but not assigned.",
+      "mode": "MODE_BLOCK",
+      "ruleKey": "2154",
+      "snippet": "echo $x",
+      "snippetWithContext": "#!/bin/sh
+
+x = 1
+echo $x",
+      "tool": "shellcheck",
+    },
+    {
+      "category": "CATEGORY_LINT",
+      "documentationUrl": "https://github.com/koalaman/shellcheck/wiki/SC2283",
+      "level": "LEVEL_HIGH",
+      "location": {
+        "path": "basic.in.sh",
+        "range": {
+          "endColumn": 4,
+          "endLine": 3,
+          "startColumn": 3,
+          "startLine": 3,
+        },
+      },
+      "message": "Remove spaces around = to assign (or use [ ] to compare, or quote '=' if literal).",
+      "mode": "MODE_BLOCK",
+      "ruleKey": "2283",
+      "snippet": "x = 1",
+      "snippetWithContext": "#!/bin/sh
+
+x = 1
+echo $x",
+      "tool": "shellcheck",
+    },
+  ],
+}
+`;

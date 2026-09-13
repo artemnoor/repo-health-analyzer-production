@@ -1,0 +1,14 @@
+config_version = "0"
+
+[plugins.definitions.multiple-package-filter-candidates]
+file_types = ["javascript"]
+latest_version = "0.10.0"
+known_good_version = "0.10.0"
+package_file_candidate = "package.json"
+package_file_candidate_filters = ["file-plugin", "plugin-dependency"]
+
+[plugins.definitions.multiple-package-filter-candidates.drivers.first]
+script = "exit 0"
+success_codes = [0]
+output = "pass_fail"
+suggested = "targets"

@@ -1,0 +1,22 @@
+config_version = "0"
+
+[plugins.definitions.black]
+runtime = "python"
+package = "black"
+file_types = ["python"]
+version_command = "black --version"
+
+[plugins.definitions.black.drivers.format]
+script = "black -q ${target}"
+success_codes = [0]
+output = "rewrite"
+cache_results = true
+batch = true
+driver_type = "formatter"
+
+[runtimes.enabled]
+python = "3.10.13"
+
+[[plugin]]
+name = "black"
+version = "24.1.1"

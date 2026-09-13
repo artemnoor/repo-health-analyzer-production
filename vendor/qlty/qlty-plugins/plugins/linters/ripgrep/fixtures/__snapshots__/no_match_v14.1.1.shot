@@ -1,0 +1,7 @@
+// Jest Snapshot v1, https://goo.gl/fbAQLP
+
+exports[`linter=ripgrep fixture=no_match version=14.1.1 1`] = `
+{
+  "issues": [],
+}
+`;

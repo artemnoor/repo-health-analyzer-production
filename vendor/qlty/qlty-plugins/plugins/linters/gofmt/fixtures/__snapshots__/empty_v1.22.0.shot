@@ -1,0 +1,7 @@
+// Jest Snapshot v1, https://goo.gl/fbAQLP
+
+exports[`linter=gofmt fixture=empty version=1.22.0 1`] = `
+{
+  "issues": [],
+}
+`;

@@ -1,0 +1,397 @@
+"""LanceDB-backed vector store (embedded, local file storage)."""
+
+from __future__ import annotations
+
+from repowise.core.providers.embedding.base import Embedder
+
+from ..search import _SNIPPET_LEN, SearchResult, snippet_around
+from ._base import STORED_SNIPPET_CHARS, VectorStore, iter_embed_chunks
+
+__all__ = ["STORED_SNIPPET_CHARS", "LanceDBVectorStore"]
+
+# DataFusion expands every literal in a large ``IN`` filter into native query
+# state. A several-thousand-path generation level can otherwise commit
+# gigabytes before returning even though the selected result is small.
+_SUMMARY_PATH_BATCH_SIZE = 100
+
+# ``STORED_SNIPPET_CHARS`` — how much of a page's content each row keeps — is
+# defined with the embed recipe and re-exported here so the historical import
+# path keeps working.
+#
+# A hit's evidence snippet should show the region the query matched, not the
+# page's opening line: on a generated page that opener is the same
+# ``## Overview`` paragraph every time. The full-text arm holds the whole page
+# at search time and can cut a window from it; this arm cannot, because what a
+# search sees was fixed when the row was written. So the row keeps enough
+# content for a window to exist inside it. A row written before the widening
+# holds 200 characters and simply windows to its opener.
+
+
+def _evidence(stored: str, query: str | None) -> str:
+    """The served snippet, cut from the wider text a row keeps.
+
+    With a query, a window centred on what it matched. Without one — the raw
+    vector path, which carries no question — the opener, at the width it had
+    before the stored column was widened.
+    """
+    if not stored:
+        return ""
+    if query:
+        return snippet_around(stored, query)
+    return stored[:_SNIPPET_LEN].rstrip()
+
+
+def _paths_in_filter(paths: list[str]) -> str:
+    """Build an SQL-injection-safe ``target_path IN (...)`` LanceDB filter.
+
+    LanceDB's ``.where()`` takes a DataFusion SQL string with no bind
+    parameters, so each path is quoted with the same quote-doubling escape
+    the single-path lookup uses.
+    """
+    quoted = ", ".join("'" + p.replace("'", "''") + "'" for p in paths)
+    return f"target_path IN ({quoted})"
+
+
+def _page_ids_in_filter(page_ids: list[str]) -> str:
+    """Build an SQL-injection-safe ``page_id IN (...)`` LanceDB filter.
+
+    Mirrors :func:`_paths_in_filter` but on the ``page_id`` column, using the
+    same quote-doubling escape as the single-id delete.
+    """
+    quoted = ", ".join("'" + p.replace("'", "''") + "'" for p in page_ids)
+    return f"page_id IN ({quoted})"
+
+
+class LanceDBVectorStore(VectorStore):
+    """Vector store backed by LanceDB (embedded, local file storage).
+
+    Requires the ``repowise-core[search]`` extra:
+        pip install repowise-core[search]
+
+    Data is stored in *db_path* (e.g. ``.repowise/lancedb/``).
+    The LanceDB table is created lazily on the first call to
+    :meth:`embed_and_upsert`.
+    """
+
+    persists_across_runs = True
+
+    _TABLE_NAME = "wiki_pages"
+
+    def __init__(self, db_path: str, embedder: Embedder, table_name: str | None = None) -> None:
+        self._db_path = db_path
+        self._embedder = embedder
+        self._table_name = table_name or self._TABLE_NAME
+        self._db = None
+        self._table = None
+
+    async def _ensure_connected(self) -> None:
+        if self._db is not None:
+            return
+        try:
+            import lancedb  # type: ignore[import]
+        except ImportError as exc:
+            raise RuntimeError(
+                "LanceDB is not installed. Install it with: pip install repowise-core[search]"
+            ) from exc
+
+        self._db = await lancedb.connect_async(self._db_path)
+        table_names = await self._db.table_names()
+        if self._table_name in table_names:
+            self._table = await self._db.open_table(self._table_name)
+        else:
+            self._table = None  # will be created on first upsert
+
+    @staticmethod
+    def _existing_vector_dim(schema) -> int | None:
+        """Return the fixed-length dimension of the ``vector`` field, or None.
+
+        Returns None when the field is absent or not a fixed-size list (in
+        which case we can't meaningfully compare dimensions).
+        """
+        try:
+            field = schema.field("vector")
+        except KeyError:
+            return None
+        list_size = getattr(field.type, "list_size", None)
+        # pyarrow uses ``list_size == -1`` for variable-length lists.
+        if isinstance(list_size, int) and list_size > 0:
+            return list_size
+        return None
+
+    async def _ensure_table(self, sample_vector: list[float]) -> None:
+        """Create the LanceDB table if it does not exist yet.
+
+        If a table already exists but its vector dimension differs from the
+        current embedder's output (e.g. the embedder was switched from
+        ``mock`` (dim 8) to ``openai`` (dim 1536) between reindexes), the stale
+        table is dropped and recreated. Otherwise every write would fail deep
+        inside LanceDB with an opaque IO error that never mentions dimensions.
+        """
+        try:
+            import pyarrow as pa  # type: ignore[import]
+        except ImportError as exc:
+            raise RuntimeError(
+                "pyarrow is required for LanceDBVectorStore. "
+                "It is installed automatically with lancedb."
+            ) from exc
+
+        dim = len(sample_vector)
+
+        if self._table is not None:
+            existing_dim = self._existing_vector_dim(await self._table.schema())
+            if existing_dim is None or existing_dim == dim:
+                return
+            # Embedder changed dimensions — the old vectors are unusable.
+            await self._db.drop_table(self._table_name)  # type: ignore[union-attr]
+            self._table = None
+
+        schema = pa.schema(
+            [
+                pa.field("page_id", pa.string()),
+                pa.field("vector", pa.list_(pa.float32(), dim)),
+                pa.field("title", pa.string()),
+                pa.field("page_type", pa.string()),
+                pa.field("target_path", pa.string()),
+                pa.field("content_snippet", pa.string()),
+            ]
+        )
+        self._table = await self._db.create_table(  # type: ignore[union-attr]
+            self._table_name, schema=schema, exist_ok=True
+        )
+
+    @staticmethod
+    def _row(page_id: str, vector: list[float], metadata: dict) -> dict:
+        content = str(metadata.get("content", ""))
+        return {
+            "page_id": page_id,
+            "vector": [float(v) for v in vector],
+            "title": str(metadata.get("title", "")),
+            "page_type": str(metadata.get("page_type", "")),
+            "target_path": str(metadata.get("target_path", "")),
+            "content_snippet": content[:STORED_SNIPPET_CHARS],
+        }
+
+    async def _upsert_rows(self, rows: list[dict]) -> None:
+        # merge_insert: upsert by page_id (LanceDB 0.12+)
+        try:
+            await (
+                self._table.merge_insert("page_id")  # type: ignore[union-attr]
+                .when_matched_update_all()
+                .when_not_matched_insert_all()
+                .execute(rows)
+            )
+        except AttributeError:
+            # Fallback for older LanceDB versions: delete + add
+            for row in rows:
+                safe_id = str(row["page_id"]).replace("'", "''")
+                await self._table.delete(f"page_id = '{safe_id}'")  # type: ignore[union-attr]
+            await self._table.add(rows)  # type: ignore[union-attr]
+
+    async def embed_and_upsert(self, page_id: str, text: str, metadata: dict) -> None:
+        await self._ensure_connected()
+        vectors = await self._embedder.embed([text])
+        vector = vectors[0]
+        await self._ensure_table(vector)
+        meta = {"content": text, **metadata}
+        await self._upsert_rows([self._row(page_id, vector, meta)])
+
+    async def embed_batch(self, items: list[tuple[str, str, dict]]) -> None:
+        """Embed and upsert in request-sized chunks with failure isolation.
+
+        One embedder call per :data:`EMBED_BATCH_MAX_ITEMS` items — a whole
+        generation level in a single request blew OpenAI's 300k-token cap
+        and silently lost every file-page embedding. A failed chunk no
+        longer sinks the rest; the summary error is raised at the end so
+        callers still see the loss.
+        """
+        if not items:
+            return
+        await self._ensure_connected()
+        failed = 0
+        last_exc: Exception | None = None
+        for chunk, texts in iter_embed_chunks(items):
+            try:
+                vectors = await self._embedder.embed(texts)
+                await self._ensure_table(vectors[0])
+                rows = [
+                    self._row(page_id, vector, {"content": text, **metadata})
+                    for (page_id, text, metadata), vector in zip(chunk, vectors, strict=True)
+                ]
+                await self._upsert_rows(rows)
+            except Exception as exc:  # isolate per chunk
+                failed += len(chunk)
+                last_exc = exc
+        if failed:
+            raise RuntimeError(
+                f"embed_batch: {failed}/{len(items)} items failed to embed"
+            ) from last_exc
+
+    async def _search_by_vector(
+        self, q_vec: list[float], limit: int, query: str | None = None
+    ) -> list[SearchResult]:
+        # Query with explicit cosine distance so ``_distance`` is a cosine
+        # distance (1 - cos); we return ``1 - _distance`` = cosine similarity.
+        # This makes the score semantics match the other backends
+        # (InMemory/pgvector both return cosine similarity, higher = better),
+        # so callers can apply a single similarity threshold uniformly.
+        query_builder = self._table.query().nearest_to(q_vec)  # type: ignore[union-attr]
+        if hasattr(query_builder, "distance_type"):
+            query_builder = query_builder.distance_type("cosine")
+        raw = await query_builder.limit(limit).to_list()
+
+        # A caller that came in by raw vector has no query text to centre on,
+        # so it gets the opener — at the width it always had. The stored
+        # column is now wider than the snippet it serves, and returning it
+        # whole would push ten times the text into a prompt.
+        return [
+            SearchResult(
+                page_id=r["page_id"],
+                title=r.get("title", ""),
+                page_type=r.get("page_type", ""),
+                target_path=r.get("target_path", ""),
+                score=1.0 - float(r.get("_distance", 1.0)),
+                snippet=_evidence(r.get("content_snippet", ""), query),
+                search_type="vector",
+            )
+            for r in raw
+        ]
+
+    async def upsert_vectors(self, items: list[tuple[str, list[float], dict]]) -> bool:
+        if not items:
+            return True
+        await self._ensure_connected()
+        await self._ensure_table([float(v) for v in items[0][1]])
+        rows = [
+            self._row(page_id, [float(v) for v in vector], metadata)
+            for page_id, vector, metadata in items
+        ]
+        await self._upsert_rows(rows)
+        return True
+
+    async def search(self, query: str, limit: int = 10) -> list[SearchResult]:
+        await self._ensure_connected()
+        if self._table is None:
+            return []
+
+        q_vecs = await self._embedder.embed([query])
+        return await self._search_by_vector([float(v) for v in q_vecs[0]], limit, query=query)
+
+    async def search_by_vector(self, vector: list[float], limit: int = 10) -> list[SearchResult]:
+        await self._ensure_connected()
+        if self._table is None:
+            return []
+        return await self._search_by_vector([float(v) for v in vector], limit)
+
+    async def search_many(self, queries: list[str], limit: int = 10) -> list[list[SearchResult]]:
+        """One embedder call for all queries; the vector lookups are local."""
+        if not queries:
+            return []
+        await self._ensure_connected()
+        if self._table is None:
+            return [[] for _ in queries]
+        q_vecs = await self._embedder.embed(list(queries))
+        out: list[list[SearchResult]] = []
+        for query, q_vec in zip(queries, q_vecs, strict=True):
+            try:
+                out.append(
+                    await self._search_by_vector([float(v) for v in q_vec], limit, query=query)
+                )
+            except Exception:
+                out.append([])
+        return out
+
+    async def delete(self, page_id: str) -> None:
+        await self._ensure_connected()
+        if self._table is not None:
+            safe_id = page_id.replace("'", "''")
+            await self._table.delete(f"page_id = '{safe_id}'")  # type: ignore[union-attr]
+
+    async def delete_many(self, page_ids: list[str]) -> None:
+        if not page_ids:
+            return
+        await self._ensure_connected()
+        if self._table is None:
+            return
+        # LanceDB's ``.where()`` has no bind params, so build a quoted IN
+        # predicate; chunk to keep the SQL string bounded.
+        for i in range(0, len(page_ids), 500):
+            batch = page_ids[i : i + 500]
+            await self._table.delete(_page_ids_in_filter(batch))  # type: ignore[union-attr]
+
+    async def close(self) -> None:
+        self._table = None
+        self._db = None
+
+    async def list_page_ids(self) -> set[str]:
+        await self._ensure_connected()
+        if self._table is None:
+            return set()
+        rows = await self._table.query().select(["page_id"]).to_list()  # type: ignore[union-attr]
+        return {r["page_id"] for r in rows}
+
+    async def get_page_summary_by_path(self, path: str) -> dict | None:
+        """Return {'summary': str, 'key_exports': list[str]} for a previously-indexed page, or None.
+
+        The summary is the opening of 'content_snippet'. That column holds more
+        than this now, because a search cuts an evidence window out of it, but
+        this text goes into a prompt — so it keeps the width it always had
+        rather than growing with the store behind it. 'key_exports' is not in
+        the schema, so it comes back empty; the caller only uses the summary.
+        """
+        await self._ensure_connected()
+        if self._table is None:
+            return None
+
+        safe_path = path.replace("'", "''")
+        try:
+            rows = (
+                await self._table.query()  # type: ignore[union-attr]
+                .where(f"target_path = '{safe_path}'")
+                .select(["content_snippet"])
+                .limit(1)
+                .to_list()
+            )
+        except Exception:
+            return None
+
+        if not rows:
+            return None
+
+        summary = str(rows[0].get("content_snippet") or "")[:_SNIPPET_LEN]
+        return {"summary": summary, "key_exports": []}
+
+    async def get_page_summaries_by_paths(self, paths: list[str]) -> dict[str, dict]:
+        """Read summaries with bounded ``IN``-filtered scans.
+
+        Mirrors the single-path semantics (first row per path wins, empty
+        summaries dropped, ``key_exports`` not stored in this schema). Batches
+        bound DataFusion's native query-plan allocation for large levels.
+        """
+        if not paths:
+            return {}
+        await self._ensure_connected()
+        if self._table is None:
+            return {}
+
+        out: dict[str, dict] = {}
+        unique_paths = list(dict.fromkeys(paths))
+        for index in range(0, len(unique_paths), _SUMMARY_PATH_BATCH_SIZE):
+            batch = unique_paths[index : index + _SUMMARY_PATH_BATCH_SIZE]
+            try:
+                rows = (
+                    await self._table.query()  # type: ignore[union-attr]
+                    .where(_paths_in_filter(batch))
+                    .select(["target_path", "content_snippet"])
+                    .to_list()
+                )
+            except Exception:
+                return {}
+
+            for row in rows:
+                target_path = str(row.get("target_path") or "")
+                if not target_path or target_path in out:
+                    continue
+                summary = str(row.get("content_snippet") or "")[:_SNIPPET_LEN]
+                if summary:
+                    out[target_path] = {"summary": summary, "key_exports": []}
+        return out

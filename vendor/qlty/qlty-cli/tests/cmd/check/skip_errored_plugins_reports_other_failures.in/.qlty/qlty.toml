@@ -1,0 +1,41 @@
+config_version = "0"
+
+[plugins.definitions.always_fail]
+file_types = ["javascript"]
+
+[plugins.definitions.always_fail.drivers.lint]
+script = "exit 1"
+success_codes = [0]
+output = "pass_fail"
+
+[plugins.definitions.always_pass]
+file_types = ["javascript"]
+
+[plugins.definitions.always_pass.drivers.lint]
+script = "exit 0"
+success_codes = [0]
+output = "pass_fail"
+
+[plugins.definitions.always_error]
+file_types = ["javascript"]
+
+[plugins.definitions.always_error.drivers.lint]
+script = "exit 1"
+success_codes = [0]
+
+[plugins.definitions.always_error.drivers.fails]
+script = "exit 1"
+success_codes = [0]
+output = "pass_fail"
+
+[[plugin]]
+name = "always_fail"
+version = "0.10.0"
+
+[[plugin]]
+name = "always_pass"
+version = "0.10.0"
+
+[[plugin]]
+name = "always_error"
+version = "0.10.0"

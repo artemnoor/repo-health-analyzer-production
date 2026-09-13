@@ -1,0 +1,26 @@
+{
+  "metadata": {},
+  "messages": [],
+  "invocations": [],
+  "issues": [],
+  "stats": [
+    {
+      "name": "example.py",
+      "fullyQualifiedName": "example.py",
+      "path": "example.py",
+      "kind": "COMPONENT_TYPE_FILE",
+      "language": "LANGUAGE_PYTHON",
+      "files": 1,
+      "classes": 1,
+      "functions": 1,
+      "fields": 0,
+      "lines": 5,
+      "codeLines": 4,
+      "commentLines": 1,
+      "blankLines": 0,
+      "complexity": 1,
+      "cyclomatic": 2,
+      "lcom4": 0
+    }
+  ]
+}

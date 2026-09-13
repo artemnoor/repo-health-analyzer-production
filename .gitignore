@@ -1,0 +1,167 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+build/
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
+/lib/
+/lib64/
+parts/
+sdist/
+var/
+wheels/
+share/python-wheels/
+*.egg-info/
+.installed.cfg
+*.egg
+
+# Virtual environments
+.venv/
+venv/
+ENV/
+env/
+# uv
+.uv/
+
+# Testing
+.tox/
+.nox/
+.coverage
+.coverage.*
+.cache
+nosetests.xml
+coverage.xml
+*.cover
+*.py,cover
+.hypothesis/
+.pytest_cache/
+cover/
+htmlcov/
+
+# mypy
+.mypy_cache/
+.dmypy.json
+dmypy.json
+
+# ruff
+.ruff_cache/
+
+# IDEs
+.idea/
+.vscode/
+*.swp
+*.swo
+*~
+
+# Node / Next.js
+node_modules/
+.next/
+.nuxt/
+out/
+.npm
+.eslintcache
+.parcel-cache
+*.tsbuildinfo
+next-env.d.ts
+
+# Environment variables
+.env
+.env.local
+.env.*.local
+!.env.example
+
+# repowise runtime data
+.repowise/
+!.repowise/mcp.json.example
+.repowise-workspace/
+.repowise-workspace.yaml
+
+# repowise API keys (local)
+.repowise/.env
+
+# Benchmark output (large-repo scale runs): keep the dir, ignore results
+bench/results/
+
+# Database
+*.db
+*.db-shm
+*.db-wal
+*.sqlite
+*.sqlite3
+
+# LanceDB
+lancedb/
+lancedb_data/
+*.lance
+
+# Logs
+*.log
+logs/
+
+# Docker
+docker-compose.override.yml
+
+# OS
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+Thumbs.db
+ehthumbs.db
+
+# Office temp / lock files
+~$*
+
+# Claude Code
+.claude/
+
+# Local agent/tooling state; keep the published repository focused on the app.
+.agents/
+.ai-factory/
+.ai-factory.json
+.claude-plugin/
+.codex/
+.playwright-cli/
+graphify-out/
+packages/web/test-results/
+
+# Repository Health Analyzer source snapshots and generated native outputs
+.sources/
+.venv/
+bin/
+vendor/**/target/
+vendor/**/build/
+vendor/**/.gradle/
+vendor/**/.pytest_cache/
+vendor/**/__pycache__/
+# Junctions from the upstream source snapshots cannot be indexed reliably on Windows.
+vendor/chaoss/sirmordred/report
+vendor/chaoss/sirmordred/tests/menu.yaml
+vendor/qlty/plugins
+vendor/sonarqube/logs.sh
+vendor/sonarqube/start.sh
+vendor/sonarqube/stop.sh
+# Windows device-name paths from upstream repositories are not addressable by Git.
+vendor/**/aux
+vendor/**/aux.*
+vendor/**/con
+vendor/**/con.*
+vendor/**/nul
+vendor/**/nul.*
+vendor/**/prn
+vendor/**/prn.*
+vendor/**/com[1-9]
+vendor/**/com[1-9].*
+vendor/**/lpt[1-9]
+vendor/**/lpt[1-9].*
+# Keep upstream report renderers; only the explicit Windows junction path
+# above remains excluded.
+.health-cache/
+artifacts/

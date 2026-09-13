@@ -1,0 +1,40 @@
+config_version = "0"
+
+[plugins.definitions.multi_driver]
+file_types = ["javascript"]
+known_good_version = "0.10.0"
+
+[[plugins.definitions.multi_driver.drivers.lint.version]]
+version_matcher = ">=0.10.0"
+script = "exit 0"
+success_codes = [0]
+output = "pass_fail" # pass_fail allows us to test without running an actual driver and parser
+
+[[plugins.definitions.multi_driver.drivers.lint.version]]
+version_matcher = "<=0.9.0"
+script = "exit 1"
+success_codes = [0]
+output = "pass_fail" # pass_fail allows us to test without running an actual driver and parser
+
+[[plugin]]
+name = "multi_driver"
+
+[plugins.definitions.multi_driver_with_issue]
+file_types = ["javascript"]
+known_good_version = "0.10.0"
+
+[[plugins.definitions.multi_driver_with_issue.drivers.lint.version]]
+version_matcher = ">=0.10.0"
+script = "exit 0"
+success_codes = [0]
+output = "pass_fail" # pass_fail allows us to test without running an actual driver and parser
+
+[[plugins.definitions.multi_driver_with_issue.drivers.lint.version]]
+version_matcher = "<=0.9.0"
+script = "exit 1" # causes issue
+success_codes = [0]
+output = "pass_fail" # pass_fail allows us to test without running an actual driver and parser
+
+[[plugin]]
+name = "multi_driver_with_issue"
+version = "0.9.0"

@@ -1,0 +1,65 @@
+[tool.poetry]
+name = "grimoire-elk"
+version = "1.8.0"
+description = "GrimoireELK processes and stores software development data to ElasticSearch"
+readme = "README.md"
+authors = [
+   "GrimoireLab Developers"
+]
+repository = "https://github.com/chaoss/grimoirelab-elk"
+keywords = ["development repositories analytics"]
+license = "GPL-3.0-or-later"
+classifiers=[
+    'Development Status :: 5 - Production/Stable',
+    'Intended Audience :: Developers',
+    'Topic :: Software Development',
+    'License :: OSI Approved :: GNU General Public License v3 or later (GPLv3+)',
+    'Programming Language :: Python :: 3',
+]
+
+packages = [
+   { include = "grimoire_elk"},
+   { include = "tests", format = "sdist" },
+]
+
+include = [
+    { path = "grimoire_elk/enriched/mappings/*.json"},
+    { path = "AUTHORS", format = "sdist" },
+    { path = "NEWS", format = "sdist" },
+    { path = "README.md", format = "sdist" },
+]
+
+[tool.poetry.urls]
+"Bug Tracker" = "https://github.com/chaoss/grimoirelab-elk/issues"
+
+[tool.poetry.scripts]
+p2o = 'utils.p2o:main'
+gelk_mapping = 'utils.gelk_mapping:main'
+
+[tool.poetry.dependencies]
+python = "^3.10"
+
+opensearch-py = "^3.0.0"
+requests = "^2.7.0"
+urllib3 = ">=1.26,<3"
+geopy = "^2.0.0"
+pandas = ">=0.22,<3"
+statsmodels = ">=0.9.0"
+sortinghat = { version = ">=0.7.20", allow-prereleases = true}
+grimoirelab-toolkit = { version = ">=0.3", allow-prereleases = true}
+cereslib = { version = ">=0.3", allow-prereleases = true}
+graal = { version = ">=0.3", allow-prereleases = true}
+perceval = { version = ">=0.19", allow-prereleases = true }
+perceval-mozilla = { version = ">=0.3", allow-prereleases = true}
+perceval-opnfv = { version = ">=0.2", allow-prereleases = true}
+perceval-puppet = { version = ">=0.2", allow-prereleases = true}
+perceval-weblate = { version = ">=0.2", allow-prereleases = true}
+
+[tool.poetry.group.dev.dependencies]
+httpretty = "^1.1.4"
+flake8 = "^7.1.1"
+coverage = "^7.2.3"
+
+[build-system]
+requires = ["poetry-core>=1.0.0"]
+build-backend = "poetry.core.masonry.api"

@@ -1,0 +1,10 @@
+[
+  {
+    "tool": "plugin_with_config",
+    "ruleKey": "fail",
+    "message": "plugin_with_config failed",
+    "level": "LEVEL_HIGH",
+    "category": "CATEGORY_LINT",
+    "mode": "MODE_BLOCK"
+  }
+]

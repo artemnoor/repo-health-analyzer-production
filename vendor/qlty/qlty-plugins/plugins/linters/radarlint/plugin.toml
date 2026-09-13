@@ -1,0 +1,21 @@
+config_version = "0"
+
+[plugins.definitions.radarlint]
+runnable_archive_url = "https://radarlint-releases.s3.amazonaws.com/radarlint/v${version}/radarlint.tar.gz"
+download_type = "targz"
+strip_components = 0
+runtime = "java"
+latest_version = "1.0.1"
+known_good_version = "1.0.1"
+description = "Java linter"
+file_types = ["java"]
+
+[plugins.definitions.radarlint.drivers.lint-java]
+script = "java -jar ${linter}/radarlint.jar ${target}"
+success_codes = [0]
+output = "stdout"
+output_format = "radarlint"
+output_missing = "parse"
+batch = true
+cache_results = true
+suggested = "never"

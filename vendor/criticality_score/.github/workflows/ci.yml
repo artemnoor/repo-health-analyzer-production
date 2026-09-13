@@ -1,0 +1,44 @@
+name: "Continuous Integration"
+
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+
+permissions: read-all
+
+jobs:
+  run-tests:
+    strategy:
+      matrix:
+        os: [ubuntu-latest, windows-latest]
+    runs-on: ${{ matrix.os }}
+    steps:
+    - uses: actions/checkout@692973e3d937129bcbf40652eb9f2f61becf3332
+    - uses: actions/setup-go@0a12ed9d6a96ab950c8f026ed9f722fe0da7ef32
+      with:
+          go-version-file: 'go.mod'
+    - name: Run tests
+      run: make test/unit
+      env:
+        GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+  run-linter:
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@692973e3d937129bcbf40652eb9f2f61becf3332
+    - uses: actions/setup-go@0a12ed9d6a96ab950c8f026ed9f722fe0da7ef32
+      with:
+          go-version-file: 'tools/go.mod'
+    - name: golangci-lint
+      uses: golangci/golangci-lint-action@1481404843c368bc19ca9406f87d6e0fc97bdcfd
+      with:
+          args: --timeout=30m
+  check-scorecard-version:
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@692973e3d937129bcbf40652eb9f2f61becf3332
+    - name: Run tests
+      run: make test/scorecard-version
+      env:
+        GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}

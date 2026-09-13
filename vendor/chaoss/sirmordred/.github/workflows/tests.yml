@@ -1,0 +1,98 @@
+name: tests
+
+on:
+  push:
+    branches:
+      - '**'
+    tags:
+      - '!**'
+  pull_request:
+    branches:
+      - '**'
+
+jobs:
+  tests:
+    name: Python ${{ matrix.python-version }} - OpenSearch ${{ matrix.opensearch-version }}
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        python-version: [ "3.10", "3.11", "3.12" ]
+        opensearch-version: [ "2", "3" ]
+    services:
+      mysql:
+        image: mariadb:11.8
+        env:
+          MYSQL_ROOT_PASSWORD: root
+        ports:
+          - 3306:3306
+        options: >-
+          --health-cmd="healthcheck.sh --connect --innodb_initialized"
+          --health-interval=10s
+          --health-timeout=5s
+          --health-retries=3
+      valkey:
+        image: valkey/valkey:8
+        ports:
+          - 6379:6379
+        options: --health-cmd="valkey-cli ping" --health-interval 10s --health-timeout 5s --health-retries 5
+      opensearch:
+        image: opensearchproject/opensearch:${{ matrix.opensearch-version }}
+        env:
+          discovery.type: single-node
+          DISABLE_SECURITY_PLUGIN: "true"
+        ports:
+          - 9200:9200
+          - 9300:9300
+        options: >-
+          --health-cmd="curl -fsSL http://localhost:9200/_cat/health?h=status | grep -E '^(green|yellow)$'"
+          --health-interval=10s
+          --health-timeout=5s
+          --health-retries=12
+
+    steps:
+    - name: Checkout
+      uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+      
+    - name: Set up Python ${{ matrix.python-version }}
+      uses: actions/setup-python@a309ff8b426b58ec0e2a45f0f869d46889d02405 # v6.2.0
+      with:
+        python-version: ${{ matrix.python-version }}
+
+    - name: Install and set up Poetry
+      run: |
+        pipx install poetry
+
+    - name: Install dependencies
+      run: |
+        poetry install -vvv
+        poetry run pip install -r requirements_dev.txt
+
+    - name: Run Sortinghat Server
+      env:
+        SORTINGHAT_SECRET_KEY: "my-secret-key"
+        SORTINGHAT_DB_DATABASE: "test_sh"
+        SORTINGHAT_DB_PASSWORD: "root"
+        SORTINGHAT_SUPERUSER_USERNAME: "admin"
+        SORTINGHAT_SUPERUSER_PASSWORD: "admin"
+        DJANGO_SETTINGS_MODULE: "sortinghat.config.settings"
+      run: |
+        poetry run sortinghat-admin --config sortinghat.config.settings setup --no-interactive
+        poetry run django-admin runserver &
+        poetry run sortinghatw --config sortinghat.config.settings &
+
+    - name: Lint with flake8
+      run: |
+        poetry run flake8
+
+    - name: Tests and Coverage
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      run: |
+        cd tests
+        poetry run coverage run --source=sirmordred run_tests.py
+    - name: Coveralls
+      uses: coverallsapp/github-action@643bc377ffa44ace6394b2b5d0d3950076de9f63 # v2.3.0
+      with:
+        coverage-reporter-version: "v0.6.9"
+        flag-name: run ${{ join(matrix.*, ' - ') }}
+        parallel: true2

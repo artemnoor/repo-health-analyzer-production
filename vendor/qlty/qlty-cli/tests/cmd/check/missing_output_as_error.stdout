@@ -1,0 +1,5 @@
+ ERRORS: 1 
+
+Plugin  Result  Message                      Debug File
+exists  Error   Exited with code 0 in [..].[..]s  .qlty/out/invoke-[..].yaml
+        [..]The plugin crashed for some reason[..]

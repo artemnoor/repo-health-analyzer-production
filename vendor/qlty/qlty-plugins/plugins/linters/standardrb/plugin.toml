@@ -1,0 +1,31 @@
+config_version = "0"
+
+[plugins.definitions.standardrb]
+runtime = "ruby"
+package = "standard"
+file_types = ["ruby", "gemspec"]
+latest_version = "1.52.0"
+known_good_version = "1.52.0"
+version_command = "standardrb --version"
+config_files = [".standard.yml"]
+description = "Ruby linter and code formatter"
+
+[plugins.definitions.standardrb.drivers.lint]
+script = "standardrb ${target} --format json"
+success_codes = [0, 1]
+output = "stdout"
+# it uses the same output format as rubocop
+output_format = "rubocop"
+batch = true
+cache_results = true
+suggested = "config"
+output_missing = "parse"
+
+[plugins.definitions.standardrb.drivers.format]
+script = "standardrb ${target} --fix"
+success_codes = [0, 1]
+output = "rewrite"
+cache_results = true
+batch = true
+driver_type = "formatter"
+suggested = "config"

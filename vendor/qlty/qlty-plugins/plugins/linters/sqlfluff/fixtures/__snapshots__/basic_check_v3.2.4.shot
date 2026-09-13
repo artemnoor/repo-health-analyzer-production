@@ -1,0 +1,620 @@
+// Jest Snapshot v1, https://goo.gl/fbAQLP
+
+exports[`linter=sqlfluff fixture=basic_check version=3.2.4 1`] = `
+{
+  "issues": [
+    {
+      "category": "CATEGORY_LINT",
+      "level": "LEVEL_MEDIUM",
+      "location": {
+        "path": "basic_check.in.sql",
+        "range": {
+          "endColumn": 13,
+          "endLine": 1,
+          "startColumn": 12,
+          "startLine": 1,
+        },
+      },
+      "message": "Column expression without alias. Use explicit \`AS\` clause.",
+      "mode": "MODE_BLOCK",
+      "ruleKey": "AL03",
+      "snippet": "SeLEct  *, 1, blah as  fOO  from mySchema.myTable",
+      "snippetWithContext": "SeLEct  *, 1, blah as  fOO  from mySchema.myTable",
+      "tool": "sqlfluff",
+    },
+    {
+      "category": "CATEGORY_LINT",
+      "level": "LEVEL_MEDIUM",
+      "location": {
+        "path": "basic_check.in.sql",
+        "range": {
+          "endColumn": 50,
+          "endLine": 1,
+          "startColumn": 1,
+          "startLine": 1,
+        },
+      },
+      "message": "Query produces an unknown number of result columns.",
+      "mode": "MODE_BLOCK",
+      "ruleKey": "AM04",
+      "snippet": "SeLEct  *, 1, blah as  fOO  from mySchema.myTable",
+      "snippetWithContext": "SeLEct  *, 1, blah as  fOO  from mySchema.myTable",
+      "tool": "sqlfluff",
+    },
+    {
+      "category": "CATEGORY_LINT",
+      "level": "LEVEL_MEDIUM",
+      "location": {
+        "path": "basic_check.in.sql",
+        "range": {
+          "endColumn": 7,
+          "endLine": 1,
+          "startColumn": 1,
+          "startLine": 1,
+        },
+      },
+      "message": "Keywords must be consistently upper case.",
+      "mode": "MODE_BLOCK",
+      "ruleKey": "CP01",
+      "snippet": "SeLEct  *, 1, blah as  fOO  from mySchema.myTable",
+      "snippetWithContext": "SeLEct  *, 1, blah as  fOO  from mySchema.myTable",
+      "suggestions": [
+        {
+          "patch": "--- original
++++ modified
+@@ -1 +1 @@
+-SeLEct  *, 1, blah as  fOO  from mySchema.myTable
++SELECT  *, 1, blah as  fOO  from mySchema.myTable
+",
+          "replacements": [
+            {
+              "data": "SELECT",
+              "location": {
+                "path": "basic_check.in.sql",
+                "range": {
+                  "endByte": 6,
+                  "endColumn": 7,
+                  "endLine": 1,
+                  "startByte": 0,
+                  "startColumn": 1,
+                  "startLine": 1,
+                },
+              },
+            },
+          ],
+          "source": "SUGGESTION_SOURCE_TOOL",
+        },
+      ],
+      "tool": "sqlfluff",
+    },
+    {
+      "category": "CATEGORY_LINT",
+      "level": "LEVEL_MEDIUM",
+      "location": {
+        "path": "basic_check.in.sql",
+        "range": {
+          "endColumn": 22,
+          "endLine": 1,
+          "startColumn": 20,
+          "startLine": 1,
+        },
+      },
+      "message": "Keywords must be consistently upper case.",
+      "mode": "MODE_BLOCK",
+      "ruleKey": "CP01",
+      "snippet": "SeLEct  *, 1, blah as  fOO  from mySchema.myTable",
+      "snippetWithContext": "SeLEct  *, 1, blah as  fOO  from mySchema.myTable",
+      "suggestions": [
+        {
+          "patch": "--- original
++++ modified
+@@ -1 +1 @@
+-SeLEct  *, 1, blah as  fOO  from mySchema.myTable
++SeLEct  *, 1, blah AS  fOO  from mySchema.myTable
+",
+          "replacements": [
+            {
+              "data": "AS",
+              "location": {
+                "path": "basic_check.in.sql",
+                "range": {
+                  "endByte": 21,
+                  "endColumn": 22,
+                  "endLine": 1,
+                  "startByte": 19,
+                  "startColumn": 20,
+                  "startLine": 1,
+                },
+              },
+            },
+          ],
+          "source": "SUGGESTION_SOURCE_TOOL",
+        },
+      ],
+      "tool": "sqlfluff",
+    },
+    {
+      "category": "CATEGORY_LINT",
+      "level": "LEVEL_MEDIUM",
+      "location": {
+        "path": "basic_check.in.sql",
+        "range": {
+          "endColumn": 33,
+          "endLine": 1,
+          "startColumn": 29,
+          "startLine": 1,
+        },
+      },
+      "message": "Keywords must be consistently upper case.",
+      "mode": "MODE_BLOCK",
+      "ruleKey": "CP01",
+      "snippet": "SeLEct  *, 1, blah as  fOO  from mySchema.myTable",
+      "snippetWithContext": "SeLEct  *, 1, blah as  fOO  from mySchema.myTable",
+      "suggestions": [
+        {
+          "patch": "--- original
++++ modified
+@@ -1 +1 @@
+-SeLEct  *, 1, blah as  fOO  from mySchema.myTable
++SeLEct  *, 1, blah as  fOO  FROM mySchema.myTable
+",
+          "replacements": [
+            {
+              "data": "FROM",
+              "location": {
+                "path": "basic_check.in.sql",
+                "range": {
+                  "endByte": 32,
+                  "endColumn": 33,
+                  "endLine": 1,
+                  "startByte": 28,
+                  "startColumn": 29,
+                  "startLine": 1,
+                },
+              },
+            },
+          ],
+          "source": "SUGGESTION_SOURCE_TOOL",
+        },
+      ],
+      "tool": "sqlfluff",
+    },
+    {
+      "category": "CATEGORY_LINT",
+      "level": "LEVEL_MEDIUM",
+      "location": {
+        "path": "basic_check.in.sql",
+        "range": {
+          "endColumn": 27,
+          "endLine": 1,
+          "startColumn": 24,
+          "startLine": 1,
+        },
+      },
+      "message": "Unquoted identifiers must be consistently lower case.",
+      "mode": "MODE_BLOCK",
+      "ruleKey": "CP02",
+      "snippet": "SeLEct  *, 1, blah as  fOO  from mySchema.myTable",
+      "snippetWithContext": "SeLEct  *, 1, blah as  fOO  from mySchema.myTable",
+      "suggestions": [
+        {
+          "patch": "--- original
++++ modified
+@@ -1 +1 @@
+-SeLEct  *, 1, blah as  fOO  from mySchema.myTable
++SeLEct  *, 1, blah as  foo  from mySchema.myTable
+",
+          "replacements": [
+            {
+              "data": "foo",
+              "location": {
+                "path": "basic_check.in.sql",
+                "range": {
+                  "endByte": 26,
+                  "endColumn": 27,
+                  "endLine": 1,
+                  "startByte": 23,
+                  "startColumn": 24,
+                  "startLine": 1,
+                },
+              },
+            },
+          ],
+          "source": "SUGGESTION_SOURCE_TOOL",
+        },
+      ],
+      "tool": "sqlfluff",
+    },
+    {
+      "category": "CATEGORY_LINT",
+      "level": "LEVEL_MEDIUM",
+      "location": {
+        "path": "basic_check.in.sql",
+        "range": {
+          "endColumn": 42,
+          "endLine": 1,
+          "startColumn": 34,
+          "startLine": 1,
+        },
+      },
+      "message": "Unquoted identifiers must be consistently lower case.",
+      "mode": "MODE_BLOCK",
+      "ruleKey": "CP02",
+      "snippet": "SeLEct  *, 1, blah as  fOO  from mySchema.myTable",
+      "snippetWithContext": "SeLEct  *, 1, blah as  fOO  from mySchema.myTable",
+      "suggestions": [
+        {
+          "patch": "--- original
++++ modified
+@@ -1 +1 @@
+-SeLEct  *, 1, blah as  fOO  from mySchema.myTable
++SeLEct  *, 1, blah as  fOO  from myschema.myTable
+",
+          "replacements": [
+            {
+              "data": "myschema",
+              "location": {
+                "path": "basic_check.in.sql",
+                "range": {
+                  "endByte": 41,
+                  "endColumn": 42,
+                  "endLine": 1,
+                  "startByte": 33,
+                  "startColumn": 34,
+                  "startLine": 1,
+                },
+              },
+            },
+          ],
+          "source": "SUGGESTION_SOURCE_TOOL",
+        },
+      ],
+      "tool": "sqlfluff",
+    },
+    {
+      "category": "CATEGORY_LINT",
+      "level": "LEVEL_MEDIUM",
+      "location": {
+        "path": "basic_check.in.sql",
+        "range": {
+          "endColumn": 50,
+          "endLine": 1,
+          "startColumn": 43,
+          "startLine": 1,
+        },
+      },
+      "message": "Unquoted identifiers must be consistently lower case.",
+      "mode": "MODE_BLOCK",
+      "ruleKey": "CP02",
+      "snippet": "SeLEct  *, 1, blah as  fOO  from mySchema.myTable",
+      "snippetWithContext": "SeLEct  *, 1, blah as  fOO  from mySchema.myTable",
+      "suggestions": [
+        {
+          "patch": "--- original
++++ modified
+@@ -1 +1 @@
+-SeLEct  *, 1, blah as  fOO  from mySchema.myTable
++SeLEct  *, 1, blah as  fOO  from mySchema.mytable
+",
+          "replacements": [
+            {
+              "data": "mytable",
+              "location": {
+                "path": "basic_check.in.sql",
+                "range": {
+                  "endByte": 49,
+                  "endColumn": 50,
+                  "endLine": 1,
+                  "startByte": 42,
+                  "startColumn": 43,
+                  "startLine": 1,
+                },
+              },
+            },
+          ],
+          "source": "SUGGESTION_SOURCE_TOOL",
+        },
+      ],
+      "tool": "sqlfluff",
+    },
+    {
+      "category": "CATEGORY_LINT",
+      "level": "LEVEL_MEDIUM",
+      "location": {
+        "path": "basic_check.in.sql",
+        "range": {
+          "endColumn": 29,
+          "endLine": 1,
+          "startColumn": 27,
+          "startLine": 1,
+        },
+      },
+      "message": "Expected only single space before 'from' keyword. Found '  '.",
+      "mode": "MODE_BLOCK",
+      "ruleKey": "LT01",
+      "snippet": "SeLEct  *, 1, blah as  fOO  from mySchema.myTable",
+      "snippetWithContext": "SeLEct  *, 1, blah as  fOO  from mySchema.myTable",
+      "suggestions": [
+        {
+          "patch": "--- original
++++ modified
+@@ -1 +1 @@
+-SeLEct  *, 1, blah as  fOO  from mySchema.myTable
++SeLEct  *, 1, blah as  fOO from mySchema.myTable
+",
+          "replacements": [
+            {
+              "data": " ",
+              "location": {
+                "path": "basic_check.in.sql",
+                "range": {
+                  "endByte": 28,
+                  "endColumn": 29,
+                  "endLine": 1,
+                  "startByte": 26,
+                  "startColumn": 27,
+                  "startLine": 1,
+                },
+              },
+            },
+          ],
+          "source": "SUGGESTION_SOURCE_TOOL",
+        },
+      ],
+      "tool": "sqlfluff",
+    },
+    {
+      "category": "CATEGORY_LINT",
+      "level": "LEVEL_MEDIUM",
+      "location": {
+        "path": "basic_check.in.sql",
+        "range": {
+          "endColumn": 24,
+          "endLine": 1,
+          "startColumn": 22,
+          "startLine": 1,
+        },
+      },
+      "message": "Expected only single space before naked identifier. Found '  '.",
+      "mode": "MODE_BLOCK",
+      "ruleKey": "LT01",
+      "snippet": "SeLEct  *, 1, blah as  fOO  from mySchema.myTable",
+      "snippetWithContext": "SeLEct  *, 1, blah as  fOO  from mySchema.myTable",
+      "suggestions": [
+        {
+          "patch": "--- original
++++ modified
+@@ -1 +1 @@
+-SeLEct  *, 1, blah as  fOO  from mySchema.myTable
++SeLEct  *, 1, blah as fOO  from mySchema.myTable
+",
+          "replacements": [
+            {
+              "data": " ",
+              "location": {
+                "path": "basic_check.in.sql",
+                "range": {
+                  "endByte": 23,
+                  "endColumn": 24,
+                  "endLine": 1,
+                  "startByte": 21,
+                  "startColumn": 22,
+                  "startLine": 1,
+                },
+              },
+            },
+          ],
+          "source": "SUGGESTION_SOURCE_TOOL",
+        },
+      ],
+      "tool": "sqlfluff",
+    },
+    {
+      "category": "CATEGORY_LINT",
+      "level": "LEVEL_MEDIUM",
+      "location": {
+        "path": "basic_check.in.sql",
+        "range": {
+          "endColumn": 9,
+          "endLine": 1,
+          "startColumn": 7,
+          "startLine": 1,
+        },
+      },
+      "message": "Expected only single space before star '*'. Found '  '.",
+      "mode": "MODE_BLOCK",
+      "ruleKey": "LT01",
+      "snippet": "SeLEct  *, 1, blah as  fOO  from mySchema.myTable",
+      "snippetWithContext": "SeLEct  *, 1, blah as  fOO  from mySchema.myTable",
+      "suggestions": [
+        {
+          "patch": "--- original
++++ modified
+@@ -1 +1 @@
+-SeLEct  *, 1, blah as  fOO  from mySchema.myTable
++SeLEct *, 1, blah as  fOO  from mySchema.myTable
+",
+          "replacements": [
+            {
+              "data": " ",
+              "location": {
+                "path": "basic_check.in.sql",
+                "range": {
+                  "endByte": 8,
+                  "endColumn": 9,
+                  "endLine": 1,
+                  "startByte": 6,
+                  "startColumn": 7,
+                  "startLine": 1,
+                },
+              },
+            },
+          ],
+          "source": "SUGGESTION_SOURCE_TOOL",
+        },
+      ],
+      "tool": "sqlfluff",
+    },
+    {
+      "category": "CATEGORY_LINT",
+      "level": "LEVEL_MEDIUM",
+      "location": {
+        "path": "basic_check.in.sql",
+        "range": {
+          "endColumn": 27,
+          "endLine": 1,
+          "startColumn": 1,
+          "startLine": 1,
+        },
+      },
+      "message": "Select targets should be on a new line unless there is only one select target.",
+      "mode": "MODE_BLOCK",
+      "ruleKey": "LT09",
+      "snippet": "SeLEct  *, 1, blah as  fOO  from mySchema.myTable",
+      "snippetWithContext": "SeLEct  *, 1, blah as  fOO  from mySchema.myTable",
+      "suggestions": [
+        {
+          "patch": "--- original
++++ modified
+@@ -1 +1,5 @@
+-SeLEct  *, 1, blah as  fOO  from mySchema.myTable
++SeLEct
++*,
++1,
++blah as  fOO
++from mySchema.myTable
+",
+          "replacements": [
+            {
+              "location": {
+                "path": "basic_check.in.sql",
+                "range": {
+                  "endByte": 8,
+                  "endColumn": 9,
+                  "endLine": 1,
+                  "startByte": 6,
+                  "startColumn": 7,
+                  "startLine": 1,
+                },
+              },
+            },
+            {
+              "data": "
+",
+              "location": {
+                "path": "basic_check.in.sql",
+                "range": {
+                  "endByte": 8,
+                  "endColumn": 9,
+                  "endLine": 1,
+                  "startByte": 8,
+                  "startColumn": 9,
+                  "startLine": 1,
+                },
+              },
+            },
+            {
+              "location": {
+                "path": "basic_check.in.sql",
+                "range": {
+                  "endByte": 11,
+                  "endColumn": 12,
+                  "endLine": 1,
+                  "startByte": 10,
+                  "startColumn": 11,
+                  "startLine": 1,
+                },
+              },
+            },
+            {
+              "data": "
+",
+              "location": {
+                "path": "basic_check.in.sql",
+                "range": {
+                  "endByte": 11,
+                  "endColumn": 12,
+                  "endLine": 1,
+                  "startByte": 11,
+                  "startColumn": 12,
+                  "startLine": 1,
+                },
+              },
+            },
+            {
+              "location": {
+                "path": "basic_check.in.sql",
+                "range": {
+                  "endByte": 14,
+                  "endColumn": 15,
+                  "endLine": 1,
+                  "startByte": 13,
+                  "startColumn": 14,
+                  "startLine": 1,
+                },
+              },
+            },
+            {
+              "data": "
+",
+              "location": {
+                "path": "basic_check.in.sql",
+                "range": {
+                  "endByte": 14,
+                  "endColumn": 15,
+                  "endLine": 1,
+                  "startByte": 14,
+                  "startColumn": 15,
+                  "startLine": 1,
+                },
+              },
+            },
+            {
+              "location": {
+                "path": "basic_check.in.sql",
+                "range": {
+                  "endByte": 28,
+                  "endColumn": 29,
+                  "endLine": 1,
+                  "startByte": 26,
+                  "startColumn": 27,
+                  "startLine": 1,
+                },
+              },
+            },
+            {
+              "data": "
+",
+              "location": {
+                "path": "basic_check.in.sql",
+                "range": {
+                  "endByte": 28,
+                  "endColumn": 29,
+                  "endLine": 1,
+                  "startByte": 28,
+                  "startColumn": 29,
+                  "startLine": 1,
+                },
+              },
+            },
+          ],
+          "source": "SUGGESTION_SOURCE_TOOL",
+        },
+      ],
+      "tool": "sqlfluff",
+    },
+    {
+      "category": "CATEGORY_STYLE",
+      "level": "LEVEL_FMT",
+      "location": {
+        "path": "basic_check.in.sql",
+      },
+      "message": "Incorrect formatting, autoformat by running \`qlty fmt\`.",
+      "mode": "MODE_BLOCK",
+      "onAddedLine": true,
+      "ruleKey": "fmt",
+      "tool": "sqlfluff",
+    },
+  ],
+}
+`;

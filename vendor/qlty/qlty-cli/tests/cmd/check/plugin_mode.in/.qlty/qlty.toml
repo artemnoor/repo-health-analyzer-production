@@ -1,0 +1,56 @@
+config_version = "0"
+
+[plugins.definitions.monitor]
+file_types = ["shell"]
+
+[plugins.definitions.monitor.drivers.lint]
+script = "false"
+success_codes = [0]
+output = "pass_fail"
+batch = true
+
+[plugins.definitions.block_by_default]
+file_types = ["shell"]
+
+[plugins.definitions.block_by_default.drivers.lint]
+script = "false"
+success_codes = [0]
+output = "pass_fail"
+batch = true
+
+[plugins.definitions.disabled]
+file_types = ["shell"]
+
+[plugins.definitions.disabled.drivers.lint]
+script = "false"
+success_codes = [0]
+output = "pass_fail"
+batch = true
+
+[plugins.definitions.comment]
+file_types = ["shell"]
+
+[plugins.definitions.comment.drivers.lint]
+script = "false"
+success_codes = [0]
+output = "pass_fail"
+batch = true
+
+[[plugin]]
+name = "monitor"
+version = "1.0.0"
+mode = "monitor"
+
+[[plugin]]
+name = "disabled"
+version = "1.0.0"
+mode = "disabled"
+
+[[plugin]]
+name = "comment"
+version = "1.0.0"
+mode = "comment"
+
+[[plugin]]
+name = "block_by_default"
+version = "1.0.0"

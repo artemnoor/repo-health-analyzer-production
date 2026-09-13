@@ -1,0 +1,32 @@
+{
+  "projects": [
+    {
+      "name": "ossf-scorecard",
+      "main_repo": "https://github.com/ossf/scorecard"
+    },
+    {
+      "name": "scorecard-web",
+      "main_repo": "https://github.com/ossf/scorecard-webapp"
+    },
+    {
+      "name": "xz",
+      "main_repo": "https://git.tukaani.org/xz.git"
+    },
+    {
+      "name": "zetasql",
+      "main_repo": null
+    },
+    {
+      "name": "zydis",
+      "main_repo": "https://github.com/zyantific/zydis.git"
+    },
+    {
+      "name": "go-cmp",
+      "main_repo": "https://github.com/google/go-cmp/cmp"
+    },
+    {
+      "name": "fftw3",
+      "main_repo": "https://github.com/fftw/fftw3.git"
+    }
+  ]
+}

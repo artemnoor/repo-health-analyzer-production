@@ -1,0 +1,42 @@
+config_version = "0"
+
+[plugins.definitions.default]
+file_types = ["shell"]
+
+[plugins.definitions.default.drivers.test]
+script = "exit 1"
+success_codes = [0]
+output = "pass_fail"
+batch = true
+
+[plugins.definitions.build]
+file_types = ["shell"]
+
+[plugins.definitions.build.drivers.test]
+script = "exit 1"
+success_codes = [0]
+output = "pass_fail"
+batch = true
+
+[plugins.definitions.manual]
+file_types = ["shell"]
+
+[plugins.definitions.manual.drivers.test]
+script = "exit 1"
+success_codes = [0]
+output = "pass_fail"
+batch = true
+
+[[plugin]]
+name = "default"
+version = "1.0.0"
+
+[[plugin]]
+name = "build"
+version = "1.0.0"
+triggers = ["build"]
+
+[[plugin]]
+name = "manual"
+version = "1.0.0"
+triggers = ["manual"]

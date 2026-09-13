@@ -1,0 +1,7 @@
+config_version = "0"
+
+[smells.similar_code]
+enabled = false
+
+[smells.identical_code]
+enabled = false

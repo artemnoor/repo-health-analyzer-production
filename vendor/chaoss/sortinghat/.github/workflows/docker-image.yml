@@ -1,0 +1,132 @@
+name: Build & push Docker image
+
+on:
+  workflow_dispatch:
+    inputs:
+      version:
+        description: "Docker image version"
+        type: string
+        required: true
+
+env:
+  SERVER_IMAGE_NAME: "grimoirelab/sortinghat"
+  WORKER_IMAGE_NAME: "grimoirelab/sortinghat-worker"
+
+jobs:
+  build-package:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        node-version: [24.x]
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+      - name: Setup Node ${{ matrix.node-version }}
+        uses: actions/setup-node@48b55a011bda9f5d6aeb4c2d9c7362e8dae4041e # v6.4.0
+        with:
+          node-version: ${{ matrix.node-version }}
+      - name: Create JS files
+        working-directory: ./ui
+        run: |
+          yarn install
+          yarn build
+      - name: Build package using Poetry and store result
+        uses: chaoss/grimoirelab-github-actions/build@main
+        with:
+          artifact-name: sortinghat-dist
+          artifact-path: dist
+          skip-checkout: yes
+
+  build-image:
+    runs-on: ubuntu-latest
+    needs: [build-package]
+    environment: docker-release
+    permissions:
+      contents: read
+      id-token: write # needed for signing the images with GitHub OIDC Token
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+
+      - name: Download distribution artifact
+        uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
+        with:
+          name: sortinghat-dist
+          path: dist
+
+      - name: Install Cosign
+        uses: sigstore/cosign-installer@6f9f17788090df1f26f669e9d70d6ae9567deba6 # v4.1.2
+
+      - name: Set up QEMU
+        uses: docker/setup-qemu-action@ce360397dd3f832beb865e1373c09c0e9f86d70a # v4.0.0
+        with:
+          platforms: linux/arm64
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@4d04d5d9486b7bd6fa91e7baf45bbb4f8b9deedd # v4.0.0
+
+      - name: Login to DockerHub
+        uses: docker/login-action@4907a6ddec9925e35a0a9e82d7399ccc52663121 # v4.1.0
+        with:
+          username: ${{ secrets.DOCKERHUB_USERNAME }}
+          password: ${{ secrets.DOCKERHUB_TOKEN }}
+
+      - name: Server Docker metadata
+        id: meta-server
+        uses: docker/metadata-action@030e881283bb7a6894de51c315a6bfe6a94e05cf # v6.0.0
+        with:
+          images: |
+            ${{ env.SERVER_IMAGE_NAME }}
+          tags: |
+            type=semver,pattern={{version}},value=${{ inputs.version }}
+
+      - name: Server Build and push
+        id: build-and-push
+        uses: docker/build-push-action@bcafcacb16a39f128d818304e6c9c0c18556b85f # v7.1.0
+        with:
+          platforms: linux/amd64,linux/arm64
+          context: .
+          file: "docker/server.dockerfile"
+          push: true
+          tags: ${{ steps.meta-server.outputs.tags }}
+
+      - name: Server Sign the images with GitHub OIDC Token
+        env:
+          TAGS: ${{ steps.meta-server.outputs.tags }}
+          DIGEST: ${{ steps.build-and-push.outputs.digest }}
+        run: |
+          images=""
+          for tag in ${TAGS}; do
+            images+="${tag}@${DIGEST} "
+          done
+          cosign sign --yes ${images}
+
+      - name: Worker Docker metadata
+        id: meta-worker
+        uses: docker/metadata-action@030e881283bb7a6894de51c315a6bfe6a94e05cf # v6.0.0
+        with:
+          images: |
+            ${{ env.WORKER_IMAGE_NAME }}
+          tags: |
+            type=semver,pattern={{version}},value=${{ inputs.version }}
+
+      - name: Worker Build and push
+        id: build-and-push-worker
+        uses: docker/build-push-action@bcafcacb16a39f128d818304e6c9c0c18556b85f # v7.1.0
+        with:
+          platforms: linux/amd64,linux/arm64
+          context: .
+          file: "docker/worker.dockerfile"
+          push: true
+          tags: ${{ steps.meta-worker.outputs.tags }}
+          build-args: |
+            BASE_IMAGE_TAG=${{ inputs.version }}
+
+      - name: Worker Sign the images with GitHub OIDC Token
+        env:
+          TAGS: ${{ steps.meta-worker.outputs.tags }}
+          DIGEST: ${{ steps.build-and-push-worker.outputs.digest }}
+        run: |
+          images=""
+          for tag in ${TAGS}; do
+            images+="${tag}@${DIGEST} "
+          done
+          cosign sign --yes ${images}

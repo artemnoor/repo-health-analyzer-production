@@ -1,0 +1,119 @@
+# SPDX-License-Identifier: MIT
+
+
+
+FROM golang:1.23-bullseye AS golang-builder
+
+# Write final binaries to / so it's easy to copy them out
+ENV GOBIN=/
+# Disable CGO to ensure the binaries are statically linked
+# Discussion: https://github.com/chaoss/augur/pull/3142
+ENV CGO_ENABLED=0
+
+RUN go install github.com/boyter/scc/v3@v3.4.0 \
+    && /scc --version
+RUN go install github.com/ossf/scorecard/v5@v5.1.1 \
+    && /scorecard version
+
+
+########################################
+FROM python:3.11-slim-bullseye
+
+LABEL org.opencontainers.image.authors="CHAOSS https://chaoss.community"
+LABEL org.opencontainers.image.licenses="MIT"
+LABEL org.opencontainers.image.source="https://github.com/chaoss/collectoss"
+LABEL org.opencontainers.image.documentation="https://docs.collectoss.org"
+
+ARG VERSION
+LABEL org.opencontainers.image.version=${VERSION}
+ARG REVISION
+LABEL org.opencontainers.image.revision=${REVISION}
+
+
+ENV DEBIAN_FRONTEND=noninteractive
+ENV PATH="/usr/bin/:/usr/local/bin:/usr/lib:${PATH}"
+
+ENV COLLECTOSS_DOCKER_DEPLOY="1"
+
+RUN set -x \
+    && apt-get update \
+    && apt-get -y install --no-install-recommends \
+        git \
+        bash \
+        curl \
+        gcc \
+        software-properties-common \
+        postgresql-contrib \
+        musl-dev \
+        wget \
+        postgresql-client \
+        libpq-dev \
+        build-essential \
+        tar \
+        jq \
+    && apt-get clean \
+    && rm -rf /var/lib/apt/lists/* /tmp/* /var/tmp/*
+
+EXPOSE 5000
+
+# Install uv (https://docs.astral.sh/uv/guides/integration/docker/#installing-uv)
+COPY --from=ghcr.io/astral-sh/uv:latest /uv /uvx /bin/
+ENV UV_COMPILE_BYTECODE=1
+# The uv package cache will be on a cache volume, so can't be linked
+ENV UV_LINK_MODE=copy
+# Assert that the lockfile (uv.lock) is up-to-date. Use `uv lock` to update it
+# manually if this fails the container build.
+ENV UV_LOCKED=1
+
+WORKDIR /collectoss
+
+COPY pyproject.toml .
+COPY uv.lock .
+COPY .python-version .
+
+# Install collectoss's dependencies early to take advantage of build cache
+RUN --mount=type=cache,target=/root/.cache/uv \
+    uv sync --no-install-project --no-dev
+
+# Copy in the actual code
+# The RUN line below ensure that permissions are set correctly.
+# This is the equivalent of the following docker --chmod flags, but done in a way thats compatible with podman.
+# This can be removed once https://github.com/containers/buildah/issues/6066 or relevant equivalent is fixed
+# - u=rw,u+X: user can read and write all files/dirs and execute directories
+# - go=r,go+X: group and others can read all files/dirs and execute directories
+COPY README.md .
+COPY LICENSE .
+COPY alembic.ini .
+COPY collectoss/ collectoss/
+COPY metadata.py .
+COPY scripts/ scripts/
+COPY keyman/ keyman/
+
+RUN find collectoss -type d -exec chmod u=rwx,go=rx {} + && find collectoss -type f -exec chmod u=rw,go=r {} +
+RUN find keyman -type d -exec chmod u=rwx,go=rx {} + && find keyman -type f -exec chmod u=rw,go=r {} +
+RUN find scripts -exec chmod u=rwx,go=rx {} +
+
+
+# Install the main project
+RUN --mount=type=cache,target=/root/.cache/uv \
+    uv sync --no-dev --no-editable --no-build-isolation
+
+# We aren't going to activate the virtualenv (manually or via uv run), so we
+# need adjust the PATH
+ENV PATH="/collectoss/.venv/bin:${PATH}"
+
+ENV SCC_DIR=/scc
+COPY --from=golang-builder --chmod=755 "/scc" "/scc/scc"
+ENV SCORECARD_DIR=/scorecard
+COPY --from=golang-builder --chmod=755 "/scorecard" "/scorecard/scorecard"
+# Verify installations
+RUN ${SCC_DIR}/scc --version
+RUN ${SCORECARD_DIR}/scorecard version
+
+RUN mkdir -p repos/ logs/ /collectoss/facade/
+RUN ln -s /cache /collectoss/collectoss/static/cache
+
+COPY --chmod=755 ./docker/backend/preflight.py /preflight.py
+RUN chmod +x /preflight.py
+CMD python3 /preflight.py && collectoss backend start --pidfile /tmp/main.pid
+# CMD ["collectoss", "backend", "start", "--pidfile", "/tmp/main.pid"]

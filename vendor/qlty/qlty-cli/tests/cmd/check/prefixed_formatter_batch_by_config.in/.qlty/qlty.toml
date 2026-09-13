@@ -1,0 +1,18 @@
+config_version = "0"
+
+[plugins.definitions.formatter-batch-by]
+file_types = ["shell"]
+
+[plugins.definitions.formatter-batch-by.drivers.config]
+prepare_script = "mkdir ${linter} && echo dir %2 > ${linter}/ls.cmd || echo dir %2 > ${linter}/ls.cmd"
+script = "exit 0"
+config_files = ["config.*.json"]
+batch_by = "config_file"
+success_codes = [0]
+output = "pass_fail"
+driver_type = "formatter"
+
+[[plugin]]
+name = "formatter-batch-by"
+version = "1.0.0"
+prefix = "sub"

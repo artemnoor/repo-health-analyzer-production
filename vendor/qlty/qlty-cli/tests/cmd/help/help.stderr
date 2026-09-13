@@ -1,0 +1,24 @@
+This is qlty, the Qlty CLI.
+
+Usage: qlty [COMMAND]
+
+Here's a few commands to get you started:
+
+  qlty init       Setup up your repository for Qlty
+  qlty metrics    Calculate code quality metrics
+  qlty check      Run linters and analyzers
+  qlty docs       Open Qlty docs in a browser
+  qlty smells     Find code smells like duplication
+  qlty fmt        Auto-format your code
+
+Qlty CLI works best with Qlty Cloud.
+
+  https://qlty.sh/dashboard
+  Qlty Cloud integrates with GitHub to fully automate code quality.
+
+If you need help along the way:
+
+  Use `qlty [command] --help` for more information about a command.
+  Join our Discord at https://qlty.sh/discord to get help from the Qlty community.
+
+For a full list of commands, run `qlty help`.

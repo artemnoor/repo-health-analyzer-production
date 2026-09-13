@@ -1,0 +1,24 @@
+config_version = "0"
+
+[plugins.definitions.mypy]
+runtime = "python"
+package = "mypy"
+file_types = ["python"]
+config_files = ["mypy.ini", ".mypy.ini"]
+affects_cache = ["pyproject.toml", "setup.cfg"]
+latest_version = "1.19.1"
+known_good_version = "1.19.1"
+version_command = "mypy --version"
+description = "Static type checker for Python"
+issue_url_format = "https://mypy.readthedocs.io/en/stable/error_code_list.html"
+
+[plugins.definitions.mypy.drivers.format]
+script = "mypy --ignore-missing-imports --output json --follow-imports=silent --show-error-codes --show-column-numbers ${target}"
+success_codes = [0, 1]
+runs_from = { type = "root_or_parent_with_any_config" }
+output = "stdout"
+output_format = "mypy"
+cache_results = true
+batch = true
+suggested = "config"
+output_missing = "parse"

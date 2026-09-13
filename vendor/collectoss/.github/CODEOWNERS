@@ -1,0 +1,58 @@
+# API
+/collectoss/api/ @MoralCode
+
+/collectoss/api/view @MoralCode @Ulincsys 
+/collectoss/api/routes/user.py @MoralCode @Ulincsys 
+
+# CLI
+/collectoss/cli/ @MoralCode
+
+# Frontend
+/collectoss/templates/ @MoralCode
+
+# Schema
+/collectoss/application/db/ @MoralCode
+/collectoss/application/schema/ @MoralCode
+
+# Workers
+/collectoss/tasks @MoralCode
+
+# Repo and Community Infrastructure
+/README.md @MoralCode
+/CONTRIBUTING.md @MoralCode
+/CREDITS.md @MoralCode
+/MAINTAINERS.md @MoralCode
+SECURITY.md @MoralCode
+.github/ @MoralCode 
+pyproject.toml @MoralCode
+
+# Testing
+/tests/ @MoralCode
+/scripts/ci @MoralCode
+
+# Keyman
+/keyman @MoralCode @Ulincsys
+/tests/test_key_manager @MoralCode @Ulincsys
+
+# Docs
+/docs/ @MoralCode
+/readthedocs.yml @MoralCode
+
+# Install - Manual
+/Makefile @MoralCode
+/scripts/control @MoralCode
+/scripts/install @MoralCode
+/scripts/mat_view_explore @MoralCode
+
+# Install - Containers
+/docker @MoralCode
+/scripts/docker @MoralCode
+
+/.dockerignore @MoralCode
+*compose.yml @MoralCode
+
+# Misc
+/collectoss/metrics/ @MoralCode
+/collectoss/server.py @MoralCode
+/collectoss/application.py @MoralCode
+/collectoss/application/config.py @MoralCode

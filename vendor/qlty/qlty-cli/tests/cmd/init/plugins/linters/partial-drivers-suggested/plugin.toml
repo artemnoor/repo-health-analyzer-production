@@ -1,0 +1,17 @@
+config_version = "0"
+
+[plugins.definitions.partial_drivers_suggested]
+file_types = ["shell"]
+latest_version = "0.10.0"
+known_good_version = "0.10.0"
+
+[plugins.definitions.partial_drivers_suggested.drivers.suggested]
+script = "exit 0"
+success_codes = [0]
+output = "pass_fail"
+suggested = "targets"
+
+[plugins.definitions.partial_drivers_suggested.drivers.not_suggested]
+script = "exit 1"
+success_codes = [0]
+output = "pass_fail"

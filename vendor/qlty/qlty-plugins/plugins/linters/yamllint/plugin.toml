@@ -1,0 +1,23 @@
+ config_version = "0"
+
+[plugins.definitions.yamllint]
+runtime = "python"
+package = "yamllint"
+file_types = ["yaml"]
+latest_version = "1.37.1"
+known_good_version = "1.37.1"
+version_command = "yamllint --version"
+config_files = [".yamllint", ".yamllint.yml", ".yamllint.yaml"]
+issue_url_format = "https://yamllint.readthedocs.io/en/stable/rules.html#module-yamllint.rules.${rule}"
+description = "YAML file formatter"
+
+[plugins.definitions.yamllint.drivers.lint]
+script = "yamllint -f parsable ${target}"
+success_codes = [0, 1, 2]
+output = "stdout"
+output_format = "regex"
+output_regex = "((?P<path>.*):(?P<line>\\d+):(?P<col>\\d+): \\[(?P<severity>.*)\\] (?P<message>.*) \\((?P<code>.*)\\))"
+cache_results = true
+batch = true
+suggested = "config"
+output_missing = "parse"

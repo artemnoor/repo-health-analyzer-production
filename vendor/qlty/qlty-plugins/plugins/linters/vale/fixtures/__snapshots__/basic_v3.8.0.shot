@@ -1,0 +1,44 @@
+// Jest Snapshot v1, https://goo.gl/fbAQLP
+
+exports[`linter=vale fixture=basic version=3.8.0 1`] = `
+{
+  "issues": [
+    {
+      "category": "CATEGORY_STYLE",
+      "level": "LEVEL_MEDIUM",
+      "location": {
+        "path": "basic.md",
+        "range": {
+          "startColumn": 1,
+          "startLine": 2,
+        },
+      },
+      "message": "Did you really mean 'Hallo'?",
+      "mode": "MODE_BLOCK",
+      "ruleKey": "Vale.Spelling",
+      "snippet": "Hallo, wurld?",
+      "snippetWithContext": "Hello world!
+Hallo, wurld?",
+      "tool": "vale",
+    },
+    {
+      "category": "CATEGORY_STYLE",
+      "level": "LEVEL_MEDIUM",
+      "location": {
+        "path": "basic.md",
+        "range": {
+          "startColumn": 8,
+          "startLine": 2,
+        },
+      },
+      "message": "Did you really mean 'wurld'?",
+      "mode": "MODE_BLOCK",
+      "ruleKey": "Vale.Spelling",
+      "snippet": "Hallo, wurld?",
+      "snippetWithContext": "Hello world!
+Hallo, wurld?",
+      "tool": "vale",
+    },
+  ],
+}
+`;

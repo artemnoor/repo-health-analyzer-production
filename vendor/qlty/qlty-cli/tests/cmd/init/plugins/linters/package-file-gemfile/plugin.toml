@@ -1,0 +1,13 @@
+config_version = "0"
+
+[plugins.definitions.package-file-gemfile]
+file_types = ["ruby"]
+latest_version = "0.10.0"
+known_good_version = "0.10.0"
+package_file_candidate = "Gemfile"
+
+[plugins.definitions.package-file-gemfile.drivers.first]
+script = "exit 0"
+success_codes = [0]
+output = "pass_fail"
+suggested = "targets"

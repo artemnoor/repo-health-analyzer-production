@@ -1,0 +1,9 @@
+config_version = "0"
+
+[runtimes.enabled]
+ruby = "3.4.7"
+
+[[plugin]]
+name = "rubocop"
+package_file = "Gemfile.qlty"
+package_filters = ["rubocop"]

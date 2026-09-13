@@ -1,0 +1,28 @@
+config_version = "0"
+
+[plugins.definitions.batch-by]
+file_types = ["shell"]
+
+[plugins.definitions.batch-by.drivers.invocation_directory]
+file_types = ["shell"]
+prepare_script = "mkdir ${linter} && echo dir %2 > ${linter}/ls.cmd || echo dir %2 > ${linter}/ls.cmd"
+script = "ls -l sample.sh"
+runs_from = { type = "root_or_parent_with_any_config" }
+config_files = ["config.json"]
+batch_by = "invocation_directory"
+success_codes = [0]
+output = "pass_fail"
+
+[plugins.definitions.batch-by.drivers.invocation_directory_nested]
+file_types = ["javascript"]
+prepare_script = "mkdir ${linter} && echo dir %2 > ${linter}/ls.cmd || echo dir %2 > ${linter}/ls.cmd"
+script = "ls -l nested.js"
+runs_from = { type = "root_or_parent_with_any_config" }
+config_files = ["config_nested.json"]
+batch_by = "invocation_directory"
+success_codes = [0]
+output = "pass_fail"
+
+[[plugin]]
+name = "batch-by"
+version = "1.0.0"

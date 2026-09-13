@@ -1,0 +1,22 @@
+config_version = "0"
+
+[plugins.definitions.coffeelint]
+runtime = "node"
+package = "@coffeelint/cli"
+file_types = ["coffee"]
+config_files = ["coffeelint.json"]
+latest_version = "5.2.11"
+known_good_version = "5.2.11"
+version_command = "coffeelint --version"
+description = "A style checker for coffescript."
+suggested_mode = "comment"
+
+[plugins.definitions.coffeelint.drivers.lint]
+script = "coffeelint --reporter raw ${target}"
+success_codes = [0, 1]
+output = "stdout"
+output_format = "coffeelint"
+batch = true
+cache_results = true
+suggested = "targets"
+output_missing = "parse"

@@ -1,0 +1,125 @@
+package nl.obren.sokrates.sourcecode.githistory;
+
+import nl.obren.sokrates.sourcecode.analysis.FileHistoryAnalysisConfig;
+import nl.obren.sokrates.sourcecode.filehistory.DateUtils;
+
+import java.io.File;
+import java.util.*;
+
+public class GitHistoryPerExtensionUtils {
+    private Map<String, CommitsPerExtension> map = new HashMap<>();
+    private Map<String, List<String>> emails = new HashMap<>();
+    private Map<String, List<String>> emails30Days = new HashMap<>();
+    private Map<String, List<String>> emails90Days = new HashMap<>();
+    private Map<String, List<String>> paths = new HashMap<>();
+    private Map<String, List<String>> paths30Days = new HashMap<>();
+    private Map<String, List<String>> paths90Days = new HashMap<>();
+    private Map<String, Map<String,ContributorPerExtensionStats>> contributorPerExtensionStatsMap = new HashMap<>();
+
+    // Companion membership sets for the distinct-value lists above, so updateMaps dedups in O(1)
+    // instead of an O(n) contains() scan per file update. Keyed by list-map *identity* (an
+    // IdentityHashMap) - the list-maps compare equal by content, so a content-keyed map would
+    // conflate them (e.g. emails vs paths while both are empty).
+    private final Map<Map<String, List<String>>, Map<String, Set<String>>> seenValues = new IdentityHashMap<>();
+
+    public List<CommitsPerExtension> getCommitsPerExtensions(File file, FileHistoryAnalysisConfig config) {
+        GitHistoryUtils.getHistoryFromFile(file, config).forEach(fileUpdate -> {
+            String extension = fileUpdate.getExtension();
+            String path = fileUpdate.getPath();
+            String email = fileUpdate.getAuthorEmail();
+            String date = fileUpdate.getDate();
+            boolean isLessThan30DaysAgo = DateUtils.isCommittedLessThanDaysAgo(date, 30);
+            boolean isLessThan90DaysAgo = DateUtils.isCommittedLessThanDaysAgo(date, 90);
+
+            CommitsPerExtension commitsPerExtension = getCommitsPerExtension(extension);
+
+            updateTotalCounts(extension, path, email, commitsPerExtension);
+
+            if (isLessThan30DaysAgo) {
+                update30DaysCounts(extension, path, email, commitsPerExtension);
+            }
+            if (isLessThan90DaysAgo) {
+                update90DaysCounts(extension, path, email, commitsPerExtension);
+            }
+
+            if (!contributorPerExtensionStatsMap.containsKey(extension)) {
+                contributorPerExtensionStatsMap.put(extension, new HashMap<>());
+            }
+
+            if (!contributorPerExtensionStatsMap.get(extension).containsKey(email)) {
+                contributorPerExtensionStatsMap.get(extension).put(email, new ContributorPerExtensionStats(email));
+            }
+
+            ContributorPerExtensionStats contributorStats = contributorPerExtensionStatsMap.get(extension).get(email);
+            contributorStats.setFileUpdates(contributorStats.getFileUpdates() + 1);
+            if (isLessThan30DaysAgo) {
+                contributorStats.setFileUpdates30Days(contributorStats.getFileUpdates30Days() + 1);
+            }
+            if (isLessThan90DaysAgo) {
+                contributorStats.setFileUpdates90Days(contributorStats.getFileUpdates90Days() + 1);
+            }
+
+        });
+
+        map.keySet().forEach(extension -> {
+            map.get(extension).setContributorPerExtensionStats(new ArrayList<>(contributorPerExtensionStatsMap.get(extension).values()));
+        });
+
+        ArrayList<CommitsPerExtension> list = new ArrayList<>(map.values());
+
+        Collections.sort(list, (a, b) -> b.getCommitters().size() - a.getCommitters().size());
+        Collections.sort(list, (a, b) -> b.getCommitters90Days().size() - a.getCommitters90Days().size());
+        Collections.sort(list, (a, b) -> b.getCommitters30Days().size() - a.getCommitters30Days().size());
+
+        return list;
+    }
+
+    public void update90DaysCounts(String extension, String path, String email, CommitsPerExtension commitsPerExtension) {
+        commitsPerExtension.setCommitsCount90Days(commitsPerExtension.getCommitsCount90Days() + 1);
+
+        updateMaps(extension, email, emails90Days);
+        updateMaps(extension, path, paths90Days);
+
+        commitsPerExtension.setCommitters90Days(emails90Days.get(extension));
+        commitsPerExtension.setFilesCount90Days(paths90Days.get(extension).size());
+    }
+
+    public void update30DaysCounts(String extension, String path, String email, CommitsPerExtension commitsPerExtension) {
+        commitsPerExtension.setCommitsCount30Days(commitsPerExtension.getCommitsCount30Days() + 1);
+
+        updateMaps(extension, email, emails30Days);
+        updateMaps(extension, path, paths30Days);
+
+        commitsPerExtension.setCommitters30Days(emails30Days.get(extension));
+        commitsPerExtension.setFilesCount30Days(paths30Days.get(extension).size());
+    }
+
+    public void updateTotalCounts(String extension, String path, String email, CommitsPerExtension commitsPerExtension) {
+        commitsPerExtension.setCommitsCount(commitsPerExtension.getCommitsCount() + 1);
+
+        updateMaps(extension, email, emails);
+        updateMaps(extension, path, paths);
+
+        commitsPerExtension.setCommitters(emails.get(extension));
+        commitsPerExtension.setFilesCount(paths.get(extension).size());
+    }
+
+    public CommitsPerExtension getCommitsPerExtension(String extension) {
+        CommitsPerExtension commitsPerExtension = map.get(extension);
+        if (commitsPerExtension == null) {
+            commitsPerExtension = new CommitsPerExtension(extension);
+            map.put(extension, commitsPerExtension);
+        }
+        return commitsPerExtension;
+    }
+
+    private void updateMaps(String extension, String value, Map<String, List<String>> map) {
+        List<String> extList = map.computeIfAbsent(extension, k -> new ArrayList<>());
+        Set<String> seen = seenValues
+                .computeIfAbsent(map, k -> new HashMap<>())
+                .computeIfAbsent(extension, k -> new HashSet<>());
+        if (seen.add(value)) {
+            extList.add(value);
+        }
+    }
+}

@@ -1,0 +1,263 @@
+/*
+ * Copyright (c) 2021 Željko Obrenović. All rights reserved.
+ */
+
+package nl.obren.sokrates.sourcecode;
+
+import com.fasterxml.jackson.annotation.JsonIgnore;
+import nl.obren.sokrates.sourcecode.aspects.NamedSourceCodeAspect;
+import nl.obren.sokrates.sourcecode.cleaners.SourceCodeCleanerUtils;
+import nl.obren.sokrates.sourcecode.filehistory.FileModificationHistory;
+import nl.obren.sokrates.sourcecode.lang.LanguageAnalyzer;
+import nl.obren.sokrates.sourcecode.lang.LanguageAnalyzerFactory;
+import org.apache.commons.lang3.StringUtils;
+import org.apache.commons.logging.Log;
+import org.apache.commons.logging.LogFactory;
+
+import java.io.File;
+import java.io.IOException;
+import java.nio.file.InvalidPathException;
+import java.nio.file.Path;
+import java.nio.file.Paths;
+import java.text.Normalizer;
+import java.util.ArrayList;
+import java.util.List;
+
+public class SourceFile {
+    private static final Log LOG = LogFactory.getLog(SourceFile.class);
+
+    @JsonIgnore
+    private File file;
+    private String relativePath;
+    private String extension;
+    private int linesOfCode;
+    @JsonIgnore
+    private FileModificationHistory fileModificationHistory = null;
+    private int unitsCount = 0;
+    private int unitsMcCabeIndexSum = 0;
+    @JsonIgnore
+    private List<NamedSourceCodeAspect> logicalComponents = new ArrayList<>();
+    @JsonIgnore
+    private List<NamedSourceCodeAspect> concerns = new ArrayList<>();
+
+    @JsonIgnore
+    private String content;
+
+    private int linesOfCodeInUnits;
+    private List<String> cleanedLines = null;
+    @JsonIgnore
+    private List<String> cleanedLinesForDuplication = null;
+
+    public SourceFile() {
+    }
+
+    public SourceFile(File file) {
+        setFile(file);
+    }
+
+    public SourceFile(File file, String content) {
+        setFile(file);
+        setContent(content);
+    }
+
+    public static String flattenToAscii(String string) {
+        StringBuilder sb = new StringBuilder(string.length());
+        string = Normalizer.normalize(string, Normalizer.Form.NFD);
+        for (char c : string.toCharArray()) {
+            if (c <= '\u007F') sb.append(c);
+        }
+        return sb.toString();
+    }
+
+    @JsonIgnore
+    public File getFile() {
+        return file;
+    }
+
+    @JsonIgnore
+    public void setFile(File file) {
+        this.file = file;
+        this.extension = ExtensionGroupExtractor.getExtension(file.getPath());
+    }
+
+    public String getRelativePath() {
+        return  relativePath;
+    }
+
+    public void setRelativePath(String relativePath) {
+        this.relativePath = relativePath.replace('\\','/');
+    }
+
+    public SourceFile relativize(File root) {
+        try {
+            Path rootPath = Paths.get(root.getPath());
+            Path sourceFilePath = Paths.get(file.getPath());
+
+            setRelativePath(rootPath.relativize(sourceFilePath).toString());
+        } catch (InvalidPathException e) {
+            Path rootPath = Paths.get(flattenToAscii(root.getPath()));
+            Path sourceFilePath = Paths.get(flattenToAscii(file.getPath()));
+            setRelativePath(rootPath.relativize(sourceFilePath).toString());
+            e.printStackTrace();
+        }
+        return this;
+    }
+
+    public String getExtension() {
+        return extension;
+    }
+
+    public void setExtension(String extension) {
+        this.extension = extension;
+    }
+
+    public int getLinesOfCode() {
+        return linesOfCode;
+    }
+
+    public void setLinesOfCode(int linesOfCode) {
+        this.linesOfCode = linesOfCode;
+    }
+
+    public FileModificationHistory getFileModificationHistory() {
+        return fileModificationHistory;
+    }
+
+    public void setFileModificationHistory(FileModificationHistory fileModificationHistory) {
+        this.fileModificationHistory = fileModificationHistory;
+    }
+
+    public List<NamedSourceCodeAspect> getLogicalComponents(String filer) {
+        List<NamedSourceCodeAspect> filteredLogicalComponents = new ArrayList<>();
+        logicalComponents.stream().filter(comp -> comp.getFiltering().equals(filer)).forEach(filteredLogicalComponents::add);
+        return filteredLogicalComponents;
+    }
+
+    @JsonIgnore
+    public List<NamedSourceCodeAspect> getLogicalComponents() {
+        return logicalComponents;
+    }
+
+    @JsonIgnore
+    public void setLogicalComponents(List<NamedSourceCodeAspect> logicalComponents) {
+        this.logicalComponents = logicalComponents;
+    }
+
+    @JsonIgnore
+    public List<NamedSourceCodeAspect> getConcerns() {
+        return concerns;
+    }
+
+    @JsonIgnore
+    public void setConcerns(List<NamedSourceCodeAspect> concerns) {
+        this.concerns = concerns;
+    }
+
+    public int getUnitsCount() {
+        return unitsCount;
+    }
+
+    public void setUnitsCount(int unitsCount) {
+        this.unitsCount = unitsCount;
+    }
+
+    public int getUnitsMcCabeIndexSum() {
+        return unitsMcCabeIndexSum;
+    }
+
+    public void setUnitsMcCabeIndexSum(int unitsMcCabeIndexSum) {
+        this.unitsMcCabeIndexSum = unitsMcCabeIndexSum;
+    }
+
+    @JsonIgnore
+    public String getContent() {
+        try {
+            File file = getFile();
+            return StringUtils.isNotBlank(content) ? content : file != null ? SourceCodeEncoding.read(file) : "";
+        } catch (IOException e) {
+            LOG.debug(e);
+        }
+
+        return "";
+    }
+
+    @JsonIgnore
+    public void setContent(String content) {
+        this.content = content;
+    }
+
+    @JsonIgnore
+    public List<String> getLines() {
+        try {
+            List<String> lines = StringUtils.isNotBlank(content)
+                    ? SourceCodeCleanerUtils.splitInLines(content) : getFile() != null
+                    ? SourceCodeEncoding.readLines(getFile()) : new ArrayList<>();
+            return lines;
+        } catch (IOException e) {
+            LOG.debug(e);
+            return new ArrayList<>();
+        }
+    }
+
+    @JsonIgnore
+    public List<String> getCleanedLines() {
+        if (cleanedLines == null) {
+            LanguageAnalyzer languageAnalyzer = LanguageAnalyzerFactory.getInstance().getLanguageAnalyzer(this);
+            cleanedLines = SourceCodeCleanerUtils.splitInLines(languageAnalyzer.cleanForLinesOfCodeCalculations(this).getCleanedContent());
+        }
+        return cleanedLines;
+    }
+
+    @JsonIgnore
+    public List<String> getCleanedLinesForDuplication() {
+        // Cached like cleanedLines: cleaning re-runs the language analyzer over the whole file, and the
+        // duplication aggregator asks for this repeatedly (once per file, per extension, and per component).
+        if (cleanedLinesForDuplication == null) {
+            cleanedLinesForDuplication = SourceCodeCleanerUtils.splitInLines(LanguageAnalyzerFactory.getInstance().getLanguageAnalyzer(this).cleanForDuplicationCalculations(this).getCleanedContent());
+        }
+        return cleanedLinesForDuplication;
+    }
+
+    @JsonIgnore
+    public void setLinesOfCodeFromContent() {
+        linesOfCode = getCleanedLines().size();
+    }
+
+    @Override
+    public boolean equals(Object obj) {
+        if (obj == null || !(obj instanceof SourceFile)) {
+            return false;
+        }
+
+        SourceFile sourceFile = (SourceFile) obj;
+        if (sourceFile.getFile() == null || this.getFile() == null) {
+            return false;
+        }
+
+        return sourceFile.getFile().equals(this.getFile());
+    }
+
+    public int getLinesOfCodeInUnits() {
+        return linesOfCodeInUnits;
+    }
+
+    public void setLinesOfCodeInUnits(int linesOfCodeInUnits) {
+        this.linesOfCodeInUnits = linesOfCodeInUnits;
+    }
+
+    @JsonIgnore
+    public boolean isInLogicalComponent(String name) {
+        for (NamedSourceCodeAspect logicalComponent : logicalComponents) {
+            if (logicalComponent.getName().equalsIgnoreCase(name)) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    @JsonIgnore
+    public long getLongLinesCount(int threshold) {
+        return getCleanedLines().stream().filter(l -> l.length() > threshold).count();
+    }
+
+}

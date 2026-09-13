@@ -1,0 +1,4 @@
+# Must use ignore instead of direct rule: https://github.com/standardrb/standard/issues/621
+ignore:
+  - "**/*":
+      - Layout/EndOfLine

@@ -1,0 +1,324 @@
+// Jest Snapshot v1, https://goo.gl/fbAQLP
+
+exports[`linter=sqlfluff fixture=basic_fmt version=3.0.0 1`] = `
+{
+  "issues": [
+    {
+      "category": "CATEGORY_LINT",
+      "level": "LEVEL_MEDIUM",
+      "location": {
+        "path": "basic_fmt.in.sql",
+        "range": {
+          "endColumn": 16,
+          "endLine": 4,
+          "startColumn": 13,
+          "startLine": 4,
+        },
+      },
+      "message": "Expected only single space before 'AS' keyword. Found '   '.",
+      "mode": "MODE_BLOCK",
+      "ruleKey": "LT01",
+      "snippet": "    COUNT(*)   AS   num,",
+      "snippetWithContext": "SELECT
+    col_a,
+      col_b,
+    COUNT(*)   AS   num,
+    SUM(num)   OVER   (
+        PARTITION BY col_a
+        ORDER BY col_b
+    ) AS an_aggregate_function
+FROM tbl_a
+GROUP BY 1, 2",
+      "suggestions": [
+        {
+          "patch": "--- original
++++ modified
+@@ -1,7 +1,7 @@
+ SELECT
+     col_a,
+       col_b,
+-    COUNT(*)   AS   num,
++    COUNT(*) AS   num,
+     SUM(num)   OVER   (
+         PARTITION BY col_a
+         ORDER BY col_b
+",
+          "replacements": [
+            {
+              "data": " ",
+              "location": {
+                "path": "basic_fmt.in.sql",
+                "range": {
+                  "endByte": 46,
+                  "endColumn": 16,
+                  "endLine": 4,
+                  "startByte": 43,
+                  "startColumn": 13,
+                  "startLine": 4,
+                },
+              },
+            },
+          ],
+          "source": "SUGGESTION_SOURCE_TOOL",
+        },
+      ],
+      "tool": "sqlfluff",
+    },
+    {
+      "category": "CATEGORY_LINT",
+      "level": "LEVEL_MEDIUM",
+      "location": {
+        "path": "basic_fmt.in.sql",
+        "range": {
+          "endColumn": 16,
+          "endLine": 5,
+          "startColumn": 13,
+          "startLine": 5,
+        },
+      },
+      "message": "Expected only single space before 'OVER' keyword. Found '   '.",
+      "mode": "MODE_BLOCK",
+      "ruleKey": "LT01",
+      "snippet": "    SUM(num)   OVER   (",
+      "snippetWithContext": "SELECT
+    col_a,
+      col_b,
+    COUNT(*)   AS   num,
+    SUM(num)   OVER   (
+        PARTITION BY col_a
+        ORDER BY col_b
+    ) AS an_aggregate_function
+FROM tbl_a
+GROUP BY 1, 2",
+      "suggestions": [
+        {
+          "patch": "--- original
++++ modified
+@@ -2,7 +2,7 @@
+     col_a,
+       col_b,
+     COUNT(*)   AS   num,
+-    SUM(num)   OVER   (
++    SUM(num) OVER   (
+         PARTITION BY col_a
+         ORDER BY col_b
+     ) AS an_aggregate_function
+",
+          "replacements": [
+            {
+              "data": " ",
+              "location": {
+                "path": "basic_fmt.in.sql",
+                "range": {
+                  "endByte": 71,
+                  "endColumn": 16,
+                  "endLine": 5,
+                  "startByte": 68,
+                  "startColumn": 13,
+                  "startLine": 5,
+                },
+              },
+            },
+          ],
+          "source": "SUGGESTION_SOURCE_TOOL",
+        },
+      ],
+      "tool": "sqlfluff",
+    },
+    {
+      "category": "CATEGORY_LINT",
+      "level": "LEVEL_MEDIUM",
+      "location": {
+        "path": "basic_fmt.in.sql",
+        "range": {
+          "endColumn": 21,
+          "endLine": 4,
+          "startColumn": 18,
+          "startLine": 4,
+        },
+      },
+      "message": "Expected only single space before naked identifier. Found '   '.",
+      "mode": "MODE_BLOCK",
+      "ruleKey": "LT01",
+      "snippet": "    COUNT(*)   AS   num,",
+      "snippetWithContext": "SELECT
+    col_a,
+      col_b,
+    COUNT(*)   AS   num,
+    SUM(num)   OVER   (
+        PARTITION BY col_a
+        ORDER BY col_b
+    ) AS an_aggregate_function
+FROM tbl_a
+GROUP BY 1, 2",
+      "suggestions": [
+        {
+          "patch": "--- original
++++ modified
+@@ -1,7 +1,7 @@
+ SELECT
+     col_a,
+       col_b,
+-    COUNT(*)   AS   num,
++    COUNT(*)   AS num,
+     SUM(num)   OVER   (
+         PARTITION BY col_a
+         ORDER BY col_b
+",
+          "replacements": [
+            {
+              "data": " ",
+              "location": {
+                "path": "basic_fmt.in.sql",
+                "range": {
+                  "endByte": 51,
+                  "endColumn": 21,
+                  "endLine": 4,
+                  "startByte": 48,
+                  "startColumn": 18,
+                  "startLine": 4,
+                },
+              },
+            },
+          ],
+          "source": "SUGGESTION_SOURCE_TOOL",
+        },
+      ],
+      "tool": "sqlfluff",
+    },
+    {
+      "category": "CATEGORY_LINT",
+      "level": "LEVEL_MEDIUM",
+      "location": {
+        "path": "basic_fmt.in.sql",
+        "range": {
+          "endColumn": 23,
+          "endLine": 5,
+          "startColumn": 20,
+          "startLine": 5,
+        },
+      },
+      "message": "Expected only single space before start bracket '('. Found '   '.",
+      "mode": "MODE_BLOCK",
+      "ruleKey": "LT01",
+      "snippet": "    SUM(num)   OVER   (",
+      "snippetWithContext": "SELECT
+    col_a,
+      col_b,
+    COUNT(*)   AS   num,
+    SUM(num)   OVER   (
+        PARTITION BY col_a
+        ORDER BY col_b
+    ) AS an_aggregate_function
+FROM tbl_a
+GROUP BY 1, 2",
+      "suggestions": [
+        {
+          "patch": "--- original
++++ modified
+@@ -2,7 +2,7 @@
+     col_a,
+       col_b,
+     COUNT(*)   AS   num,
+-    SUM(num)   OVER   (
++    SUM(num)   OVER (
+         PARTITION BY col_a
+         ORDER BY col_b
+     ) AS an_aggregate_function
+",
+          "replacements": [
+            {
+              "data": " ",
+              "location": {
+                "path": "basic_fmt.in.sql",
+                "range": {
+                  "endByte": 78,
+                  "endColumn": 23,
+                  "endLine": 5,
+                  "startByte": 75,
+                  "startColumn": 20,
+                  "startLine": 5,
+                },
+              },
+            },
+          ],
+          "source": "SUGGESTION_SOURCE_TOOL",
+        },
+      ],
+      "tool": "sqlfluff",
+    },
+    {
+      "category": "CATEGORY_LINT",
+      "level": "LEVEL_MEDIUM",
+      "location": {
+        "path": "basic_fmt.in.sql",
+        "range": {
+          "endColumn": 7,
+          "endLine": 3,
+          "startColumn": 1,
+          "startLine": 3,
+        },
+      },
+      "message": "Expected indent of 4 spaces.",
+      "mode": "MODE_BLOCK",
+      "ruleKey": "LT02",
+      "snippet": "      col_b,",
+      "snippetWithContext": "SELECT
+    col_a,
+      col_b,
+    COUNT(*)   AS   num,
+    SUM(num)   OVER   (
+        PARTITION BY col_a
+        ORDER BY col_b
+    ) AS an_aggregate_function
+FROM tbl_a
+GROUP BY 1, 2",
+      "suggestions": [
+        {
+          "patch": "--- original
++++ modified
+@@ -1,6 +1,6 @@
+ SELECT
+     col_a,
+-      col_b,
++    col_b,
+     COUNT(*)   AS   num,
+     SUM(num)   OVER   (
+         PARTITION BY col_a
+",
+          "replacements": [
+            {
+              "data": "    ",
+              "location": {
+                "path": "basic_fmt.in.sql",
+                "range": {
+                  "endByte": 24,
+                  "endColumn": 7,
+                  "endLine": 3,
+                  "startByte": 18,
+                  "startColumn": 1,
+                  "startLine": 3,
+                },
+              },
+            },
+          ],
+          "source": "SUGGESTION_SOURCE_TOOL",
+        },
+      ],
+      "tool": "sqlfluff",
+    },
+    {
+      "category": "CATEGORY_STYLE",
+      "level": "LEVEL_FMT",
+      "location": {
+        "path": "basic_fmt.in.sql",
+      },
+      "message": "Incorrect formatting, autoformat by running \`qlty fmt\`.",
+      "mode": "MODE_BLOCK",
+      "onAddedLine": true,
+      "ruleKey": "fmt",
+      "tool": "sqlfluff",
+    },
+  ],
+}
+`;
