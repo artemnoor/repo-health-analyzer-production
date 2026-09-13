@@ -124,10 +124,24 @@ ehthumbs.db
 
 # Local agent/tooling state; keep the published repository focused on the app.
 .agents/
-.ai-factory/
-.ai-factory.json
+# Keep the AI Factory project contract and durable workflow artifacts in Git;
+# ignore generated/session state that should remain local to an agent run.
+.ai-factory/*
+!.ai-factory/config.yaml
+!.ai-factory/DESCRIPTION.md
+!.ai-factory/ARCHITECTURE.md
+!.ai-factory/RULES.md
+!.ai-factory/rules/
+!.ai-factory/rules/base.md
+!.ai-factory/templates/
+!.ai-factory/templates/*.md
+!.ai-factory/README.md
+!.ai-factory.json
 .claude-plugin/
-.codex/
+.codex/*
+!.codex/
+!.codex/skills/
+!.codex/skills/**
 .playwright-cli/
 graphify-out/
 packages/web/test-results/
