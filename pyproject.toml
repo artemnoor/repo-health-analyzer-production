@@ -264,5 +264,6 @@ check_untyped_defs = true
 [tool.pytest.ini_options]
 asyncio_mode = "auto"
 testpaths = ["tests"]
+norecursedirs = ["tests/fixtures"]
 addopts = "-v --tb=short"
 pythonpath = ["."]

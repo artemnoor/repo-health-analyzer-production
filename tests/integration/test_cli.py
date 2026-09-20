@@ -445,7 +445,9 @@ class TestStatusDoctorWithEnvDb:
         shutil.copytree(sample_repo_path, dest)
         # A .repowise/ dir with state but no DB — the "Database not found"
         # branch requires an initialized repo to get past the earlier guard.
-        (dest / ".repowise").mkdir()
+        # The shared sample repository may already carry the local-state
+        # directory; this test only needs to guarantee that it exists.
+        (dest / ".repowise").mkdir(exist_ok=True)
         (dest / ".repowise" / "state.json").write_text("{}", encoding="utf-8")
 
         result = runner.invoke(cli, ["status", str(dest)], catch_exceptions=False)
@@ -474,7 +476,7 @@ class TestStatusDoctorWithEnvDb:
         monkeypatch.delenv("REPOWISE_DATABASE_URL", raising=False)
         dest = tmp_path / "repo"
         shutil.copytree(sample_repo_path, dest)
-        (dest / ".repowise").mkdir()
+        (dest / ".repowise").mkdir(exist_ok=True)
         (dest / ".repowise" / "state.json").write_text("{}", encoding="utf-8")
         # Corrupt: not a valid SQLite file.
         (dest / ".repowise" / "wiki.db").write_text("this is not a database", encoding="utf-8")

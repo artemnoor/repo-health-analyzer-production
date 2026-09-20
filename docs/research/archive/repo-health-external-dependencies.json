@@ -253,7 +253,7 @@
       "classification": "research-only",
       "production_required": "NO",
       "can_delete_local_copy": "YES after preserving provenance decision",
-      "deletion_proof_status": "no production references; physical deletion deferred to artifact cleanup"
+      "deletion_proof_status": "no production references; local snapshot quarantined after preserving provenance decision"
     },
     {
       "name": "Schemathesis",
@@ -266,7 +266,7 @@
       "classification": "research-only",
       "production_required": "NO",
       "can_delete_local_copy": "YES after preserving provenance decision",
-      "deletion_proof_status": "no production references; physical deletion deferred to artifact cleanup"
+      "deletion_proof_status": "no production references; local snapshot quarantined after preserving provenance decision"
     },
     {
       "name": "Hercules",
@@ -279,7 +279,7 @@
       "classification": "research-only",
       "production_required": "NO",
       "can_delete_local_copy": "YES after preserving provenance decision",
-      "deletion_proof_status": "no production references; physical deletion deferred to artifact cleanup"
+      "deletion_proof_status": "no production references; local snapshot quarantined after preserving provenance decision"
     },
     {
       "name": "OpenDigger",
@@ -292,7 +292,7 @@
       "classification": "research-only",
       "production_required": "NO",
       "can_delete_local_copy": "YES after preserving provenance decision",
-      "deletion_proof_status": "no production references; physical deletion deferred to artifact cleanup"
+      "deletion_proof_status": "no production references; local snapshot quarantined after preserving provenance decision"
     },
     {
       "name": "Apache DevLake",
@@ -305,7 +305,7 @@
       "classification": "methodology-only",
       "production_required": "NO; config text is non-runtime methodology reference",
       "can_delete_local_copy": "YES after preserving provenance decision",
-      "deletion_proof_status": "no production references; physical deletion deferred to artifact cleanup"
+      "deletion_proof_status": "no production references; local snapshot quarantined after preserving provenance decision"
     }
   ]
 }

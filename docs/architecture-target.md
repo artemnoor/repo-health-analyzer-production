@@ -57,8 +57,9 @@ are not part of the production package.
 Behavioral, score, public-projection and generated-artifact freeze data is in
 `docs/research/archive/repo-health-behavior-baseline.json`. Copied-source
 provenance and notice preservation is in
-`docs/research/archive/repo-health-license-manifest.md`; the current missing
-`.sources` roots are recorded as a failed legal gate, not as deletion approval.
+`docs/research/archive/repo-health-license-manifest.md`; the current legal
+gate records the remaining `vendor/collectoss` content drift, not deletion
+approval.
 
 Inspected:
 
