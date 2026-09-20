@@ -16,6 +16,17 @@
 | [API](repository-health/api.md) | Нужно подключить свой клиент или страницу |
 | [Testing](repository-health/testing.md) | Нужно проверить релиз или локальную сборку |
 
+## Repo Health backend cleanup
+
+The current production-oriented surface is intentionally small:
+
+- [Architecture](architecture.md) and [target architecture](architecture-target.md);
+- [Scoring](scoring.md);
+- [Analyzer boundaries](analyzers/README.md);
+- [SourceCraft integration](sourcecraft-integration.md);
+- [Deployment](deployment.md) and [development](development.md);
+- [Research and legal archive](research/archive/README.md).
+
 ## Канонические compatibility references
 
 - [Health Analyzer reference](reference/HEALTH_ANALYZER.md) — короткий индекс

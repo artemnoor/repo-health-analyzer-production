@@ -87,6 +87,12 @@ curl "http://127.0.0.1:7337/api/health/ranking?limit=20&band=good"
 | [Testing](docs/repository-health/testing.md) | реальные команды проверки, QA evidence и известные ограничения |
 | [Documentation hub](docs/README.md) | карта health-документации и legacy-материалов проекта |
 
+Production backend cleanup/readiness:
+[architecture](docs/architecture.md), [scoring](docs/scoring.md),
+[analyzer boundaries](docs/analyzers/README.md),
+[SourceCraft integration](docs/sourcecraft-integration.md),
+[deployment](docs/deployment.md) and [development](docs/development.md).
+
 Инженерные compatibility entry points:
 [health reference](docs/reference/HEALTH_ANALYZER.md),
 [architecture reference](docs/architecture/repository-health.md) и
