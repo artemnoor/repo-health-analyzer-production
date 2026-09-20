@@ -1915,6 +1915,44 @@ class RepositoryHealthSnapshot(Base):
     )
 
 
+class RepoHealthAnalysisEnvelope(Base):
+    """Immutable serialized contract envelope for replay and idempotency."""
+
+    __tablename__ = "repo_health_analysis_envelopes"
+
+    analysis_id: Mapped[str] = mapped_column(String(128), primary_key=True)
+    repository_id: Mapped[str] = mapped_column(
+        String(32), ForeignKey("repositories.id", ondelete="CASCADE"), nullable=False
+    )
+    idempotency_key: Mapped[str] = mapped_column(String(128), nullable=False)
+    schema_version: Mapped[str] = mapped_column(
+        String(32), nullable=False, default="repo-health.v1", server_default="repo-health.v1"
+    )
+    facts_digest: Mapped[str | None] = mapped_column(String(128), nullable=True)
+    policy_digest: Mapped[str | None] = mapped_column(String(128), nullable=True)
+    request_json: Mapped[str] = mapped_column(Text, nullable=False)
+    facts_json: Mapped[str | None] = mapped_column(Text, nullable=True)
+    category_results_json: Mapped[str] = mapped_column(Text, nullable=False, default='{"items":[]}')
+    score_json: Mapped[str | None] = mapped_column(Text, nullable=True)
+    status_json: Mapped[str] = mapped_column(Text, nullable=False)
+    tool_versions_json: Mapped[str] = mapped_column(Text, nullable=False, default="{}")
+    envelope_json: Mapped[str] = mapped_column(Text, nullable=False)
+    snapshot_id: Mapped[str | None] = mapped_column(
+        String(32), ForeignKey("repository_health_snapshots.id", ondelete="SET NULL"), nullable=True
+    )
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False, default=_now_utc)
+    started_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    finished_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+
+    __table_args__ = (
+        UniqueConstraint(
+            "repository_id", "idempotency_key", name="uq_repo_health_envelope_idempotency"
+        ),
+        Index("ix_repo_health_envelopes_repository", "repository_id", "created_at"),
+        Index("ix_repo_health_envelopes_snapshot", "snapshot_id"),
+    )
+
+
 class HealthScoreProjection(Base):
     """One materialized composite score for a replayable health snapshot."""
 

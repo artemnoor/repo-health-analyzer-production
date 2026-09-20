@@ -19,6 +19,7 @@ from pydantic import BaseModel, ConfigDict, Field, field_validator, model_valida
 
 from .requests import (
     CONTRACT_SCHEMA_VERSION,
+    AnalysisRequest,
     RepositoryRef,
     canonical_json,
     contract_digest,
@@ -571,6 +572,7 @@ class CategoryResult(_ContractBase):
     confidence: Confidence
     limitations: tuple[Limitation, ...] = ()
     diagnostics_digest: str | None = Field(default=None, max_length=128)
+    score_signals: dict[str, int] = Field(default_factory=dict)
     source_versions: dict[str, str] = Field(default_factory=dict)
 
     _analysis_id = field_validator("analysis_id", mode="before")(
@@ -587,6 +589,29 @@ class CategoryResult(_ContractBase):
             None if value is None else _normalize_digest(value, field_name="diagnostics_digest")
         )
     )
+
+    @field_validator("score_signals", mode="before")
+    @classmethod
+    def _bounded_score_signals(cls, value: object) -> dict[str, int]:
+        if value is None:
+            return {}
+        if not isinstance(value, Mapping):
+            raise ValueError("score_signals must be a mapping")
+        allowed = {
+            "active_findings",
+            "critical_findings",
+            "high_findings",
+            "confirmed_secret_count",
+            "secret_findings",
+        }
+        normalized: dict[str, int] = {}
+        for key, raw_count in value.items():
+            if key not in allowed:
+                raise ValueError(f"unsupported score signal: {key}")
+            if not isinstance(raw_count, int) or isinstance(raw_count, bool) or not 0 <= raw_count <= 1_000_000:
+                raise ValueError(f"score signal {key} must be a bounded integer")
+            normalized[key] = raw_count
+        return normalized
 
     @model_validator(mode="after")
     def _validate_result(self) -> CategoryResult:
@@ -665,12 +690,19 @@ class ScoreInput(_ContractBase):
     security: CategoryResult | None = None
     code_health: CategoryResult | None = None
     score_engine_version: str = Field(min_length=1, max_length=128)
+    policy_digest: str | None = Field(default=None, max_length=128)
+    weights: dict[str, float] | None = None
 
     _analysis_id = field_validator("analysis_id", mode="before")(
         lambda value: _normalize_id(value, field_name="analysis_id")
     )
     _score_engine_version = field_validator("score_engine_version", mode="before")(
         lambda value: _normalize_id(value, field_name="score_engine_version")
+    )
+    _policy_digest = field_validator("policy_digest", mode="before")(
+        lambda value: None
+        if value is None
+        else _normalize_digest(value, field_name="policy_digest")
     )
 
     @model_validator(mode="after")
@@ -697,6 +729,16 @@ class RepoHealthResult(_ContractBase):
     overall_score: float | None = Field(default=None, ge=0.0, le=100.0)
     score_before_caps: float | None = Field(default=None, ge=0.0, le=100.0)
     score_engine_version: str = Field(min_length=1, max_length=128)
+    policy_digest: str | None = Field(default=None, max_length=128)
+    score_config_digest: str | None = Field(default=None, max_length=128)
+    presentation_state: Literal["SCORE", "PROVISIONAL_SCORE", "INSUFFICIENT_DATA"] = "INSUFFICIENT_DATA"
+    coverage: float = Field(default=0.0, ge=0.0, le=1.0)
+    confidence: float = Field(default=0.0, ge=0.0, le=1.0)
+    evidence_coverage: float = Field(default=0.0, ge=0.0, le=1.0)
+    coverage_k: float = Field(default=0.0, ge=0.0, le=1.0)
+    applied_caps: tuple[dict[str, Any], ...] = ()
+    limitations: tuple[Limitation, ...] = ()
+    score_status: Literal["pass", "warn", "fail", "inconclusive"] = "inconclusive"
     documentation: CategoryResult | None = None
     activity: CategoryResult | None = None
     issues: CategoryResult | None = None
@@ -709,6 +751,11 @@ class RepoHealthResult(_ContractBase):
     )
     _score_engine_version = field_validator("score_engine_version", mode="before")(
         lambda value: _normalize_id(value, field_name="score_engine_version")
+    )
+    _policy_digest = field_validator("policy_digest", "score_config_digest", mode="before")(
+        lambda value, info: None
+        if value is None
+        else _normalize_digest(value, field_name=info.field_name)
     )
 
     @model_validator(mode="after")
@@ -725,10 +772,87 @@ class RepoHealthResult(_ContractBase):
         ):
             if category is not None and category.analysis_id != self.analysis_id:
                 raise ValueError("all CategoryResult values must use the result analysis_id")
+        object.__setattr__(self, "limitations", tuple(sorted(self.limitations, key=lambda item: item.code)))
+        return self
+
+
+class AnalysisEnvelope(_ContractBase):
+    """Immutable, replayable boundary persisted for one analysis attempt."""
+
+    analysis_id: str = Field(min_length=1, max_length=128)
+    request: AnalysisRequest
+    facts: RepositoryFacts | None = None
+    facts_digest: str | None = Field(default=None, max_length=128)
+    category_results: tuple[CategoryResult, ...] = ()
+    score: RepoHealthResult | None = None
+    status: AnalysisStatus
+    idempotency_key: str = Field(min_length=1, max_length=128)
+    policy_digest: str | None = Field(default=None, max_length=128)
+    tool_versions: dict[str, str] = Field(default_factory=dict)
+    created_at: datetime
+    started_at: datetime | None = None
+    finished_at: datetime | None = None
+
+    _analysis_id = field_validator("analysis_id", mode="before")(
+        lambda value: _normalize_id(value, field_name="analysis_id")
+    )
+    _idempotency_key = field_validator("idempotency_key", mode="before")(
+        lambda value: _normalize_id(value, field_name="idempotency_key")
+    )
+    _facts_digest = field_validator("facts_digest", mode="before")(
+        lambda value: None if value is None else _normalize_digest(value, field_name="facts_digest")
+    )
+    _policy_digest = field_validator("policy_digest", mode="before")(
+        lambda value: None if value is None else _normalize_digest(value, field_name="policy_digest")
+    )
+    _created_at = field_validator("created_at", mode="after")(
+        lambda value: _normalize_utc(value, field_name="created_at")
+    )
+    _started_at = field_validator("started_at", mode="after")(
+        lambda value: None if value is None else _normalize_utc(value, field_name="started_at")
+    )
+    _finished_at = field_validator("finished_at", mode="after")(
+        lambda value: None if value is None else _normalize_utc(value, field_name="finished_at")
+    )
+
+    @field_validator("tool_versions", mode="before")
+    @classmethod
+    def _bounded_tool_versions(cls, value: object) -> dict[str, str]:
+        if value is None:
+            return {}
+        if not isinstance(value, Mapping):
+            raise ValueError("tool_versions must be a mapping")
+        normalized: dict[str, str] = {}
+        for key, raw_version in value.items():
+            name = _normalize_key(key, field_name="tool_versions key")
+            if not isinstance(raw_version, str) or not raw_version.strip() or len(raw_version.strip()) > 128:
+                raise ValueError("tool_versions values must be bounded non-empty strings")
+            normalized[name] = raw_version.strip()
+        return normalized
+
+    @model_validator(mode="after")
+    def _envelope_is_consistent(self) -> AnalysisEnvelope:
+        if self.request.analysis_id != self.analysis_id:
+            raise ValueError("request and envelope must use the same analysis_id")
+        if self.status.analysis_id != self.analysis_id:
+            raise ValueError("status and envelope must use the same analysis_id")
+        if self.facts is not None:
+            calculated = self.facts.digest()
+            if self.facts_digest is not None and self.facts_digest != calculated:
+                raise ValueError("facts_digest does not match normalized RepositoryFacts")
+            object.__setattr__(self, "facts_digest", calculated)
+        for result in self.category_results:
+            if result.analysis_id != self.analysis_id:
+                raise ValueError("category results must use the envelope analysis_id")
+        if self.score is not None and self.score.analysis_id != self.analysis_id:
+            raise ValueError("score and envelope must use the same analysis_id")
+        if self.finished_at is not None and self.finished_at < self.created_at:
+            raise ValueError("finished_at must be after created_at")
         return self
 
 
 __all__ = [
+    "AnalysisEnvelope",
     "AnalysisState",
     "AnalysisStatus",
     "AnalyzerInput",

@@ -16,10 +16,20 @@ from typing import Any
 from repowise.core.analysis.analyzer_integration.contracts import (
     AnalyzerContext,
     AnalyzerResult,
+    AnalyzerStatus,
     EvidenceRef,
 )
 from repowise.core.analysis.analyzer_integration.contracts import (
     Finding as LegacyFinding,
+)
+from repowise.core.analysis.analyzer_integration.contracts import (
+    FindingLocation as LegacyFindingLocation,
+)
+from repowise.core.analysis.analyzer_integration.contracts import (
+    Limitation as LegacyLimitation,
+)
+from repowise.core.analysis.analyzer_integration.contracts import (
+    MetricValue as LegacyMetricValue,
 )
 
 from .requests import RepositoryRef, canonical_json
@@ -233,6 +243,24 @@ def analyzer_result_to_category_result(
         value=0.0 if status in {CategoryStatus.SKIPPED, CategoryStatus.ERROR} else 1.0,
         level="unknown" if status in {CategoryStatus.SKIPPED, CategoryStatus.ERROR} else "high",
     )
+    score_signals = {
+        key: int(value)
+        for key, value in result.diagnostics.items()
+        if key
+        in {
+            "active_findings",
+            "active_finding_count",
+            "critical_findings",
+            "high_findings",
+            "confirmed_secret_count",
+            "secret_findings",
+        }
+        and isinstance(value, (int, float))
+        and not isinstance(value, bool)
+        and 0 <= int(value) <= 1_000_000
+    }
+    if "active_finding_count" in score_signals:
+        score_signals["active_findings"] = score_signals.pop("active_finding_count")
     limitations = tuple(
         Limitation(code=item.kind, reason=item.reason, affected_scope=item.affected_scope)
         for item in result.limitations
@@ -257,11 +285,145 @@ def analyzer_result_to_category_result(
         confidence=result_confidence,
         limitations=limitations,
         diagnostics_digest=_safe_digest(result.diagnostics) if result.diagnostics else None,
+        score_signals=score_signals,
         source_versions=result.source_versions,
+    )
+
+
+_CANONICAL_TO_LEGACY_ANALYZER_ID = {
+    "repo-health.documentation": "vale.documentation",
+    "repo-health.activity": "chaoss.activity",
+    "repo-health.issues": "chaoss.issues_prs",
+    "repo-health.cicd": "cicd.sourcecraft",
+    "repo-health.security": "sourcecraft.appsec",
+    "repo-health.code-health": "repowise.health",
+}
+_LEGACY_LIMITATION_KINDS = {
+    "missing_capability",
+    "insufficient_denominator",
+    "unsupported",
+    "remediation_unavailable",
+    "stale",
+    "timeout",
+    "error",
+    "other",
+}
+
+
+def category_result_to_analyzer_result(result: CategoryResult) -> AnalyzerResult:
+    """Decode a canonical category for the frozen v1 engine only.
+
+    This is a compatibility projection, not a second score path. The v1
+    engine remains the sole owner of weighting, K, and security-cap arithmetic.
+    """
+
+    evidence_by_id = {
+        item.evidence_id: EvidenceRef(
+            source=item.source,
+            source_commit=item.source_version,
+            tool_version=item.source_version,
+            path=item.relative_path,
+            line_start=item.line_start,
+            line_end=item.line_end,
+            json_pointer=item.json_pointer,
+            snippet_hash=item.snippet_hash or item.content_hash,
+            collected_at=item.collected_at,
+            confidence=item.confidence.value,
+            redaction=item.redaction,
+        )
+        for item in result.evidence
+    }
+    legacy_analyzer_id = _CANONICAL_TO_LEGACY_ANALYZER_ID.get(result.analyzer_id, result.analyzer_id)
+    legacy_findings = tuple(
+        LegacyFinding(
+            id=item.finding_id or "finding-unknown",
+            analyzer_id=legacy_analyzer_id,
+            subject=item.subject or item.dimension,
+            dimension=item.dimension,
+            severity=item.severity,
+            confidence=item.confidence.value,
+            reason=item.reason,
+            evidence_refs=tuple(
+                evidence_by_id[evidence_id]
+                for evidence_id in item.evidence_ids
+                if evidence_id in evidence_by_id
+            ),
+            location=(
+                LegacyFindingLocation(
+                    path=item.location.relative_path,
+                    line_start=item.location.line_start,
+                    line_end=item.location.line_end,
+                    symbol=item.location.symbol,
+                )
+                if item.location
+                else None
+            ),
+            remediation=item.remediation,
+        )
+        for item in result.findings
+    )
+    total_weight = result.coverage.total_weight or (1.0 if result.coverage.total > 0 else 0.0)
+    available_weight = result.coverage.covered_weight
+    if available_weight is None:
+        available_weight = (
+            total_weight * result.coverage.covered / result.coverage.total
+            if result.coverage.total > 0
+            else 0.0
+        )
+    limitations = tuple(
+        LegacyLimitation(
+            reason=item.reason,
+            kind=item.code if item.code in _LEGACY_LIMITATION_KINDS else "other",
+            affected_scope=item.affected_scope,
+            evidence_refs=(),
+        )
+        for item in result.limitations
+    )
+    status = AnalyzerStatus(result.status.value)
+    coverage = (
+        result.coverage.covered_weight / result.coverage.total_weight
+        if result.coverage.covered_weight is not None and result.coverage.total_weight
+        else (result.coverage.covered / result.coverage.total if result.coverage.total else 0.0)
+    )
+    return AnalyzerResult(
+        analyzer_id=legacy_analyzer_id,
+        analyzer_version=result.analyzer_version,
+        status=status,
+        score=result.score,
+        score_dimension=result.category.value,
+        metrics=tuple(
+            LegacyMetricValue(
+                name=item.name,
+                value=item.value,
+                unit=item.unit,
+                score=item.score,
+                evidence_refs=tuple(
+                    evidence_by_id[evidence_id]
+                    for evidence_id in item.evidence_ids
+                    if evidence_id in evidence_by_id
+                ),
+            )
+            for item in result.metrics
+        ),
+        findings=legacy_findings,
+        evidence=tuple(evidence_by_id.values()),
+        limitations=limitations,
+        source_versions=result.source_versions,
+        available_weight=available_weight,
+        total_weight=total_weight,
+        diagnostics={
+            "category_status": "MEASURED"
+            if result.status in {CategoryStatus.PASS, CategoryStatus.WARN, CategoryStatus.FAIL}
+            else result.status.value.upper(),
+            "coverage": coverage,
+            "confidence": result.confidence.value,
+            **result.score_signals,
+        },
     )
 
 
 __all__ = [
     "analyzer_context_to_input",
     "analyzer_result_to_category_result",
+    "category_result_to_analyzer_result",
 ]

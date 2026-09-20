@@ -12,6 +12,7 @@ from .requests import (
     parse_repository_ref,
 )
 from .results import (
+    AnalysisEnvelope,
     AnalysisState,
     AnalysisStatus,
     AnalyzerInput,
@@ -44,6 +45,7 @@ from .versioning import CONTRACT_VERSIONS, ContractVersionRegistry
 __all__ = [
     "CONTRACT_SCHEMA_VERSION",
     "CONTRACT_VERSIONS",
+    "AnalysisEnvelope",
     "AnalysisRequest",
     "AnalysisState",
     "AnalysisStatus",

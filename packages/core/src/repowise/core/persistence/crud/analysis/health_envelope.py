@@ -12,10 +12,7 @@ import structlog
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from ....analysis.health.composite import (
-    CompositeHealthScore,
-    CompositeScoreConfig,
-)
+from ....analysis.health.composite import CompositeHealthScore, CompositeScoreConfig
 from ....analysis.health.integrations.contracts import (
     AnalyzerContext,
     AnalyzerResult,
@@ -30,9 +27,7 @@ from ....analysis.health.integrations.temporal_adapter import (
     EventNormalizer,
     raw_facts_from_context,
 )
-from ....analysis.health.score_engine_v1 import (
-    compose_default_repo_health_score,
-)
+from ....repo_health.scoring.legacy import DefaultLegacyHealthScorePort, LegacyHealthScorePort
 from ...models import (
     HealthAggregate,
     HealthFindingEvidence,
@@ -82,9 +77,12 @@ def _result_score(
     config: CompositeScoreConfig | Mapping[str, Any] | None = None,
     *,
     repository_id: str | None = None,
+    score_port: LegacyHealthScorePort | None = None,
 ) -> float | None:
     """Return the canonical composite score, never first-result score."""
-    composed = compose_default_repo_health_score(results, config, repository_id=repository_id)
+    composed = (score_port or DefaultLegacyHealthScorePort()).score(
+        results, config, repository_id=repository_id
+    )
     return composed.overall
 
 
@@ -93,8 +91,11 @@ def _composite_score(
     config: CompositeScoreConfig | Mapping[str, Any] | None = None,
     *,
     repository_id: str | None = None,
+    score_port: LegacyHealthScorePort | None = None,
 ) -> CompositeHealthScore:
-    return compose_default_repo_health_score(results, config, repository_id=repository_id)
+    return (score_port or DefaultLegacyHealthScorePort()).score(
+        results, config, repository_id=repository_id
+    )
 
 
 def _result_status(results: Iterable[AnalyzerResult]) -> str:
@@ -154,6 +155,7 @@ async def save_health_envelope(
     *,
     config_digest: str | None = None,
     score_config_digest: str | None = None,
+    score_port: LegacyHealthScorePort | None = None,
 ) -> RepositoryHealthSnapshot:
     """Write one snapshot in raw → normalized → derived order.
 
@@ -163,7 +165,9 @@ async def save_health_envelope(
     materialized_results = deduplicate_findings(tuple(results))
     analyzer_digest = _hash(sorted(f"{result.analyzer_id}:{result.analyzer_version}" for result in materialized_results))
     effective_config = str(config_digest or context.config_digest or "")
-    composite = _composite_score(materialized_results, repository_id=repository_id)
+    composite = _composite_score(
+        materialized_results, repository_id=repository_id, score_port=score_port
+    )
     effective_score_config = str(score_config_digest or composite.score_config_digest)
     as_of = context.as_of_ts.astimezone(UTC)
     existing_query = await session.execute(
@@ -639,7 +643,9 @@ async def rescore_health_snapshot(
                     total_weight=1,
                 )
             )
-        composed = compose_default_repo_health_score(persisted_results, score_config, repository_id=snapshot.repository_id)
+        composed = DefaultLegacyHealthScorePort().score(
+            persisted_results, score_config, repository_id=snapshot.repository_id
+        )
         projection_overall = composed.overall
         projection_dimensions = composed.dimensions
         projection_configured = composed.configured_weight
