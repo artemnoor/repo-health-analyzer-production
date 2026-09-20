@@ -181,3 +181,11 @@ vendor/**/lpt[1-9].*
 # above remains excluded.
 .health-cache/
 artifacts/
+
+# Research runs and upstream snapshots are local-only inputs. Keep the small
+# README/scripts/provenance files visible, but never stage generated output or
+# copied research repositories into the production checkout.
+/$out/
+spikes/**/runs/
+spikes/**/upstream/
+spikes/**/controlled-worktrees/

@@ -1,5 +1,12 @@
 # Native and copied tool reference
 
+This is a compatibility and provenance inventory, not a claim that every
+copied tree is part of the canonical Repo Health runtime. The canonical
+production paths are Vale, PyDriller, SourceCraft REST, SonarQube service,
+git-sizer and repository-owned Git/TODO facts. Copied Scorecard, RepoHealth,
+Criticality, Qlty, Sokrates, CHAOSS and documentation tools remain isolated
+until their reachability and legal deletion gates pass.
+
 All commits below are authoritative in `vendor/SOURCES.lock`. Commands use
 paths relative to the workspace root. `bin/` contains generated build outputs;
 it is not a source snapshot and must never replace the pinned tree.
@@ -26,11 +33,14 @@ public scores. Their normalized dimensions are composed by the canonical
 health policy; skipped, unavailable and parser-error results remain visible
 and cannot silently become a passing measurement. Scorecard, RepoHealth and
 Criticality are Go tools; Qlty is Rust; Sokrates and selected SonarQube
-duplication primitives are Java. Qlty/Sokrates/SonarQube are optional or
-primitive/report inputs for the default local runtime, while the bounded Go
-tools are the required composition binaries.
+duplication primitives are Java. Qlty/Sokrates and copied SonarQube
+primitives are optional compatibility inputs, not requirements of the
+canonical six-analyzer worker artifact. The external-runtime and license
+decision is recorded in
+`docs/research/archive/repo-health-external-dependencies.json`.
 
-Configured defaults are in `config/analyzers/native-tools.yaml`:
+Configured defaults for optional compatibility engines are in
+`config/analyzers/native-tools.yaml`:
 
 - process timeout: 120 seconds (180 for Sokrates);
 - stdout/stderr cap: 16 MiB per process and report cap: 64 MiB;

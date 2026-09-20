@@ -4,7 +4,10 @@ This manifest is derived from `vendor/SOURCES.lock` and the local
 `LICENSE*`, `NOTICE*` and `COPYING*` files. The checkout contains 65 matching
 legal files. A missing `.sources` root is recorded as an unresolved provenance
 state; it is never interpreted as permission to delete the corresponding
-vendor tree or notice.
+vendor tree or notice. The roots were materialized during Phase 7. The current
+source gate passes all pinned trees except `vendor/collectoss`, whose tracked
+copy has content drift against the pinned source commit and therefore remains
+a legal and reachability blocker.
 
 | dependency | copied/source path | license observed | notice/license files | production required | can delete local copy now |
 | --- | --- | --- | --- | --- | --- |
@@ -17,7 +20,7 @@ vendor tree or notice.
 | SonarQube | `.sources/sonarqube` → `vendor/sonarqube` | LGPL-3.0 observed | `LICENSE.txt`, `NOTICE.txt`, nested `COPYING` | NO as copied source; external service adapter remains | NO; adapter/package audit pending |
 | RepoCrunch | `.sources/repocrunch` → `vendor/repocrunch` | MIT | `vendor/repocrunch/LICENSE` | CONDITIONAL for broader dependency/forge surfaces | NO |
 | CHAOSS Metrics | `.sources/chaoss-metrics` → `vendor/chaoss/metrics` | MIT | `vendor/chaoss/metrics/LICENSE` | NO runtime requirement; methodology reference | NO until archive attribution decision |
-| CollectOSS | `.sources/collectoss` → `vendor/collectoss` | MIT | `vendor/collectoss/LICENSE`, template notice | CONDITIONAL for legacy facts bridge | NO |
+| CollectOSS | `.sources/collectoss` → `vendor/collectoss` | MIT | `vendor/collectoss/LICENSE`, template notice | CONDITIONAL for legacy facts bridge | NO; vendor tree content drift against pinned commit |
 | GrimoireLab | `.sources/grimoirelab` → `vendor/chaoss/grimoirelab` | GPL-3.0 observed | `LICENSE`, nested docs license | NO for target six | NO |
 | Perceval | `.sources/grimoirelab-perceval` → `vendor/chaoss/perceval` | GPL-3.0 observed | `vendor/chaoss/perceval/LICENSE` | CONDITIONAL for legacy Git/source bridge | NO |
 | ELK | `.sources/grimoirelab-elk` → `vendor/chaoss/elk` | GPL-3.0 observed | `vendor/chaoss/elk/LICENSE` | NO for target six | NO |
@@ -29,8 +32,7 @@ vendor tree or notice.
 | Documentor | `.sources/documentor` → `vendor/documentor` | Apache-2.0 | `LICENSE.md`, `NOTICE`, `LICENSE-3rdparty.csv` and template | NO for target analyzer | NO; NOTICE preservation pending |
 | CodeScene / RepoHealth Tools | reference-only rows in `SOURCES.lock` | no copied code | reference URLs only | NO | YES as references; keep attribution if docs rely on them |
 
-`vendor_sources.py --verify` currently reports 17 missing `.sources/*` roots
-and verifies only the two reference-only rows plus the present Lychee and
-Documentor trees. The legal cleanup phase must either restore those roots for
-verification or reconcile the ledger with an explicit provenance/notice
-decision before any vendor removal.
+`vendor_sources.py --verify` now verifies the materialized source roots and
+reports only the `collectoss` copied-tree drift. The legal cleanup phase must
+reconcile that drift with an explicit source/notice decision before any
+CollectOSS removal or replacement is treated as complete.

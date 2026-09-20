@@ -38,7 +38,7 @@ and `packaging/license reference`.
 | `vendor/repocrunch` | Forge/dependency source bridge | conditional keep outside Repo Health | may serve wider RepoWise features | metadata/dependency regression | whole-repo import and API audit | dependency/forge adapter | enrichment tests | source ledger | retain license if wider feature remains |
 | `vendor/documentor`, `vendor/lychee` | copied documentation/link-checker spikes | candidate-delete after reference audit | no target analyzer imports them | hidden script/reference or notice loss | docs/scripts search, package manifest and notice audit | no verified production path | spike/integration fixtures only | source ledger | preserve Apache/NOTICE and MIT/Apache notices until removal |
 | `spikes/*/runs`, `$out/` | generated live JSON/CSV/log output | archive selected redacted evidence; local-only/delete generated runs | never package generated state | deleting user-owned evidence | ownership check, redaction and package ignore test | none proven | replay fixtures may derive from selected files | package manifests must exclude | keep only required attribution/notice files |
-| Doc Detective, Schemathesis, Hercules, OpenDigger | named research/spike references | archive reference or delete local copy if found | scoped search found no source/binary in packages/config/scripts/tests | losing methodology provenance | exact scoped search and archive index | none found | none found | none found | no local license found; record “not found after scoped search” |
+| Doc Detective, Schemathesis, Hercules, OpenDigger | named research/spike references with local upstream snapshots | archive provenance and delete local upstream copy only after review | no production imports; snapshots are research-only and each has an observed LICENSE | losing methodology provenance or notices | exact production-scope search, matrix rows and archive index | none in packages/config/scripts/tests | spike-only | ignored upstream snapshots | preserve observed AGPL/MIT/Apache notices in the matrix before physical deletion |
 | DevLake | CI methodology reference | keep as docs-only reference for now | appears only in `config/analyzers/cicd.yaml` methodology text | mistaken runtime assumption | config/runtime search and CI fixture tests | no runtime import found | no fixture implementation found | no package source | no copied license found |
 
 ## Score-path trace
@@ -68,3 +68,21 @@ uv run python scripts/vendor_sources.py --verify
 Unknown dynamic imports, reflection, executable discovery and missing source
 roots remain **unproven**. A failed or unavailable verification downgrades a
 candidate to KEEP/MOVE; it never authorizes DELETE.
+
+## Phase 7 disposition
+
+The Phase 7 cleanup pass added the machine-readable dependency/legal matrix at
+`repo-health-external-dependencies.json` and the non-mutating verifier
+`scripts/verify_repo_health_cleanup.py`. No tracked production or vendor tree
+was physically deleted: the pinned `.sources` provenance roots are absent for
+17 entries, and broader RepoWise/native compatibility consumers still require
+caller-level proof. This is an intentional KEEP/MOVE result, not an incomplete
+DELETE disguised as cleanup.
+
+The generated `$out/` tree, selected spike upstream snapshots and controlled
+worktrees were moved to the reversible local quarantine documented in
+`repo-health-cleanup-quarantine.md`; spike `runs/` remain local-only through
+`.gitignore` and are excluded from the worker artifact. Research
+README/scripts and the redacted archive remain the reproducibility record.
+The five named spike families have explicit rows in the machine-readable
+matrix; none is imported by production packages.

@@ -1,6 +1,8 @@
 # Repo Health backend — architecture audit and target design
 
-Status: audit and migration plan only. Product code is intentionally unchanged.
+Status: target architecture plus implementation evidence. Structural
+migration is applied incrementally; score formulas and protected behavior
+remain frozen.
 
 Audit date: 2026-09-20
 
@@ -525,9 +527,9 @@ docs/
   research/archive/
 ~~~
 
-The exact physical package split can be staged. The first migration may keep
-packages/core and expose a repo_health namespace, but Phase 6 must select one
-reproducible worker package/entrypoint before claiming a deployable boundary.
+The first migration keeps `packages/core` and exposes a `repo_health` namespace.
+Phase 6 selected the existing core package's
+`repowise-health-worker` entry point as the single deployable worker boundary.
 Per-analyzer network services remain optional and trigger-based.
 
 ## 8. External dependency and license matrix
@@ -565,10 +567,11 @@ instruction to delete during the planning task.
 | CHAOSS | methodology or copied metrics source reference | scoped repository/config/vendor search, vendor subtree audit and reference audit | each discovered subtree requires its own source/license/notice row; absent runtime use is recorded explicitly | NO for six target analyzers | CONDITIONAL; delete only per subtree after reachability and legal proof |
 | DevLake | repository analytics research or spike reference | scoped repository/config/vendor search and reference audit | upstream license only if a local source/binary is found; otherwise record not found after scoped search | NO | YES for local copy/artifact after search and notice review |
 
-The legal gate must generate a machine-readable inventory of all copied source
-trees and notices. It must not delete a LICENSE, NOTICE, COPYING or generated
-third-party attribution file merely because the corresponding executable is
-removed.
+The legal gate is materialized in
+`docs/research/archive/repo-health-external-dependencies.json`. It inventories
+all copied source trees, external engines and named spikes. It must not delete
+a LICENSE, NOTICE, COPYING or generated third-party attribution file merely
+because the corresponding executable is removed.
 
 ## 9. Spikes, generated artifacts and documentation
 
@@ -582,6 +585,13 @@ removed.
 | generated live runs | spikes/*/runs, JSON/CSV/log exports, $out and tool output folders | do not package; archive selected redacted evidence, delete local generated output only after worktree ownership is confirmed |
 | Graphify output | packages/core/src/graphify-out | audit-only; already ignored by .gitignore; never import/package |
 | temporary source snapshots | .sources and generated bin outputs | keep ignored; no production imports |
+
+Phase 7 keeps all copied vendor trees and research upstream snapshots whose
+runtime or legal reachability is not yet proven zero. The cleanup verifier
+reports the missing `.sources` provenance roots as a visible warning; this is a
+blocked provenance gate, not a deletion authorization. Generated runs and
+upstream research snapshots are ignored by Git and excluded from the worker
+wheel, while their small README/provenance files remain available for audit.
 
 Minimal public docs after migration:
 
