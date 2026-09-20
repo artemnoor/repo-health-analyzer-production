@@ -19,6 +19,7 @@ from .results import (
     CategoryStatus,
     CicdFacts,
     CodeHealthFacts,
+    CollectionState,
     Confidence,
     Coverage,
     DocumentationFacts,
@@ -36,6 +37,7 @@ from .results import (
     RepositoryFacts,
     ScoreInput,
     SecurityFacts,
+    SourceStatus,
 )
 from .versioning import CONTRACT_VERSIONS, ContractVersionRegistry
 
@@ -50,6 +52,7 @@ __all__ = [
     "CategoryStatus",
     "CicdFacts",
     "CodeHealthFacts",
+    "CollectionState",
     "Confidence",
     "ContractValidationError",
     "ContractVersionRegistry",
@@ -70,6 +73,7 @@ __all__ = [
     "RepositoryRef",
     "ScoreInput",
     "SecurityFacts",
+    "SourceStatus",
     "UnsupportedContractVersion",
     "canonical_json",
     "contract_digest",

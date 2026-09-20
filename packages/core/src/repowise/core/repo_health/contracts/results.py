@@ -13,7 +13,7 @@ import re
 from collections.abc import Mapping
 from datetime import UTC, datetime
 from enum import StrEnum
-from typing import ClassVar, Literal
+from typing import Any, ClassVar, Literal
 
 from pydantic import BaseModel, ConfigDict, Field, field_validator, model_validator
 
@@ -147,6 +147,16 @@ class AnalysisState(StrEnum):
     COMPLETED = "completed"
     FAILED = "failed"
     CANCELLED = "cancelled"
+
+
+class CollectionState(StrEnum):
+    AVAILABLE = "available"
+    PARTIAL = "partial"
+    UNAVAILABLE = "unavailable"
+    STALE = "stale"
+    TIMEOUT = "timeout"
+    PERMISSION_DENIED = "permission_denied"
+    ERROR = "error"
 
 
 class Confidence(_ContractBase):
@@ -317,6 +327,34 @@ class Limitation(_ContractBase):
     )
 
 
+class SourceStatus(_ContractBase):
+    """Provenance and capability state for one collection source."""
+
+    source_id: str = Field(min_length=1, max_length=128)
+    state: CollectionState
+    source_version: str | None = Field(default=None, max_length=128)
+    snapshot_digest: str | None = Field(default=None, max_length=128)
+    collected_at: datetime | None = None
+    limitations: tuple[Limitation, ...] = ()
+
+    _source_id = field_validator("source_id", mode="before")(
+        lambda value: _normalize_id(value, field_name="source_id")
+    )
+    _snapshot_digest = field_validator("snapshot_digest", mode="before")(
+        lambda value: None
+        if value is None
+        else _normalize_digest(value, field_name="snapshot_digest")
+    )
+    _collected_at = field_validator("collected_at", mode="after")(
+        lambda value: None if value is None else _normalize_utc(value, field_name="collected_at")
+    )
+
+    @model_validator(mode="after")
+    def _stable_limitations(self) -> SourceStatus:
+        object.__setattr__(self, "limitations", tuple(sorted(self.limitations, key=lambda item: item.code)))
+        return self
+
+
 class Metric(_ContractBase):
     name: str = Field(min_length=1, max_length=128)
     value: float | int | str | bool | None = None
@@ -344,6 +382,24 @@ class FactObservation(_ContractBase):
     _evidence_ids = field_validator("evidence_ids", mode="before")(
         lambda value: _stable_ids(value, field_name="evidence_ids")
     )
+
+    @field_validator("value", mode="before")
+    @classmethod
+    def _reject_unredacted_values(cls, value: object) -> object:
+        if not isinstance(value, str):
+            return value
+        normalized = value.strip()
+        if len(normalized) > 512:
+            raise ValueError("fact observation strings must be at most 512 characters")
+        if any(marker in normalized.casefold() for marker in _SECRET_MARKERS):
+            raise ValueError("fact observations must not contain secret-like material")
+        if (
+            normalized.startswith(("/", "\\"))
+            or re.match(r"^[A-Za-z]:[\\/]", normalized)
+            or normalized.startswith(("../", "./"))
+        ):
+            raise ValueError("fact observations must not contain absolute or escaping paths")
+        return normalized
 
 
 class FactGroup(_ContractBase):
@@ -389,6 +445,11 @@ class CodeHealthFacts(FactGroup):
 class RepositoryFacts(_ContractBase):
     """Normalized facts grouped by bounded context, never raw provider data."""
 
+    repository: RepositoryRef | None = None
+    source_snapshot_digest: str | None = Field(default=None, max_length=128)
+    collected_at: datetime | None = None
+    source_versions: dict[str, str] = Field(default_factory=dict)
+    source_statuses: tuple[SourceStatus, ...] = ()
     git: GitFacts = Field(default_factory=GitFacts)
     documentation: DocumentationFacts = Field(default_factory=DocumentationFacts)
     issues: IssuesFacts = Field(default_factory=IssuesFacts)
@@ -401,13 +462,59 @@ class RepositoryFacts(_ContractBase):
     _capabilities = field_validator("capabilities", mode="before")(
         lambda value: _stable_ids(value, field_name="capabilities")
     )
+    _source_snapshot_digest = field_validator("source_snapshot_digest", mode="before")(
+        lambda value: None
+        if value is None
+        else _normalize_digest(value, field_name="source_snapshot_digest")
+    )
+    _collected_at = field_validator("collected_at", mode="after")(
+        lambda value: None if value is None else _normalize_utc(value, field_name="collected_at")
+    )
+
+    @field_validator("source_versions", mode="before")
+    @classmethod
+    def _bounded_source_versions(cls, value: object) -> dict[str, str]:
+        if value is None:
+            return {}
+        if not isinstance(value, Mapping):
+            raise ValueError("source_versions must be a mapping")
+        result: dict[str, str] = {}
+        for raw_key, raw_version in value.items():
+            key = _normalize_id(raw_key, field_name="source_versions key")
+            if not isinstance(raw_version, str) or not raw_version.strip():
+                raise ValueError("source_versions values must be non-empty strings")
+            version = raw_version.strip()
+            if len(version) > 128 or any(marker in version.casefold() for marker in _SECRET_MARKERS):
+                raise ValueError("source_versions must be bounded and secret-free")
+            result[key] = version
+        return result
 
     @model_validator(mode="after")
     def _stable_limitations(self) -> RepositoryFacts:
         object.__setattr__(
             self, "limitations", tuple(sorted(self.limitations, key=lambda item: item.code))
         )
+        object.__setattr__(self, "source_statuses", tuple(sorted(self.source_statuses, key=lambda item: item.source_id)))
         return self
+
+    def digest_payload(self) -> dict[str, Any]:
+        """Return the redacted stable payload used for cache identity.
+
+        Collection timestamps and self-referential source snapshot digests are
+        provenance, not fact identity. They are intentionally excluded so a
+        local and worker collection of the same snapshot share a cache key.
+        """
+
+        payload = self.model_dump(mode="json")
+        payload.pop("collected_at", None)
+        payload.pop("source_snapshot_digest", None)
+        for status in payload.get("source_statuses", ()):
+            status.pop("collected_at", None)
+            status.pop("snapshot_digest", None)
+        return payload
+
+    def digest(self) -> str:
+        return contract_digest(self.digest_payload())
 
 
 class AnalyzerInput(_ContractBase):
@@ -629,6 +736,7 @@ __all__ = [
     "CategoryStatus",
     "CicdFacts",
     "CodeHealthFacts",
+    "CollectionState",
     "Confidence",
     "Coverage",
     "DocumentationFacts",
@@ -646,4 +754,5 @@ __all__ = [
     "RepositoryFacts",
     "ScoreInput",
     "SecurityFacts",
+    "SourceStatus",
 ]
