@@ -14,24 +14,30 @@ Date: 2026-09-20
 - `scripts/verify_worker_package.py`.
 - `scripts/verify_source_update.py`.
 - `scripts/verify_repo_health_cleanup.py`.
+- `scripts/vendor_sources.py --verify` with all 21 ledger entries passing,
+  including the pinned `vendor/collectoss` tree at commit
+  `339edc520e79dd1728ca19255d94a05a4a107df1`.
 - Worker readiness with the memory queue.
 - Clean wheel build and artifact allowlist: `repowise-0.49.0-py3-none-any.whl`.
+- The two legacy CLI worktree auto-seed tests after fixing UTF-8 decoding of
+  Git paths on Windows.
+- Complete `tests/integration/test_cli.py`: **47 passed**, 59 warnings.
 
 ## Open gates
 
-- `scripts/vendor_sources.py --verify` fails closed on content drift in the
-  tracked `vendor/collectoss` tree against the pinned CollectOSS source commit.
-  All other materialized source roots pass. The vendor copy is retained and
-  not deleted.
 - Host-wide `pytest` initially collected a nested sample-repository test; the
-  test-discovery boundary now excludes `tests/fixtures`.
-- The isolated broader CLI suite is `45 passed, 2 failed`: the remaining
-  failures are `TestWorktreeAutoSeed.test_init_auto_seeds_in_worktree` and
-  `TestWorktreeAutoSeed.test_update_auto_seeds_unindexed_worktree`. They are
-  unrelated to Repo Health contracts/execution and remain open rather than
-  changing broader CLI behavior in this cleanup.
+  test-discovery boundary now excludes `tests/fixtures`. The complete suite
+  was started and intentionally stopped at 19% after exposing unrelated
+  RepoWise baseline failures in `test_kg_skip_logic`, agent matrix/target
+  tests, plugin content tests, and hook/mascot/provider tests. Those failures
+  are outside this Repo Health cleanup; the complete CLI integration suite
+  and the Repo Health verification matrix are green.
 
-The Repo Health backend migration is therefore implementation-complete for
-the target boundaries and protected behavior, but the plan's final all-green
-P9 completion gate remains open until the CollectOSS provenance drift and the
-two broader CLI regressions are resolved by their owners.
+The prior CollectOSS drift was line-ending materialization on Windows, not a
+different source revision. The old copy remains recoverable at
+`%TEMP%\\repo-health-cleanup-quarantine-20260920\\vendor-collectoss-before-pinned-20260921`;
+the working tree now contains the exact pinned source tree. The worktree
+auto-seed failures had the same root cause: Git paths containing Cyrillic
+characters were decoded with the platform default encoding. The fix is
+localized to the shared Git output helper and preserves the existing seed
+algorithm.

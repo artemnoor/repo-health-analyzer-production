@@ -149,7 +149,7 @@
       "classification": "conditional-compatibility",
       "production_required": "CONDITIONAL while legacy facts bridge remains",
       "can_delete_local_copy": "NO",
-      "deletion_proof_status": "blocked: vendor tree content drift against pinned source; direct-normalized-collector parity still required"
+      "deletion_proof_status": "source tree verified at pinned commit; direct-normalized-collector parity still required before compatibility removal"
     },
     {
       "name": "chaoss-grimoirelab-family",

@@ -12,11 +12,15 @@ Moved groups:
 - ten `spikes/**/upstream/` source snapshots, approximately 1.2 GB;
 - the downloaded git-sizer executable;
 - the downloaded Vale archive and extracted Vale runtime.
+- the pre-normalization `vendor/collectoss` copy, retained at
+  `vendor-collectoss-before-pinned-20260921` while the pinned Git tree was
+  re-materialized with UTF-8/LF content.
 
 The working tree retains spike README/provenance files, scripts, calibration
 reports and selected live evidence. The copied `vendor/` trees were not
-deleted. License files from the moved upstream snapshots remain in the
-quarantine until the legal owner confirms the final archive/deletion policy.
+deleted. License files from the moved upstream snapshots and the previous
+CollectOSS copy remain in the quarantine until the legal owner confirms the
+final archive/deletion policy.
 
 The quarantine is not a production dependency and is not referenced by the
 package or worker artifact. Restore is a manual operation from the listed
