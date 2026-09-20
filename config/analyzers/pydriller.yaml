@@ -1,0 +1,68 @@
+version: 1
+
+# Repo Health owns traversal scope, normalization, and score composition.
+# PyDriller remains an in-process library dependency and is never invoked as a
+# command-line tool.
+analyzer:
+  id: chaoss.activity
+  source_id: pydriller.git-history
+  version: pydriller-2.12-policy-v2
+  category: chaoss-activity
+  dimensions: [activity, history, churn, community]
+  optional: true
+  validated_pydriller_version: "2.12"
+  source_commit: a527c83ba81ee949cb84b977c155f337423743be
+  license: Apache-2.0
+
+policy:
+  policy_revision: pydriller-2.12-policy-v2
+  default_scope: default_branch
+  default_branch_sources: [collector, local_head, detached_head]
+  include_local_branches: false
+  include_remote_refs: false
+  include_tags: false
+  include_merge_commits: true
+  include_empty_commits: true
+  deduplicate_by: commit_hash
+  commit_order: date-order
+  activity_timestamp: committer_date
+  author_timestamp: author_date
+
+  windows:
+    days: [7, 30, 90, 365]
+    bucket_days: 7
+    inactivity_min_bucket_days: 1
+
+  aggregation:
+    low_change_churn_threshold: 5
+    recent_commit_limit: 50
+    file_history_limit: 2000
+    max_unique_commits: 250000
+    max_tracked_contributors: 20000
+    sample_hash_limit: 20
+
+  score:
+    recency_weight: 0.55
+    regularity_weight: 0.30
+    meaningful_activity_weight: 0.15
+    recency_half_life_days: 30.0
+    pydriller_max_share: 0.25
+    shallow_confidence_cap: 0.70
+    truncated_confidence_cap: 0.60
+
+  audit_scopes:
+    all_local_refs:
+      include_local_branches: true
+      include_remote_refs: false
+      include_tags: false
+    all_refs_with_remotes:
+      include_local_branches: true
+      include_remote_refs: true
+      include_tags: false
+
+  logging:
+    raw_commit_messages: forbidden
+    raw_diffs: forbidden
+    raw_author_emails: forbidden
+    full_hashes: forbidden
+    bounded_hash_samples: local_diagnostics_only

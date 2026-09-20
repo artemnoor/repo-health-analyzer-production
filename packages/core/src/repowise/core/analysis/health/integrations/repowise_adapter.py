@@ -9,11 +9,11 @@ from typing import Any
 
 import structlog
 
-from repowise.core.analysis.health import HealthAnalyzer
-from repowise.core.analysis.health.engine import HEALTH_ANALYZER_VERSION
 from repowise.core.analysis.health.models import HealthReport
 from repowise.core.ingestion.git_indexer import GitIndexer, GitIndexTier
 
+from .code_health_analyzer import CodeHealthAnalyzer
+from .code_health_collector import CodeHealthFactsCollector
 from .contracts import (
     AnalyzerContext,
     AnalyzerDefinition,
@@ -27,6 +27,14 @@ from .contracts import (
 )
 
 log = structlog.get_logger("health.repowise")
+
+# Keep adapter import side-effect free while ``health.engine`` is importing
+# persistence through the integration package.  The legacy engine version is
+# a stable public contract; the analyzer itself is imported lazily in ``run``.
+HEALTH_ANALYZER_VERSION = 10
+# A patchable seam is retained for compatibility tests and callers that inject
+# the legacy analyzer.  The real class is loaded lazily on first use below.
+HealthAnalyzer: Any | None = None
 
 REPOWISE_ANALYZER_ID = "repowise.health"
 REPOWISE_DEFINITION = AnalyzerDefinition(
@@ -211,6 +219,7 @@ class RepoWiseAdapter:
         return result
 
     def analyze(self, context: AnalyzerContext) -> tuple[AnalyzerResult, HealthReport]:
+        global HealthAnalyzer
         inventory = context.inventory
         repo_path = Path(context.repo_path)
         parsed_files = list(inventory.get("parsed_files") or [])
@@ -250,6 +259,11 @@ class RepoWiseAdapter:
 
             git_meta_map = enrich_git_meta_map(context, git_meta_map)
 
+        if HealthAnalyzer is None:
+            import repowise.core.analysis.health as health_module
+
+            HealthAnalyzer = health_module.HealthAnalyzer
+
         analyzer = HealthAnalyzer(
             graph,
             git_meta_map=git_meta_map,
@@ -273,6 +287,31 @@ class RepoWiseAdapter:
         report.repo_id = context.repo_id
         report.analyzed_at = context.as_of_ts.astimezone(UTC)
         result = _map_report(context, report, git_available=git_available, git_tier=git_tier.value)
+        if self._code_health_requested(context):
+            try:
+                # Reuse the GitIndexer result already produced by this
+                # adapter. The derived context keeps the legacy baseline
+                # immutable and avoids a second history/blame walk.
+                code_health_context = context.model_copy(
+                    update={"inventory": {**context.inventory, "git_meta_map": git_meta_map}}
+                )
+                code_health_facts = CodeHealthFactsCollector().collect(code_health_context, result)
+                result = CodeHealthAnalyzer().analyze(code_health_context, code_health_facts, result)
+            except Exception as exc:  # optional enrichment cannot break legacy RepoWise
+                log.exception(
+                    "code_health_composition_failed",
+                    repo_id=context.repo_id,
+                    error_type=type(exc).__name__,
+                )
+                result = result.model_copy(
+                    update={
+                        "diagnostics": {
+                            **result.diagnostics,
+                            "code_health_fallback": "composition_exception_baseline_preserved",
+                            "code_health_error_type": type(exc).__name__,
+                        }
+                    }
+                )
         log.info(
             "health_finished repo_id=%s head_sha=%s tier=%s metrics=%d findings=%d score=%s",
             context.repo_id,
@@ -283,6 +322,22 @@ class RepoWiseAdapter:
             result.score,
         )
         return result, report
+
+    @staticmethod
+    def _code_health_requested(context: AnalyzerContext) -> bool:
+        inventory = context.inventory
+        if inventory.get("code_health_enabled") is True:
+            return True
+        return any(
+            key in inventory
+            for key in (
+                "sonarqube_code_health",
+                "git_sizer",
+                "git_history_code_health",
+                "code_health_source_map",
+                "code_health_policy",
+            )
+        )
 
 
 _DEFAULT_ADAPTER: RepoWiseAdapter | None = None

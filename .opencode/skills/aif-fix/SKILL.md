@@ -1,6 +1,6 @@
 ---
 name: aif-fix
-description: Fix a specific bug or problem in the codebase. Supports two modes - immediate fix or plan-first. Without arguments executes existing FIX_PLAN.md. Always suggests test coverage and adds logging. Use when user says "fix bug", "debug this", "something is broken", or pastes an error message.
+description: Fix a bug or problem. Supports fix-now or plan-first; no args executes FIX_PLAN.md. When a regression check is needed, reproduce first, then implement and rerun it. Adds logging and suggests extra coverage.
 argument-hint: <bug description or error message>
 allowed-tools: Read Write Edit Glob Grep Bash AskUserQuestion Questions Task mcp__handoff__handoff_sync_status mcp__handoff__handoff_push_plan mcp__handoff__handoff_get_task mcp__handoff__handoff_list_tasks mcp__handoff__handoff_update_task
 disable-model-invocation: false
@@ -8,9 +8,29 @@ disable-model-invocation: false
 
 # Fix - Bug Fix Workflow
 
-Fix a specific bug or problem in the codebase. Supports two modes: immediate fix or plan-first approach.
+Fix a specific bug or problem in the codebase. Supports two modes: immediate fix or plan-first approach. The default workflow is regression-first whenever a regression check is needed: reproduce the problem, confirm the reported behavior, implement the fix, then verify the same check passes.
 
 ## Workflow
+
+### Canonical Regression-First Policy
+
+A **regression check** is the smallest useful test, command, fixture, API call, browser scenario, script, or documented manual/runtime reproduction that proves the reported bug or validates the expected behavior.
+
+When a bug needs regression coverage, every workflow path (fix-now, plan-first, and existing-plan execution) follows this policy:
+
+1. Identify the minimal regression check that should reproduce the issue or encode the expected behavior.
+2. Execute the check before implementation and confirm it fails or reproduces the reported problem.
+3. Implement the smallest fix addressing the root cause.
+4. Re-run the exact same check and confirm it passes.
+5. Only after that, run related existing checks when practical and suggest broader coverage if useful.
+
+Fallback behavior:
+
+- If no automated/executable check is available, document the narrowest manual/runtime reproduction and why no executable check exists. Treat that documented reproduction as the regression check for Step 4 when it can be rerun.
+- If no useful regression check exists at all, record the reason before implementation. In `HANDOFF_MODE=1`, continue only when investigation found a plausible root cause that can be fixed safely; otherwise report the task as blocked/unreproducible and stop without changing implementation code. In manual mode, ask whether to proceed with the likely fix, adjust reproduction, or investigate further.
+- If the pre-fix regression check passes unexpectedly, treat it as a reproduction mismatch: record the command/check, inputs, environment assumptions, and observed result. Then use the same `HANDOFF_MODE=1` or manual-mode fallback above.
+
+Do not duplicate or weaken this policy in later workflow sections. Later steps should reference this section and add only local execution details.
 
 ### Step 0 (pre): Detect Handoff Mode
 
@@ -28,7 +48,7 @@ Bash: printenv HANDOFF_SKIP_REVIEW || true
 
 The Handoff coordinator already manages status transitions and DB writes directly. Do NOT call MCP tools. Instead:
 
-- **No interactive questions:** Do not use `AskUserQuestion`. If `$ARGUMENTS` contains `--plan-first`, use "Plan first" mode. Otherwise default to "Fix now" mode. Always include tests and logging.
+- **No interactive questions:** Do not use `AskUserQuestion`. If `$ARGUMENTS` contains `--plan-first`, use "Plan first" mode. Otherwise default to "Fix now" mode. When a regression check is needed for the bug, include regression-first handling and logging.
 - **Plan annotation (MANDATORY):** If `HANDOFF_TASK_ID` is non-empty, you MUST insert `<!-- handoff:task:<HANDOFF_TASK_ID> -->` as the very first line of the fix plan file, before the title. **Omitting this annotation when HANDOFF_TASK_ID is set is a bug — verify before completing.** This applies to both Step 1.1 (creating new plan) and any plan rewrite.
 
 #### When `HANDOFF_MODE` is NOT `1` (manual Claude Code session)
@@ -47,8 +67,8 @@ When creating a new FIX_PLAN.md: if there is no existing annotation and no Hando
 
 **FIRST:** Read `.ai-factory/config.yaml` if it exists to resolve:
 
-- **Paths:** `paths.description`, `paths.architecture`, `paths.rules_file`, `paths.rules`, `paths.fix_plan`, and `paths.patches`
-- **Language:** `language.ui` for prompts
+- **Paths:** `paths.description`, `paths.architecture`, `paths.rules_file`, `paths.rules`, `paths.research`, `paths.fix_plan`, and `paths.patches`; derive `research_bundles_dir = <parent directory of paths.research>/research/`
+- **Language:** `language.ui` for prompts and summaries, `language.artifacts` for `FIX_PLAN.md` and patch artifacts, and `language.technical_terms` for human-readable technical terminology in artifacts
 - **Rules:** `rules.base` plus any named `rules.<area>` entries
 
 If config.yaml doesn't exist, use defaults:
@@ -57,9 +77,25 @@ If config.yaml doesn't exist, use defaults:
 - ARCHITECTURE.md: `.ai-factory/ARCHITECTURE.md`
 - RULES.md: `.ai-factory/RULES.md`
 - rules/: `.ai-factory/rules/`
+- RESEARCH.md: `.ai-factory/RESEARCH.md`
 - FIX_PLAN.md: `.ai-factory/FIX_PLAN.md`
 - patches/: `.ai-factory/patches/`
-- Language: `en` (English)
+- `ui_language`: `en`
+- `artifact_language`: `en`
+- `technical_terms_policy`: `keep`
+
+Resolved language values:
+- `ui_language = language.ui || "en"`
+- `artifact_language = language.artifacts || language.ui || "en"`
+- `technical_terms_policy = language.technical_terms || "keep"`
+
+If `technical_terms_policy` is not one of `keep`, `translate`, or `mixed`, treat it as `keep`. Legacy values such as `english` also behave like `keep`.
+
+All AskUserQuestion prompts, progress updates, fix summaries, test prompts, and next-step guidance MUST be written in `ui_language`.
+
+Generated `FIX_PLAN.md` and self-improvement patch files under `paths.patches` MUST be written in `artifact_language`.
+
+Templates and examples define structure, not fixed English output. If `artifact_language` is not `en`, translate human-readable headings, labels, analysis text, fix checklist entries, risks, prevention notes, and patch prose before saving. Preserve Handoff annotations, markdown structure, checkbox syntax, paths, commands, config keys, code identifiers, package names, API names, raw error messages, code snippets, log prefixes such as `[FIX]`, and patch tags unchanged. Keep `## Research Context`, `Source:`, `Active Summary`, `Updated:`, and `SHA256:` exact because downstream research drift checks parse them as compatibility tokens. Apply `technical_terms_policy` to other human-readable terminology.
 
 ### Step 0.1: Check for Existing Fix Plan
 
@@ -68,6 +104,9 @@ If config.yaml doesn't exist, use defaults:
 **If the file EXISTS:**
 
 - Read the resolved fix plan file
+- If the fix plan contains `## Research Context`, treat its embedded copy as the committed requirements snapshot. Parse the first `Source:` / `Reference:` line with canonical `^(?:Source|Reference):\s+\x60([^\x60]+)\x60\s+\(` syntax; for older bare-path lines, fall back to `^(?:Source|Reference):\s+(.+?)\s+\(`. Fall back to configured `paths.research` only when neither form identifies a usable path.
+- If the parsed source is inside `research_bundles_dir`, require its sibling `INDEX.md` to contain `<!-- aif:research-mode:ultra -->` exactly once and link that `RESEARCH.md` from `## Artifact Index`; otherwise emit `WARN [research-drift]`. Valid sibling C4/ADR/dependency artifacts are rationale only.
+- When `SHA256:` is present, extract the current source text strictly between `<!-- aif:active-summary:start -->` and `<!-- aif:active-summary:end -->`, remove HTML comment blocks, preserve line order and leading whitespace, trim trailing spaces from every line, use LF endings, and end with one newline. Hash through stdin with `shasum -a 256` or `sha256sum`; the digest is authoritative. Use `Updated:` only as a legacy fallback when `SHA256:` is absent. A missing/invalid source or revision mismatch emits `WARN [research-drift]`; execute against the embedded Research Context unless the user explicitly requests a rebase.
 - **Immediately check the first line for `<!-- handoff:task:<uuid> -->`:**
   - If found AND `HANDOFF_MODE` is NOT `1` (manual session): extract the task ID. Call `handoff_sync_status` with `{ taskId: <extracted-id>, newStatus: "implementing", sourceTimestamp: "<current UTC time in ISO 8601 format>", direction: "aif_to_handoff", paused: true }`. (Status is `"implementing"` because we are executing an existing plan, not creating one.)
   - If found AND `HANDOFF_MODE` is `1`: the Handoff coordinator handles sync — do nothing.
@@ -75,12 +114,14 @@ If config.yaml doesn't exist, use defaults:
 - Inform the user: "Found existing fix plan. Executing fix based on the plan."
 - Skip **Step 1** (problem intake/mode choice), but still run **Step 0.2** to load context
 - Then continue to **Step 2: Investigate the Codebase**, using the plan as your guide
-- Follow each step of the plan sequentially
-- After the fix is fully applied and verified, **delete** the resolved fix plan file:
+- Apply the **Canonical Regression-First Policy** before changing implementation code when a regression check is needed for the bug, even if the existing plan did not include that policy
+- Follow the plan sequentially, but preserve the canonical order: confirm the problem first, implement the fix, then rerun the same regression check
+- After the fix is fully applied and verified in Step 4, delete the resolved fix plan file **only when it is the default fix plan path** `.ai-factory/FIX_PLAN.md`:
   ```bash
-  rm <resolved fix plan path>
+  rm .ai-factory/FIX_PLAN.md
   ```
-- Continue to Step 4 (Verify), Step 5 (Test suggestion), Step 6 (Patch)
+- If the fix plan came from a custom `paths.fix_plan` value, an explicitly supplied custom plan path, or any non-default fix plan location, do **not** delete it. Leave it in place and mention in the final summary that the custom fix plan was preserved.
+- Continue to Step 5 (Additional Test Coverage) and Step 6 (Patch)
 
 **If the file DOES NOT exist AND `$ARGUMENTS` is empty:**
 
@@ -173,6 +214,10 @@ Investigate the codebase enough to understand the problem and create a plan.
 
 **Use the same parallel exploration approach as Step 2** — launch Explore agents to investigate the problem area, related code, and past patterns simultaneously.
 
+If the resolved research path exists, read it before creating the fix plan. Also check direct child bundles under `research_bundles_dir`, but recognize one as active only when `INDEX.md` contains `<!-- aif:research-mode:ultra -->` exactly once, declares `Status: active`, and links its `RESEARCH.md` from `## Artifact Index`. Select at most one clearly bug-relevant source: explicit concrete path, then exact slug, normalized `Topic:`, or unique semantic match, then the relevant legacy file; never use recency. When the selected Active Summary influences the planned fix, copy it into `## Research Context` and include ``Source: `<selected research path>` (Active Summary, Updated: <research Updated timestamp>, SHA256: <sha256 of copied Active Summary>)``. If research is unrelated, omit the section.
+
+When adding `## Research Context` to a fix plan, use the same normalization algorithm as the drift check. Calculate the digest without a temporary repository artifact: feed the normalized text through stdin / inline shell input to `shasum -a 256`; if unavailable, use `sha256sum`. Use the first output field as `SHA256:`.
+
 After agents return, synthesize findings to:
 
 1. Identify the root cause (or most likely candidates)
@@ -180,6 +225,8 @@ After agents return, synthesize findings to:
 3. Assess impact scope
 
 Then create the resolved fix plan file (default: `.ai-factory/FIX_PLAN.md`).
+
+Write the fix plan in `artifact_language`. The template below is the required structure only; translate human-readable headings, labels, and prose before saving when `artifact_language` is not `en`, while preserving stable technical tokens from Step 0.
 
 **Before writing:** If `HANDOFF_MODE` is `1` and `HANDOFF_TASK_ID` is non-empty, the very first line of the file MUST be `<!-- handoff:task:<HANDOFF_TASK_ID> -->` followed by a blank line, then the plan content below. If in manual mode and a task ID was extracted from an existing annotation, preserve it.
 
@@ -199,13 +246,15 @@ What was found during investigation:
 - Affected files and functions
 - Impact scope
 
-## Fix Steps
+## Fix Checklist
 
-Step-by-step plan for implementing the fix:
+Checklist entries for implementing the fix:
 
-1. [ ] Step one — what to change and why
-2. [ ] Step two — ...
-3. [ ] Step three — ...
+1. [ ] Apply the Canonical Regression-First Policy: add or identify the minimal regression check, or record why no useful check exists
+2. [ ] Run the regression check and confirm it reproduces the reported problem, or record the fallback outcome from the policy
+3. [ ] Implement the smallest fix for the root cause
+4. [ ] Rerun the same regression check and confirm it passes when a rerunnable check exists
+5. [ ] Run the closest related existing checks when practical
 
 ## Files to Modify
 
@@ -220,9 +269,17 @@ Step-by-step plan for implementing the fix:
 
 ## Test Coverage
 
-- What tests should be added
-- What edge cases to cover
+- Minimal regression check to confirm the bug before implementation
+- Command/check to run before and after the fix
+- Additional edge cases worth covering after the regression check passes
+
+## Research Context (optional)
+
+Include only when this fix plan is based on `RESEARCH.md`.
+Source: `<selected research path>` (Active Summary, Updated: YYYY-MM-DD HH:MM, SHA256: <active-summary-sha256>)
 ```
+
+Use the normalization and stdin hashing rules from Step 1.1 when filling `SHA256:`.
 
 **After creating the plan, output:**
 
@@ -281,6 +338,14 @@ Task(subagent_type: Explore, model: sonnet, prompt:
 - Trace the data flow
 - Check for similar patterns elsewhere
 
+### Step 2.5: Capture a Regression Check
+
+Apply the **Canonical Regression-First Policy** before changing implementation code. Prefer a regression check for behavior bugs, parsing/validation bugs, API/data bugs, crashes, and regressions. If the change is a non-bug cleanup, purely static correction, or investigation-only request, record why the policy does not apply and continue with the normal fix workflow.
+
+**Anti-gaming rule:** Do not tailor the test to the implementation you plan to write. The test must describe the externally expected behavior or the reported failure condition. If the test passes before any fix, either the reproduction is wrong, the bug is stale, or the environment differs; handle that mismatch through the fallback behavior in the Canonical Regression-First Policy before changing implementation code.
+
+Record the selected regression check, pre-fix result, and any fallback decision in your working notes so Step 4 can rerun or revisit the same check after the fix.
+
 ### Step 3: Implement the Fix
 
 **Apply the fix with logging:**
@@ -314,17 +379,21 @@ try {
 ### Step 4: Verify the Fix
 
 - Check the code compiles/runs
+- If Step 2.5 created, identified, or documented a regression check, rerun or revisit the same check and confirm the fixed behavior
 - Verify the logic is correct
 - Ensure no regressions introduced
+- When practical, run the closest existing related test suite after the regression check passes
 
-### Step 5: Suggest Test Coverage
+### Step 5: Suggest Additional Test Coverage
 
 **Handoff sync (manual mode ONLY — skip entirely when `HANDOFF_MODE` is `1`):** If a Handoff task ID is known AND `HANDOFF_MODE` is NOT `1`:
 1. Call `handoff_push_plan` with `{ taskId: <id>, planContent: <fix summary or updated plan> }`.
 2. If `HANDOFF_SKIP_REVIEW` is `1`: call `handoff_sync_status` with `{ taskId: <id>, newStatus: "done", sourceTimestamp: "<current UTC time in ISO 8601 format>", direction: "aif_to_handoff", paused: false }`.
 3. Otherwise: call `handoff_sync_status` with `{ taskId: <id>, newStatus: "review", sourceTimestamp: "<current UTC time in ISO 8601 format>", direction: "aif_to_handoff", paused: true }`.
 
-**ALWAYS suggest covering this case with a test:**
+**ALWAYS suggest additional test coverage:**
+
+The Step 5 and After Fixing output templates define structure only. Render all human-readable text in these user-facing responses in `ui_language`. Preserve code snippets, commands, file paths, line references, log prefixes such as `[FIX]`, and AskUserQuestion option structure unchanged.
 
 ```
 ## Fix Applied ✅
@@ -336,9 +405,9 @@ Fixed by: [what was changed]
 The fix includes logging with prefix `[FIX]`.
 Please test and share any logs if issues persist.
 
-### Recommended: Add a Test
+### Recommended: Add More Test Coverage
 
-This bug should be covered by a test to prevent regression:
+If a regression check was created or identified in Step 2.5, this bug is now covered. Consider adding broader coverage to prevent nearby regressions:
 
 \`\`\`typescript
 describe('functionName', () => {
@@ -355,7 +424,7 @@ describe('functionName', () => {
 });
 \`\`\`
 
-AskUserQuestion: Would you like me to create this test?
+AskUserQuestion: Would you like me to create the additional test coverage?
 
 Options:
 1. Yes, create the test
@@ -366,7 +435,7 @@ Options:
 
 - **If "Yes, create the test":**
   1. Create the test file in the appropriate test directory (follow project conventions)
-  2. Include the suggested test case and any additional edge cases related to the fix
+  2. Include the suggested additional test case and related edge cases
   3. Run the test to verify it passes
   4. Then proceed to **Step 6: Create Self-Improvement Patch**
 
@@ -407,8 +476,9 @@ function fixedFunction(input) {
 
 1. Search for UserProfile component/function
 2. Find where `.name` is accessed
-3. Add null check with logging
-4. Suggest test for null user case
+3. Add a regression check for the null user case and confirm it fails
+4. Add null check with logging
+5. Rerun the same regression check and confirm it passes
 
 ### Example 2: API Returns Wrong Data
 
@@ -419,8 +489,9 @@ function fixedFunction(input) {
 1. Find orders API endpoint
 2. Trace the query logic
 3. Find the bug (e.g., wrong filter)
-4. Fix with logging
-5. Suggest integration test
+4. Add or identify an integration regression check for the authenticated user case and confirm it fails
+5. Fix with logging
+6. Rerun the same regression check and confirm it passes
 
 ### Example 3: Form Validation Not Working
 
@@ -430,28 +501,31 @@ function fixedFunction(input) {
 
 1. Find email validation logic
 2. Check regex or validation library usage
-3. Fix the validation
-4. Add logging for validation failures
-5. Suggest unit test with edge cases
+3. Add a unit regression test for the invalid email case and confirm it fails
+4. Fix the validation
+5. Add logging for validation failures
+6. Rerun the same regression test and confirm it passes
 
 ## Important Rules
 
 1. **Check the fix plan first** - Always check the resolved fix plan path before anything else
 2. **Plan mode = plan only** - When user chooses "Plan first", create the plan and STOP. Do NOT fix.
-3. **Execute mode = follow the plan** - When the resolved fix plan exists, follow it step by step, then delete it
+3. **Execute mode = follow the plan** - When the resolved fix plan exists, follow it step by step. Delete it after verified execution only if it is the default `.ai-factory/FIX_PLAN.md`; preserve custom/non-default fix plan files.
 4. **NO reports** - Don't create summary documents (patches are learning artifacts, not reports)
 5. **ALWAYS log** - Every fix must have logging for feedback
-6. **ALWAYS suggest tests** - Help prevent regressions
-7. **Root cause** - Fix the actual problem, not symptoms
-8. **Minimal changes** - Don't refactor unrelated code
-9. **One fix at a time** - Don't scope creep
-10. **Clean up** - Delete the resolved fix plan file after successful fix execution
-11. **Ownership boundary** - `/aif-fix` owns `paths.fix_plan` and `paths.patches`; treat `.ai-factory/DESCRIPTION.md`, roadmap, rules, and architecture context artifacts as read-only unless the user explicitly requests otherwise
-12. **Logging scope** - Keep `[FIX]` logging requirements for fixes; context-gate outputs in this command should use `WARN`/`ERROR` and must not change global logging policy in other skills
+6. **Regression-first when checks are needed** - When a bug needs regression coverage, follow the Canonical Regression-First Policy before changing implementation code, confirm the problem when reproducible, then verify the same regression check after the fix
+7. **Do not fit tests to implementation** - Regression tests encode the reported/expected behavior, not the internal implementation shape
+8. **ALWAYS suggest additional tests** - Help prevent nearby regressions beyond the required regression check
+9. **Root cause** - Fix the actual problem, not symptoms
+10. **Minimal changes** - Don't refactor unrelated code
+11. **One fix at a time** - Don't scope creep
+12. **Clean up** - Delete the resolved fix plan file after successful fix execution
+13. **Ownership boundary** - `/aif-fix` owns `paths.fix_plan` and `paths.patches`; treat `.ai-factory/DESCRIPTION.md`, roadmap, rules, and architecture context artifacts as read-only unless the user explicitly requests otherwise
+14. **Logging scope** - Keep `[FIX]` logging requirements for fixes; context-gate outputs in this command should use `WARN`/`ERROR` and must not change global logging policy in other skills
 
 ## After Fixing
 
-**Use this output template in Step 5** (before the AskUserQuestion about tests):
+**Use this output template in Step 5** (before the AskUserQuestion about additional tests):
 
 ```
 ## Fix Applied ✅
@@ -459,6 +533,7 @@ function fixedFunction(input) {
 **Issue:** [what was broken]
 **Cause:** [why it was broken]
 **Fix:** [what was changed]
+**Regression check:** [command/check and result, manual/runtime reproduction result, or "not available: <reason>"]
 
 **Files modified:**
 - path/to/file.ts (line X)
@@ -482,6 +557,8 @@ function fixedFunction(input) {
    **Format:** `YYYY-MM-DD-HH.mm.md` (e.g., `2026-02-07-14.30.md`)
 
 3. Use this template:
+
+Write the patch artifact in `artifact_language`. The template below is the required structure only; translate human-readable headings, labels, root-cause text, solution text, and prevention text before saving when `artifact_language` is not `en`, while preserving stable technical tokens from Step 0.
 
 ```markdown
 # [Brief title describing the fix]
@@ -574,7 +651,8 @@ Suggest the user to free up context space if needed: `/clear` (full reset) or `/
 
 - ❌ Apply a fix when user chose "Plan first" - only create the fix plan and stop
 - ❌ Skip the fix-plan check at the start
-- ❌ Leave the fix plan after successful fix execution - always delete it
+- ❌ Leave the default `.ai-factory/FIX_PLAN.md` after successful fix execution
+- ❌ Delete custom/non-default fix plan files after execution
 - ❌ Generate reports or summaries (patches are NOT reports — they are learning artifacts)
 - ❌ Refactor unrelated code
 - ❌ Add features while fixing

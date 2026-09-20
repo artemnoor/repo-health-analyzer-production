@@ -19,6 +19,7 @@ from typing import Any
 
 import structlog
 
+from .activity_analyzer import ACTIVITY_POLICY_VERSION, ActivityAnalyzer
 from .contracts import (
     AnalyzerContext,
     AnalyzerDefinition,
@@ -30,6 +31,7 @@ from .contracts import (
     MetricValue,
 )
 from .forge_adapter import RawFact
+from .issues_analyzer import ISSUES_ANALYZER_VERSION, IssuesAnalyzer
 from .process import workspace_root
 
 log = structlog.get_logger("chaoss.metric")
@@ -101,7 +103,7 @@ def _canonical_metric_dimension(source: MetricSource, analyzer_id: str) -> str:
 DEFINITIONS = {
     CHAOSS_ACTIVITY_ID: AnalyzerDefinition(
         id=CHAOSS_ACTIVITY_ID,
-        version="pinned",
+        version=ACTIVITY_POLICY_VERSION,
         category="chaoss-activity",
         dimensions=("activity", "community", "churn"),
         requires=("chaoss:events",),
@@ -114,7 +116,7 @@ DEFINITIONS = {
     ),
     CHAOSS_ISSUES_PRS_ID: AnalyzerDefinition(
         id=CHAOSS_ISSUES_PRS_ID,
-        version="pinned",
+        version=ISSUES_ANALYZER_VERSION,
         category="chaoss-issues-prs",
         dimensions=("issues", "pull_requests", "review", "delivery"),
         requires=("chaoss:events",),
@@ -379,6 +381,8 @@ def graal_result(context: AnalyzerContext) -> AnalyzerResult:
 
 
 _ADAPTER = ChaossAdapter()
+_ACTIVITY_ANALYZER = ActivityAnalyzer()
+_ISSUES_ANALYZER = IssuesAnalyzer()
 
 
 def _metric_factory(analyzer_id: str) -> Callable[[AnalyzerContext], AnalyzerResult]:
@@ -386,11 +390,13 @@ def _metric_factory(analyzer_id: str) -> Callable[[AnalyzerContext], AnalyzerRes
 
 
 def activity_adapter(context: AnalyzerContext) -> AnalyzerResult:
-    return _ADAPTER.result(context, analyzer_id=CHAOSS_ACTIVITY_ID)
+    base_result = _ADAPTER.result(context, analyzer_id=CHAOSS_ACTIVITY_ID)
+    return _ACTIVITY_ANALYZER.analyze(context, base_result)
 
 
 def issues_prs_adapter(context: AnalyzerContext) -> AnalyzerResult:
-    return _ADAPTER.result(context, analyzer_id=CHAOSS_ISSUES_PRS_ID)
+    base_result = _ADAPTER.result(context, analyzer_id=CHAOSS_ISSUES_PRS_ID)
+    return _ISSUES_ANALYZER.analyze(context, base_result)
 
 
 def releases_adapter(context: AnalyzerContext) -> AnalyzerResult:

@@ -1,0 +1,55 @@
+version: 1
+
+# Repo Health owns the policy around the official Vale CLI. Vale itself owns
+# prose parsing and rule execution; this file only defines the adapter boundary.
+analyzer:
+  id: vale.documentation
+  version: vale-3.22.0-policy-v2
+  category: documentation-quality
+  dimensions: [docs]
+  requires: [local_scan]
+  phase: 25
+  cost: 30
+  timeout: 120
+  cache_policy: read_write
+  source_commit: ba6a2c6a725295eb6b7698336d22dec8ffc4af1c
+  enabled_by_mode: [fast, full, offline, diff, backfill]
+
+policy:
+  validated_vale_version: 3.22.0
+  policy_revision: vale-3.22.0-policy-v2
+  config_path: config/analyzers/vale/.vale.ini
+  styles_path: config/analyzers/vale/styles
+  output_format: JSON
+  metrics_command: ls-metrics
+  timeout_seconds: 90
+  output_cap_bytes: 16777216
+  max_files_per_batch: 128
+  max_command_bytes: 200000
+  supported_extensions: [.md, .mdx, .markdown, .rst, .txt]
+  extensionless_names: [README, CONTRIBUTING, CHANGELOG, ARCHITECTURE, DESIGN, DECISIONS]
+  excluded_directories: [.git, .hg, .svn, vendor, node_modules, build, dist, cache, .cache, generated]
+  executable:
+    tool_path_keys: [vale, vale.exe]
+    configured_candidates: [bin/vale, bin/vale.exe]
+    allow_path_lookup: true
+  severity_weights:
+    suggestion: 0.25
+    warning: 1.0
+    error: 2.0
+    fatal: 3.0
+  score:
+    minimum_words_per_file: 20
+    composition_revision: documentation-calibration-v2
+    completeness_weight: 0.40
+    instructions_weight: 0.20
+    vale_quality_weight: 0.25
+    readability_weight: 0.15
+    finding_penalty_per_point: 10.0
+    finding_density_scale: 600.0
+    finding_density_min_words: 500
+    max_penalty: 100.0
+  logging:
+    raw_payload: hash_only
+    document_excerpt: forbidden
+    executable_path_in_public_result: forbidden

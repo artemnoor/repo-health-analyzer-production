@@ -1,0 +1,120 @@
+{
+  "source_kind": "sourcecraft",
+  "source_version": "sourcecraft-fixture-v1",
+  "records_available": true,
+  "records_expected": 7,
+  "pagination_complete": true,
+  "local_date_filter_applied": true,
+  "comments_available": true,
+  "state_events_available": true,
+  "permission_state": "granted",
+  "issues": [
+    {
+      "id": "101",
+      "number": 101,
+      "url": "https://sourcecraft.example/issues/101",
+      "created_at": "2026-06-15T00:00:00Z",
+      "updated_at": "2026-06-20T00:00:00Z",
+      "closed_at": "2026-06-20T00:00:00Z",
+      "state": "closed",
+      "author": {"login": "reporter", "is_bot": false},
+      "events": [
+        {"id": "101-open", "type": "opened", "created_at": "2026-06-15T00:00:00Z", "actor": {"login": "reporter", "is_bot": false}, "is_state_transition": true},
+        {"id": "101-comment", "type": "commented", "created_at": "2026-06-15T04:00:00Z", "actor": {"login": "maintainer", "is_bot": false}},
+        {"id": "101-close", "type": "closed", "created_at": "2026-06-20T00:00:00Z", "actor": {"login": "maintainer", "is_bot": false}, "is_state_transition": true}
+      ]
+    },
+    {
+      "id": "101",
+      "number": 101,
+      "url": "https://sourcecraft.example/issues/101",
+      "created_at": "2026-06-15T00:00:00Z",
+      "closed_at": "2026-06-20T00:00:00Z",
+      "state": "closed",
+      "author": {"login": "reporter", "is_bot": false}
+    },
+    {
+      "id": "102",
+      "number": 102,
+      "url": "https://sourcecraft.example/issues/102",
+      "created_at": "2026-07-01T00:00:00Z",
+      "updated_at": "2026-07-02T00:00:00Z",
+      "state": "open",
+      "author": {"login": "reporter", "is_bot": false},
+      "events": [
+        {"id": "102-open", "type": "opened", "created_at": "2026-07-01T00:00:00Z", "actor": {"login": "reporter", "is_bot": false}, "is_state_transition": true},
+        {"id": "102-bot", "type": "commented", "created_at": "2026-07-02T00:00:00Z", "actor": {"login": "dependabot[bot]", "is_bot": true}}
+      ]
+    },
+    {
+      "id": "103",
+      "number": 103,
+      "url": "https://sourcecraft.example/issues/103",
+      "created_at": "2026-06-20T00:00:00Z",
+      "updated_at": "2026-07-05T00:00:00Z",
+      "closed_at": "2026-07-05T00:00:00Z",
+      "state": "closed",
+      "author": {"login": "reporter", "is_bot": false},
+      "events": [
+        {"id": "103-open", "type": "opened", "created_at": "2026-06-20T00:00:00Z", "actor": {"login": "reporter", "is_bot": false}, "is_state_transition": true},
+        {"id": "103-bot", "type": "commented", "created_at": "2026-06-20T01:00:00Z", "actor": {"login": "renovate[bot]", "is_bot": true}},
+        {"id": "103-human", "type": "commented", "created_at": "2026-06-20T02:00:00Z", "actor": {"login": "reviewer", "is_bot": false}},
+        {"id": "103-close-1", "type": "closed", "created_at": "2026-06-25T00:00:00Z", "actor": {"login": "maintainer", "is_bot": false}, "is_state_transition": true},
+        {"id": "103-reopen", "type": "reopened", "created_at": "2026-07-01T00:00:00Z", "actor": {"login": "reporter", "is_bot": false}, "is_state_transition": true},
+        {"id": "103-close-2", "type": "closed", "created_at": "2026-07-05T00:00:00Z", "actor": {"login": "maintainer", "is_bot": false}, "is_state_transition": true}
+      ]
+    },
+    {
+      "id": "104",
+      "number": 104,
+      "url": "https://sourcecraft.example/issues/104",
+      "created_at": "2026-09-01T00:00:00Z",
+      "updated_at": "2026-09-01T00:00:00Z",
+      "state": "open",
+      "has_comments": true,
+      "author": {"login": "reporter", "is_bot": false},
+      "events": [
+        {"id": "104-open", "type": "opened", "created_at": "2026-09-01T00:00:00Z", "actor": {"login": "reporter", "is_bot": false}, "is_state_transition": true}
+      ]
+    },
+    {
+      "id": "105",
+      "number": 105,
+      "url": "https://sourcecraft.example/issues/105",
+      "created_at": "2026-07-15T00:00:00Z",
+      "updated_at": "2026-08-20T00:00:00Z",
+      "closed_at": "2026-08-20T00:00:00Z",
+      "state": "closed",
+      "author": {"login": "reporter", "is_bot": false},
+      "events": [
+        {"id": "105-open", "type": "opened", "created_at": "2026-07-15T00:00:00Z", "actor": {"login": "reporter", "is_bot": false}, "is_state_transition": true},
+        {"id": "105-comment", "type": "commented", "created_at": "2026-07-19T04:00:00Z", "actor": {"login": "maintainer", "is_bot": false}},
+        {"id": "105-close", "type": "closed", "created_at": "2026-08-20T00:00:00Z", "actor": {"login": "maintainer", "is_bot": false}, "is_state_transition": true}
+      ]
+    },
+    {
+      "id": "106",
+      "number": 106,
+      "url": "https://sourcecraft.example/issues/106",
+      "created_at": "2026-08-01T00:00:00Z",
+      "updated_at": "2026-08-10T00:00:00Z",
+      "closed_at": "2026-08-10T00:00:00Z",
+      "state": "closed",
+      "author": {"login": "reporter", "is_bot": false},
+      "events": [
+        {"id": "106-open", "type": "opened", "created_at": "2026-08-01T00:00:00Z", "actor": {"login": "reporter", "is_bot": false}, "is_state_transition": true},
+        {"id": "106-comment", "type": "commented", "created_at": "2026-08-02T00:00:00Z", "actor": {"login": "reviewer", "is_bot": false}},
+        {"id": "106-close", "type": "closed", "created_at": "2026-08-10T00:00:00Z", "actor": {"login": "maintainer", "is_bot": false}, "is_state_transition": true}
+      ]
+    },
+    {
+      "id": "201",
+      "number": 201,
+      "url": "https://sourcecraft.example/pull/201",
+      "is_pull_request": true,
+      "created_at": "2026-08-05T00:00:00Z",
+      "state": "closed",
+      "closed_at": "2026-08-06T00:00:00Z"
+    }
+  ]
+}

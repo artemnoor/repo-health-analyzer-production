@@ -1,0 +1,25 @@
+version: 1
+
+# SourceCraft AppSec is the only production security runtime source here.
+# The Repo Health category owns aggregation and caps; this file only fixes
+# the transport boundary and redaction policy.
+analyzer:
+  id: sourcecraft.appsec
+  version: sourcecraft-appsec-policy-v1
+  category: security
+  dimensions: [security]
+  source: sourcecraft-appsec-rest-v1
+  base_url: https://appsec.sourcecraft.tech
+  endpoints:
+    scans: /v1/scans
+    defect_groups: /v1/defect-groups
+    findings: /v1/findings
+  request:
+    repository_parameter: gitRepo
+    page_size: 100
+    timeout_seconds: 30
+  logging:
+    token: forbidden
+    raw_payload: forbidden
+    source_code: forbidden
+    comments: forbidden

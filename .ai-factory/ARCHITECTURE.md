@@ -33,6 +33,14 @@ Future extraction should introduce explicit contracts around analyzer context,
 definitions, results, statuses, findings, evidence references, metric values,
 limitations, registry, runner, orchestrator, lifecycle, and process boundaries.
 
+The first extracted boundary is
+`packages/core/src/repowise/core/analysis/analyzer_integration/`. It is a
+side-effect-free neutral kernel for those contracts and execution mechanics.
+Health composition, adapters, persistence/checkpoint bridges, ingestion, and
+public projections remain at the health edge and are injected through ports.
+The legacy health integration imports remain compatibility facades during the
+fixture-parity migration.
+
 External projects should be accessed through replaceable engines, adapters, or
 providers. The old working path remains the comparison baseline during migration.
 

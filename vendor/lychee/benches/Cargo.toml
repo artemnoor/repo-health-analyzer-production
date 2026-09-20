@@ -1,0 +1,22 @@
+[package]
+name = "benches"
+version = "0.0.0"
+authors = ["Matthias Endler <matthias@endler.dev>"]
+license = "Apache-2.0/MIT"
+description = "Criterion benchmarks of the lychee crates"
+edition = "2024"
+publish = false
+
+[dependencies]
+lychee-lib = { path = "../lychee-lib", default-features = false }
+criterion = "0.8.2"
+tokio = "1.52.3"
+
+[features]
+email-check = ["lychee-lib/email-check"]
+default = ["email-check"]
+
+[[bench]]
+name = "extract"
+path = "src/extract.rs"
+harness = false

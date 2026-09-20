@@ -94,3 +94,6 @@ projection.
 - [Scoring](../repository-health/scoring.md) — как рассчитывается score.
 - [Architecture](../repository-health/architecture.md) — pipeline и read models.
 - [Testing](../repository-health/testing.md) — подтверждение результата.
+- [Issues Analyzer](ISSUES_ANALYZER.md) — SourceCraft issue lifecycle, responsiveness, backlog, and score policy.
+- [CI/CD Analyzer](CICD_ANALYZER.md) — SourceCraft runs, reliability, duration, trends, confidence, and DORA applicability.
+- [Code Health Analyzer](CODE_HEALTH_ANALYZER.md) — SonarQube Community Build, git-sizer JSON v2, Git-history TODO debt, status mapping, and confidence-adjusted code score.

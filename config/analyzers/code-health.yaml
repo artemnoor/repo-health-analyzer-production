@@ -1,0 +1,59 @@
+version: 1
+revision: code-health-v1
+source_commit: official-sonarqube-and-git-sizer-boundary
+enabled: true
+
+policy:
+  old_todo_days: 180
+  partial_score_cap: 80
+  component_weights:
+    maintainability_debt: 0.35
+    complexity: 0.15
+    duplication: 0.15
+    hotspots_churn: 0.15
+    todo_debt: 0.10
+    git_structure: 0.10
+  exclusions:
+    - .git/
+    - vendor/
+    - generated/
+    - build/
+    - dist/
+    - out/
+    - coverage/
+    - node_modules/
+    - .venv/
+    - '**/*.min.js'
+    - '**/*.min.css'
+  maintainability_rating_scores:
+    A: 100
+    B: 85
+    C: 70
+    D: 45
+    E: 15
+  limits:
+    max_source_file_bytes: 2000000
+    max_source_files: 50000
+    max_findings: 100
+    git_sizer_timeout_seconds: 120
+    git_sizer_output_cap_bytes: 16777216
+
+sonar:
+  metric_aliases:
+    maintainability_rating: [maintainability_rating, sqale_rating]
+    code_smells: [code_smells]
+    technical_debt_minutes: [technical_debt_minutes, sqale_index]
+    remediation_effort: [remediation_effort, effort]
+    cognitive_complexity: [cognitive_complexity]
+    cyclomatic_complexity: [cyclomatic_complexity, complexity]
+    duplicated_lines_density: [duplicated_lines_density]
+    duplicated_lines: [duplicated_lines]
+    ncloc: [ncloc, lines_of_code]
+    reliability_bugs: [reliability_bugs, bugs]
+    coverage: [coverage]
+
+evidence:
+  max_findings: 100
+  max_path_length: 512
+  max_message_length: 240
+

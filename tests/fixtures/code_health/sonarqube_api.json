@@ -1,0 +1,36 @@
+{
+  "schema_version": "repowise-sonarqube-code-health-v1",
+  "status": "SUCCESS",
+  "project_key": "repowise-code-health-live",
+  "server_version": "26.9.0.129388",
+  "measures": [
+    {"metric": "code_smells", "value": "1"},
+    {"metric": "cognitive_complexity", "value": "17"},
+    {"metric": "complexity", "value": "11"},
+    {"metric": "duplicated_lines", "value": "0"},
+    {"metric": "duplicated_lines_density", "value": "0.0"},
+    {"metric": "ncloc", "value": "79"},
+    {"metric": "sqale_rating", "value": "1"},
+    {"metric": "sqale_index", "value": "6"},
+    {"metric": "bugs", "value": "0"},
+    {"metric": "coverage", "value": "0.0"}
+  ],
+  "components": [
+    {"path": "appsec_readback.py", "measures": [{"metric": "cognitive_complexity", "value": "17"}]}
+  ],
+  "issues": [
+    {
+      "key": "4e4b7212-ad21-4240-9cbb-8ebab5763599",
+      "type": "CODE_SMELL",
+      "rule": "python:S3776",
+      "severity": "CRITICAL",
+      "component": "repowise-code-health-live:appsec_readback.py",
+      "line": 33,
+      "effort": "6min",
+      "message": "Refactor this function to reduce its Cognitive Complexity from 16 to the 15 allowed."
+    }
+  ],
+  "coverage_provenance": {},
+  "pagination_complete": true,
+  "pages_fetched": 1
+}

@@ -1,0 +1,20 @@
+[package]
+name = "collect_links"
+version = "0.1.0"
+edition = "2024"
+
+[[example]]
+name = "collect_links"
+path = "collect_links.rs"
+
+[dependencies]
+lychee-lib = { path = "../../lychee-lib",  default-features = false }
+tokio = { version = "1.52.3", features = ["full"] }
+regex = "1.12.2"
+http = "1.4.1"
+tokio-stream = "0.1.18"
+reqwest = "0.13.4"
+
+[features]
+email-check = ["lychee-lib/email-check"]
+default = []

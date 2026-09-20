@@ -7,6 +7,12 @@
 здесь зафиксированы обязательные invariants, которые должны сохраняться при
 изменениях.
 
+Analyzer execution теперь имеет neutral compatibility entry point под
+`packages/core/src/repowise/core/analysis/analyzer_integration/`. Product
+composition, persistence, publication, checkpoint storage и adapter bootstrap
+остаются на health edge; старые health integration imports продолжают работать
+до отдельного одобренного migration с fixture parity.
+
 ## Непереговорные invariants
 
 1. Все product surfaces читают один canonical persisted projection.
@@ -42,6 +48,11 @@ checkout + ref + as_of + score policy
 Derived `band` and `facets` принадлежат ranking projection; это derived band + facets,
 а не вторая scoring system. Для текущего контракта no schema migration is introduced:
 миграционная граница — `0066`.
+
+Vale prose quality — дополнительный adapter `vale.documentation`, описанный в
+[актуальной architecture reference](../repository-health/architecture.md#vale-documentation-quality).
+Он не заменяет baseline completeness checks и использует versioned policy в
+`config/analyzers/vale/`.
 
 ## Evidence in code
 

@@ -28,11 +28,26 @@ Comprehensive security checklist based on OWASP Top 10 (2021) and industry best 
 
 **FIRST:** Read `.ai-factory/config.yaml` if it exists to resolve:
 - **Paths:** `paths.security`
-- **Language:** `language.ui` for prompts
+- **Language:** `language.ui` for prompts, audit summaries, and next-step guidance; `language.artifacts` for the ignored-item state artifact; `language.technical_terms` for human-readable technical terminology in the ignored-item artifact
 
 If config.yaml doesn't exist, use defaults:
 - SECURITY.md: `.ai-factory/SECURITY.md`
-- Language: `en` (English)
+- `ui_language`: `en`
+- `artifact_language`: `en`
+- `technical_terms_policy`: `keep`
+
+Resolved language values:
+- `ui_language = language.ui || "en"`
+- `artifact_language = language.artifacts || language.ui || "en"`
+- `technical_terms_policy = language.technical_terms || "keep"`
+
+If `technical_terms_policy` is not one of `keep`, `translate`, or `mixed`, treat it as `keep`. Legacy values such as `english` also behave like `keep`.
+
+All AskUserQuestion prompts, audit summaries, ignored-item explanations shown to the user, and next-step guidance MUST be written in `ui_language`.
+
+The persistent `SECURITY.md` ignored-item artifact under `paths.security` MUST be written in `artifact_language`.
+
+Templates and examples define structure, not fixed English output. If `artifact_language` is not `en`, translate human-readable headings, table captions, notes, ignored-item reasons when generated, and review guidance before saving. Preserve item IDs, dates, author handles, commands, paths, config keys, package names, API names, security category IDs, severity/status enum values, raw errors, and the final `aif-gate-result` JSON schema unchanged. Apply `technical_terms_policy` to other human-readable terminology.
 
 ## Ignored Items (SECURITY.md)
 
@@ -57,6 +72,8 @@ Before running any audit, **always read** the resolved SECURITY.md path (default
 3. Non-ignored items are audited as usual
 
 ### SECURITY.md format
+
+Render this structure in `artifact_language` before saving. The headings below are canonical structure labels, not fixed English output; item IDs and table field meanings stay stable.
 
 ```markdown
 # Security: Ignored Items
@@ -191,6 +208,8 @@ Machine-readable fields:
 - [ ] CSRF tokens on state-changing requests
 - [ ] Rate limiting enabled
 - [ ] Error messages don't leak sensitive info
+- [ ] Client-side debug logging is disabled in production or guarded by an explicit non-production environment check
+- [ ] Production UI never displays raw errors, stack traces, exception messages, SQL errors, request internals, or upstream service details
 - [ ] Dependencies scanned for vulnerabilities
 - [ ] LLM prompt injection mitigated (if using AI)
 - [ ] Race conditions prevented on critical operations (payments, inventory)
@@ -368,6 +387,37 @@ git push origin --force --all
 - [ ] OAuth 2.0 for third-party access
 ```
 
+### Client-Facing Logging & Errors
+```
+- [ ] Browser/client logs are disabled in production or routed through a logger that no-ops debug output in production
+- [ ] `console.log`, `console.debug`, `console.info`, and verbose client telemetry are gated by explicit non-production checks
+- [ ] Production UI shows only client-safe error messages with minimal operational detail
+- [ ] Raw exceptions, stack traces, SQL/ORM errors, validation library internals, upstream responses, file paths, env names, and secrets never reach UI text
+- [ ] Full error details are logged server-side only, correlated with a request/error ID returned to the client
+- [ ] Client-safe error payloads use stable codes/messages such as `VALIDATION_FAILED`, `UNAUTHORIZED`, `FORBIDDEN`, `NOT_FOUND`, `CONFLICT`, or `INTERNAL_ERROR`
+```
+
+```typescript
+const isProduction = process.env.NODE_ENV === 'production';
+
+// ✅ Client debug output is explicit and removed/no-op in production paths
+if (!isProduction) {
+  console.debug('Form validation state', formState);
+}
+
+// ✅ Normalize unknown errors before rendering them in UI
+function toClientError(error: unknown) {
+  if (isKnownClientError(error)) {
+    return { code: error.code, message: error.publicMessage };
+  }
+
+  return {
+    code: 'INTERNAL_ERROR',
+    message: 'Something went wrong. Try again later.',
+  };
+}
+```
+
 ### Input Validation
 ```typescript
 // ✅ Validate all input with schema
@@ -382,7 +432,16 @@ const CreateUserSchema = z.object({
 app.post('/users', (req, res) => {
   const result = CreateUserSchema.safeParse(req.body);
   if (!result.success) {
-    return res.status(400).json({ error: result.error });
+    return res.status(400).json({
+      error: {
+        code: 'VALIDATION_FAILED',
+        message: 'Some fields are invalid.',
+        fields: result.error.issues.map((issue) => ({
+          path: issue.path.join('.'),
+          code: issue.code,
+        })),
+      },
+    });
   }
   // result.data is typed and validated
 });
@@ -396,7 +455,10 @@ app.use((err, req, res, next) => {
 
   // Return generic message to client
   res.status(500).json({
-    error: 'Internal server error',
+    error: {
+      code: 'INTERNAL_ERROR',
+      message: 'Something went wrong. Try again later.',
+    },
     requestId: req.id, // For support reference
   });
 });
@@ -507,6 +569,12 @@ grep -rn "[T][O][D][O].*security\|[F][I][X][M][E].*security\|[X][X][X].*security
 # Check for console.log in production code
 grep -rn "console\.log" src/
 
+# Check for verbose browser logs that need a non-production guard
+grep -rn "console\.\(log\|debug\|info\|trace\)" --include="*.ts" --include="*.tsx" --include="*.js" --include="*.jsx" src/
+
+# Check for raw error rendering patterns in UI/client code
+grep -rn "\(error\.message\|err\.message\|String(error)\|String(err)\|stack\)" --include="*.tsx" --include="*.jsx" --include="*.ts" --include="*.js" src/
+
 # Find prompt injection risks (unsanitized input in LLM calls)
 grep -rn "system.*\${.*}" --include="*.ts" --include="*.js" .
 grep -rn "innerHTML.*llm\|innerHTML.*response\|innerHTML.*completion" --include="*.ts" --include="*.js" .
@@ -538,4 +606,4 @@ grep -rn "innerHTML.*llm\|innerHTML.*response\|innerHTML.*completion" --include=
 
 - Primary ownership: the resolved SECURITY.md artifact (default: `.ai-factory/SECURITY.md`) for ignored-item state created through the `ignore` flow.
 - Write policy: audit findings are normally conversational output; persistent writes are limited to the ignore-state artifact above unless the user explicitly asks for more.
-- Config policy: config-aware. Use `paths.security` for the ignore-state artifact while deriving audit scope from repo evidence and audit commands.
+- Config policy: config-aware. Use `paths.security` for the ignore-state artifact, `language.ui` for prompts and audit summaries, `language.artifacts` for the ignored-item artifact, and `language.technical_terms` for human-readable terminology policy while deriving audit scope from repo evidence and audit commands.

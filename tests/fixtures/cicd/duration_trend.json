@@ -1,0 +1,24 @@
+{
+  "schema_version": "sourcecraft-cicd-inventory-v1",
+  "source_kind": "sourcecraft",
+  "source_version": "fixture",
+  "status": "measured",
+  "configured": true,
+  "configuration_source": "observed_runs",
+  "permission_state": "granted",
+  "runs": [
+    {"id": "d1", "status": "success", "workflow_id": "build", "finished_at": "2026-07-21T10:01:00Z", "updated_at": "2026-07-21T10:01:00Z", "duration_seconds": 60},
+    {"id": "d2", "status": "success", "workflow_id": "build", "finished_at": "2026-07-22T10:01:00Z", "updated_at": "2026-07-22T10:01:00Z", "duration_seconds": 90},
+    {"id": "d3", "status": "success", "workflow_id": "build", "finished_at": "2026-07-23T10:01:00Z", "updated_at": "2026-07-23T10:01:00Z", "duration_seconds": 120},
+    {"id": "d4", "status": "success", "workflow_id": "build", "finished_at": "2026-07-24T10:01:00Z", "updated_at": "2026-07-24T10:01:00Z", "duration_seconds": 150},
+    {"id": "d5", "status": "success", "workflow_id": "build", "finished_at": "2026-07-25T10:01:00Z", "updated_at": "2026-07-25T10:01:00Z", "duration_seconds": 180},
+    {"id": "d6", "status": "success", "workflow_id": "build", "finished_at": "2026-08-21T10:01:00Z", "updated_at": "2026-08-21T10:01:00Z", "duration_seconds": 600},
+    {"id": "d7", "status": "success", "workflow_id": "build", "finished_at": "2026-08-22T10:01:00Z", "updated_at": "2026-08-22T10:01:00Z", "duration_seconds": 700},
+    {"id": "d8", "status": "success", "workflow_id": "build", "finished_at": "2026-08-23T10:01:00Z", "updated_at": "2026-08-23T10:01:00Z", "duration_seconds": 800},
+    {"id": "d9", "status": "success", "workflow_id": "build", "finished_at": "2026-08-24T10:01:00Z", "updated_at": "2026-08-24T10:01:00Z", "duration_seconds": 900},
+    {"id": "d10", "status": "success", "workflow_id": "build", "finished_at": "2026-08-25T10:01:00Z", "updated_at": "2026-08-25T10:01:00Z", "duration_seconds": 1000}
+  ],
+  "pagination": {"complete": true, "pages_fetched": 1, "server_total": 10},
+  "local_filter": {"applied": true},
+  "source_snapshot_digest": "sha256:duration"
+}

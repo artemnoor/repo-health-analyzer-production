@@ -1,0 +1,9 @@
+{
+  "schema_version": "sourcecraft-cicd-inventory-v1",
+  "source_kind": "sourcecraft",
+  "source_version": "fixture",
+  "status": "unavailable",
+  "configured": null,
+  "permission_state": "denied",
+  "diagnostics": {"failure_kind": "permission_denied"}
+}

@@ -31,6 +31,26 @@ repository checkout / Git ref / as_of / score policy
 contract находится в собственных слоях composition, persistence, API и UI.
 Это важно: названия пакетов не являются пользовательской моделью продукта.
 
+## Neutral analyzer integration core
+
+`repowise.core.analysis.analyzer_integration` — нейтральное execution kernel.
+Он владеет только contracts, deterministic registry/planner, result validation,
+runner, cache/process boundaries, lifecycle и finding merge. Его initializer не
+регистрирует analyzers и не импортирует health edge, adapters, RepoWise,
+vendor, ingestion, GitIndexer, persistence/SQLAlchemy или public models.
+
+```text
+neutral core: contracts -> plan -> run -> lifecycle -> generic outcome
+       ^              ports: context / score / persistence / publish / checkpoint
+       |
+health edge: explicit adapter bootstrap + compose_health_score + JobStore + read models
+```
+
+Score остаётся opaque в kernel: `compose_health_score` инжектируется health
+edge, как и persistence, publication, context collection и checkpoint adapter.
+Старые `health.integrations.*` imports являются compatibility facades; старые
+adapters и их bootstrap остаются operational и не удаляются.
+
 ## Слои и владельцы
 
 | Слой | Владелец | Ответственность |
@@ -42,6 +62,45 @@ contract находится в собственных слоях composition, pe
 | Canonical read model | `canonical.py` | отдать тот же persisted report CLI/REST/MCP/UI |
 | Public read model | ranking CRUD + `public_health.py` | отфильтровать, отсортировать и безопасно публиковать eligible rows |
 | Presentation | Next.js ranking/detail components | показать score, breakdown, states, recommendations и trend |
+
+## Vale documentation quality
+
+Vale подключён как дополнительный source для `docs`, а не как замена
+`repohealth.baseline`. Поток выглядит так:
+
+```text
+AnalyzerContext / inventory
+          |
+          v
+ValeAdapter
+  - выбирает документационные файлы
+  - вызывает официальный Vale CLI через ProcessExecutor
+  - читает JSON diagnostics и ls-metrics
+  - нормализует их в ValeFacts
+          |
+          v
+AnalyzerResult(vale.documentation, dimension=docs)
+          |
+          +--> compose_health_score()
+```
+
+Adapter не передаёт orchestration/composition layer ни raw Vale JSON, ни CLI
+arguments. Версионируемая policy и стили находятся в
+`config/analyzers/vale.yaml` и `config/analyzers/vale/`:
+
+- `Terminology.yml` проверяет canonical product name `SourceCraft`;
+- `Clarity.yml` проверяет узкий сигнал неопределённой формулировки
+  `AWS-shaped`;
+- `Readability.yml` задаёт консервативный built-in readability threshold.
+
+Официальный бинарник Vale не встраивается в Python package. Adapter принимает
+явный `AnalyzerContext.tool_paths["vale"]`, ищет provisioned `bin/vale(.exe)` и
+только затем использует PATH. Все запуски проходят через bounded process
+boundary с timeout и output cap.
+
+Документационная полнота остаётся ответственностью существующих checks README,
+LICENSE, CONTRIBUTING, CODEOWNERS и инструкций запуска/build/test. Vale измеряет
+качество prose и не делает отсутствие документации похожим на плохой текст.
 
 ## Persistence и replay
 
@@ -76,6 +135,14 @@ case-folded name → repository ID. `include_ineligible=true` показывае
 insufficient denominator — `inconclusive`, parser/process failure — `error`.
 Остальные результаты сохраняются и могут дать частичный report. Native runner
 ограничивает argv, environment, timeout, stdout/stderr и redacted diagnostics.
+`skipped`, `inconclusive` и `error` не сводятся к score `0`; evidence,
+provenance, limitations, diagnostics и raw payload references проходят через
+neutral contracts без потери порядка.
+
+Health resume cursor — маркер replay job и не доказательство rehydrated output:
+health orchestrator сохраняет текущую replay semantics. Отдельный pipeline
+resume может пропускать prefix только при наличии собственной durable output
+rehydration.
 
 ## Evidence in repository
 

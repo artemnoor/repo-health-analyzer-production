@@ -1,0 +1,22 @@
+{
+  "schema_version": "sourcecraft-cicd-inventory-v1",
+  "source_kind": "sourcecraft",
+  "source_version": "fixture",
+  "status": "measured",
+  "configured": true,
+  "configuration_source": "observed_runs",
+  "permission_state": "granted",
+  "runs": [
+    {"id": "m1", "status": "success", "workflow_id": "build", "commit_sha": "m1", "finished_at": "2026-09-01T10:01:00Z", "updated_at": "2026-09-01T10:01:00Z", "duration_seconds": 60},
+    {"id": "m2", "status": "failed", "workflow_id": "build", "commit_sha": "m2", "finished_at": "2026-09-02T10:01:00Z", "updated_at": "2026-09-02T10:01:00Z", "duration_seconds": 60},
+    {"id": "m3", "status": "cancelled", "workflow_id": "build", "finished_at": "2026-09-03T10:01:00Z", "updated_at": "2026-09-03T10:01:00Z"},
+    {"id": "m4", "status": "skipped", "workflow_id": "build", "finished_at": "2026-09-04T10:01:00Z", "updated_at": "2026-09-04T10:01:00Z"},
+    {"id": "m5", "status": "rejected", "workflow_id": "build", "finished_at": "2026-09-05T10:01:00Z", "updated_at": "2026-09-05T10:01:00Z"},
+    {"id": "m6", "status": "processing", "workflow_id": "build", "updated_at": "2026-09-06T10:01:00Z"},
+    {"id": "m7", "status": "timeout", "workflow_id": "build", "finished_at": "2026-09-07T10:01:00Z", "updated_at": "2026-09-07T10:01:00Z", "duration_seconds": 60},
+    {"id": "m8", "status": "mystery", "workflow_id": "build", "finished_at": "2026-09-08T10:01:00Z", "updated_at": "2026-09-08T10:01:00Z"}
+  ],
+  "pagination": {"complete": true, "pages_fetched": 1, "server_total": 8},
+  "local_filter": {"applied": true},
+  "source_snapshot_digest": "sha256:mixed"
+}

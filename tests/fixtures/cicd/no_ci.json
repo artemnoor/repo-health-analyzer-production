@@ -1,0 +1,13 @@
+{
+  "schema_version": "sourcecraft-cicd-inventory-v1",
+  "source_kind": "sourcecraft",
+  "source_version": "fixture",
+  "status": "measured",
+  "configured": false,
+  "configuration_source": "api_metadata",
+  "permission_state": "granted",
+  "runs": [],
+  "pagination": {"complete": true, "pages_fetched": 1, "server_total": 0},
+  "local_filter": {"applied": true},
+  "source_snapshot_digest": "sha256:no-ci"
+}

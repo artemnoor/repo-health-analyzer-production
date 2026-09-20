@@ -61,6 +61,45 @@ snapshot, replay, rescore, API, CLI и UI могут показать, како�
 projection. `stale`, `warn` и `inconclusive` не превращаются в здоровый ноль и
 не скрываются в UI.
 
+## Vale как дополнительный docs source
+
+Vale выдаёт отдельный `AnalyzerResult` с `score_dimension=docs`. Existing
+completeness checks не удаляются и не переписываются. В частности, наличие
+README/LICENSE/CONTRIBUTING/CODEOWNERS и run/build/test instructions продолжает
+измеряться baseline analyzer.
+
+Внутри Vale score используется bounded density, а не прямое число warnings:
+
+```text
+word_denominator = max(words, analyzed_files × 20)
+weighted_points = Σ severity_weight(finding)
+density = weighted_points / word_denominator
+penalty = min(30, density × 40)
+vale_quality = 100 - penalty
+```
+
+Severity weights policy: suggestion `0.25`, warning `1`, error `2`, fatal `3`.
+Сама scored metric `vale_quality` имеет `denominator=1`: размер и coverage
+документации используются для нормализации качества внутри Vale, но число слов
+или findings не получает непропорциональный вес в общем composer. Поэтому Vale
+добавляет один объяснимый docs contribution и не может линейно обнулить Repo
+Health score большим количеством предупреждений. `vale_coverage`,
+`vale_metrics_coverage`, finding density и prose metrics сохраняются как
+не-scored evidence.
+
+Состояния источника различаются явно:
+
+| Состояние | Result status | Score contribution |
+| --- | --- | --- |
+| качественный текст | `pass` | quality score доступен |
+| warning/error findings | `warn`/`fail` | bounded quality score доступен |
+| Vale отсутствует | `skipped` + `missing_capability` | отсутствует |
+| timeout, malformed JSON, process failure | `error` | отсутствует |
+| подходящие documentation files отсутствуют | `inconclusive` + `insufficient_denominator` | отсутствует |
+
+Таким образом, `skipped`, `error` и отсутствие denominator не маскируются под
+`0`; composer учитывает только evidence-backed score и добавляет limitation.
+
 ## Почему рекомендации объяснимы
 
 Recommendation хранится рядом с snapshot и связывает finding с:

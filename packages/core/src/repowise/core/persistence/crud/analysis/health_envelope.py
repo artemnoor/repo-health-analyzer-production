@@ -15,7 +15,6 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from ....analysis.health.composite import (
     CompositeHealthScore,
     CompositeScoreConfig,
-    compose_health_score,
 )
 from ....analysis.health.integrations.contracts import (
     AnalyzerContext,
@@ -30,6 +29,9 @@ from ....analysis.health.integrations.identity_adapter import IdentityResolver
 from ....analysis.health.integrations.temporal_adapter import (
     EventNormalizer,
     raw_facts_from_context,
+)
+from ....analysis.health.score_engine_v1 import (
+    compose_default_repo_health_score,
 )
 from ...models import (
     HealthAggregate,
@@ -82,7 +84,7 @@ def _result_score(
     repository_id: str | None = None,
 ) -> float | None:
     """Return the canonical composite score, never first-result score."""
-    composed = compose_health_score(results, config, repository_id=repository_id)
+    composed = compose_default_repo_health_score(results, config, repository_id=repository_id)
     return composed.overall
 
 
@@ -92,7 +94,7 @@ def _composite_score(
     *,
     repository_id: str | None = None,
 ) -> CompositeHealthScore:
-    return compose_health_score(results, config, repository_id=repository_id)
+    return compose_default_repo_health_score(results, config, repository_id=repository_id)
 
 
 def _result_status(results: Iterable[AnalyzerResult]) -> str:
@@ -549,7 +551,13 @@ async def rescore_health_snapshot(
     metrics = list(metrics_result.scalars().all())
     weights = score_config.get("weights") if isinstance(score_config.get("weights"), Mapping) else {}
     canonical_names = {"code", "history", "tests", "dependencies", "security", "delivery", "community", "docs"}
-    canonical_mode = not weights or any(str(key).strip().lower() in canonical_names for key in weights)
+    v1_names = {"Documentation", "Activity", "Issues", "CI/CD", "Security", "Code Health"}
+    canonical_mode = (
+        not weights
+        or any(str(key).strip().lower() in canonical_names for key in weights)
+        or any(str(key).strip() in v1_names for key in weights)
+        or str(score_config.get("version") or "").startswith("repo-health-score-v1")
+    )
     grouped: dict[str, list[tuple[HealthMetricValue, float]]] = {}
     for metric in metrics:
         dimension = metric.dimension or metric.name.split(":", 1)[0]
@@ -612,6 +620,8 @@ async def rescore_health_snapshot(
                     analyzer_id=metric.analyzer_id,
                     analyzer_version="persisted",
                     status=AnalyzerStatus.PASS,
+                    score=metric.score,
+                    score_dimension=metric.dimension,
                     metrics=(
                         MetricValue(
                             name=metric.name,
@@ -629,7 +639,7 @@ async def rescore_health_snapshot(
                     total_weight=1,
                 )
             )
-        composed = compose_health_score(persisted_results, score_config, repository_id=snapshot.repository_id)
+        composed = compose_default_repo_health_score(persisted_results, score_config, repository_id=snapshot.repository_id)
         projection_overall = composed.overall
         projection_dimensions = composed.dimensions
         projection_configured = composed.configured_weight
@@ -639,7 +649,7 @@ async def rescore_health_snapshot(
         projection_evidence = composed.evidence_coverage
         projection_status = composed.status.value
         projection_limitations = [item.model_dump(mode="json") for item in composed.limitations]
-        breakdown = list(composed.breakdown)
+        breakdown = list(getattr(composed, "breakdown", getattr(composed, "contributions", ())))
     else:
         legacy_rows = [
             (metric, max(0.0, float(weights.get(metric.name, 1.0))))

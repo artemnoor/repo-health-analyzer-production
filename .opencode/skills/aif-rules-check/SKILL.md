@@ -32,6 +32,11 @@ Run a standalone read-only rules gate for project rules. This command checks rul
 - `git.base_branch`
 - `rules.base`
 - named `rules.<area>` entries
+- `workflow.plan_id_format` (default: `slug`) — used by the optional branch-based plan-context lookup in Step 2.3.
+  Active values: `slug` and `sequential`. Plan context may be a root full-plan
+  file or direct child ultra `index.md`; numbered lookup covers both shapes.
+  `timestamp` and `uuid` are **reserved values** and currently behave like `slug`.
+  Treat any unknown value as `slug`.
 
 If config is missing or partial, use defaults:
 - `paths.rules_file`: `.ai-factory/RULES.md`
@@ -41,6 +46,7 @@ If config is missing or partial, use defaults:
 - `git.enabled`: `true`
 - `git.base_branch`: detect the repo default branch from git metadata; fall back to `main` only when detection is unavailable
 - `rules.base`: `.ai-factory/rules/base.md`
+- `workflow.plan_id_format`: `slug`
 
 If `paths.rules_file` is missing from config, default to `.ai-factory/RULES.md` instead of treating config as incomplete.
 If `git.base_branch` is missing from config, resolve the repository default branch from git metadata when possible; use `main` only as the final fallback.
@@ -129,11 +135,34 @@ If no rules sources resolve, return `WARN` rather than a hard failure.
 Optional plan context: use the active plan file only when it helps interpret scope or area relevance; absence of a plan is never a failure.
 
 Plan resolution order:
-1. Branch-based `paths.plans/<current-branch>.md`
-2. A single named full plan in `paths.plans`
-3. The fast plan at `paths.plan`
+1. Compute the **canonical branch stem** the same way as `/aif-plan`,
+   `/aif-implement`, and `/aif-improve`:
+   - get current branch via `git branch --show-current` (git mode only);
+   - `branch_stem` = current branch with every `/` replaced by `-`
+     (for example `feature/user-auth` → `feature-user-auth`).
+2. Branch-based lookup using `<branch_stem>`:
+   - when `workflow.plan_id_format = sequential`, glob both
+     `paths.plans/[0-9][0-9][0-9][0-9]_<branch_stem>.md` and
+     `paths.plans/[0-9][0-9][0-9][0-9]_<branch_stem>/index.md`; Read every
+     directory candidate and retain it only when it contains exactly one
+     `<!-- aif:plan-mode:ultra -->`, then pick the highest-numbered valid
+     artifact and warn when multiple valid candidates exist; prefer ultra if
+     both shapes share the highest prefix;
+   - otherwise/fallback check `paths.plans/<branch_stem>/index.md` and
+     `paths.plans/<branch_stem>.md`; Read the directory entrypoint first, ignore
+     it unless it contains exactly one ultra marker, and warn/prefer ultra if
+     both valid shapes exist.
+3. A single named artifact in `paths.plans`: count root `*.md` full plans and
+   direct child `*/index.md` entrypoints containing
+   `<!-- aif:plan-mode:ultra -->`; exclude
+   the resolved fast-plan path and never count phase files.
+4. The fast plan at `paths.plan`.
 
-Do not fail the rules check because a plan file is missing or ambiguous.
+For ultra, read `index.md` first and only the linked phase files relevant to the
+changed area when extra scope detail is needed. Do not fail the rules check
+because a plan artifact is missing or ambiguous.
+An automatically discovered directory entrypoint counts only when it contains
+exactly one `<!-- aif:plan-mode:ultra -->`; ignore unrelated `*/index.md` files.
 
 ## Step 3: Evaluate Rules
 

@@ -292,6 +292,36 @@
       "adapter": "product-reference",
       "sentinels": [],
       "last_verified": "2026-09-10"
+    },
+    {
+      "name": "lychee",
+      "url": "https://github.com/lycheeverse/lychee.git",
+      "commit": "4e065481e8571d0b270c5f4e2332b74cc8342758",
+      "source_root": ".sources/lychee",
+      "target_root": "vendor/lychee",
+      "copy_mode": "whole-tree",
+      "verify_mode": "git-tree",
+      "runtime": "rust",
+      "build": "cargo build --workspace --locked",
+      "test": "cargo test --workspace --all-targets --all-features && cargo test --workspace --doc",
+      "adapter": "lychee link-checker adapter",
+      "sentinels": ["Cargo.toml", "lychee-bin/src/main.rs", "lychee-lib/src/lib.rs"],
+      "last_verified": "2026-09-18"
+    },
+    {
+      "name": "documentor",
+      "url": "https://github.com/DataDog/documentor.git",
+      "commit": "e57ad205b8b6945e6c8226d29a0f730df226f426",
+      "source_root": ".sources/documentor",
+      "target_root": "vendor/documentor",
+      "copy_mode": "whole-tree",
+      "verify_mode": "git-tree",
+      "runtime": "go>=1.24",
+      "build": "go build -mod=readonly .",
+      "test": "go test -cover -race -vet all -mod readonly ./...",
+      "adapter": "documentor AI documentation-review adapter",
+      "sentinels": ["go.mod", "main.go", "internal/app/app.go"],
+      "last_verified": "2026-09-18"
     }
   ]
 }

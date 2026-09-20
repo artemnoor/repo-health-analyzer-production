@@ -1,0 +1,20 @@
+{
+  "schema_version": "sourcecraft-cicd-inventory-v1",
+  "source_kind": "sourcecraft",
+  "source_version": "fixture",
+  "status": "measured",
+  "configured": true,
+  "configuration_source": "observed_runs",
+  "permission_state": "granted",
+  "capabilities": {"retry_relation": "present"},
+  "runs": [
+    {"id": "r1", "status": "failed", "workflow_id": "build", "commit_sha": "same", "retry_group_id": "g1", "finished_at": "2026-09-01T10:01:00Z", "updated_at": "2026-09-01T10:01:00Z"},
+    {"id": "r2", "status": "success", "workflow_id": "build", "commit_sha": "same", "retry_group_id": "g1", "finished_at": "2026-09-01T10:03:00Z", "updated_at": "2026-09-01T10:03:00Z"},
+    {"id": "r3", "status": "success", "workflow_id": "build", "commit_sha": "other", "finished_at": "2026-09-02T10:01:00Z", "updated_at": "2026-09-02T10:01:00Z"},
+    {"id": "r4", "status": "failed", "workflow_id": "build", "commit_sha": "bad", "finished_at": "2026-09-03T10:01:00Z", "updated_at": "2026-09-03T10:01:00Z"},
+    {"id": "r5", "status": "success", "workflow_id": "deploy", "commit_sha": "bad", "retry_group_id": "different", "finished_at": "2026-09-03T10:03:00Z", "updated_at": "2026-09-03T10:03:00Z"}
+  ],
+  "pagination": {"complete": true, "pages_fetched": 1, "server_total": 5},
+  "local_filter": {"applied": true},
+  "source_snapshot_digest": "sha256:retry"
+}

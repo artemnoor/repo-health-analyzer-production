@@ -1,0 +1,20 @@
+{
+  "schema_version": "sourcecraft-cicd-inventory-v1",
+  "source_kind": "sourcecraft",
+  "source_version": "fixture",
+  "status": "measured",
+  "configured": true,
+  "configuration_source": "observed_runs",
+  "permission_state": "granted",
+  "runs": [
+    {"id": "s1", "status": "success", "workflow_id": "build", "commit_sha": "a1", "created_at": "2026-09-01T10:00:00Z", "started_at": "2026-09-01T10:00:00Z", "finished_at": "2026-09-01T10:02:00Z", "updated_at": "2026-09-01T10:02:00Z", "duration_seconds": 120},
+    {"id": "s2", "status": "success", "workflow_id": "build", "commit_sha": "a2", "created_at": "2026-09-02T10:00:00Z", "started_at": "2026-09-02T10:00:00Z", "finished_at": "2026-09-02T10:03:00Z", "updated_at": "2026-09-02T10:03:00Z", "duration_seconds": 180},
+    {"id": "s3", "status": "success", "workflow_id": "build", "commit_sha": "a3", "created_at": "2026-09-03T10:00:00Z", "started_at": "2026-09-03T10:00:00Z", "finished_at": "2026-09-03T10:04:00Z", "updated_at": "2026-09-03T10:04:00Z", "duration_seconds": 240},
+    {"id": "s4", "status": "success", "workflow_id": "build", "commit_sha": "a4", "created_at": "2026-09-04T10:00:00Z", "started_at": "2026-09-04T10:00:00Z", "finished_at": "2026-09-04T10:05:00Z", "updated_at": "2026-09-04T10:05:00Z", "duration_seconds": 300},
+    {"id": "s5", "status": "success", "workflow_id": "build", "commit_sha": "a5", "created_at": "2026-09-05T10:00:00Z", "started_at": "2026-09-05T10:00:00Z", "finished_at": "2026-09-05T10:06:00Z", "updated_at": "2026-09-05T10:06:00Z", "duration_seconds": 360},
+    {"id": "s6", "status": "success", "workflow_id": "build", "commit_sha": "a6", "created_at": "2026-09-06T10:00:00Z", "started_at": "2026-09-06T10:00:00Z", "finished_at": "2026-09-06T10:07:00Z", "updated_at": "2026-09-06T10:07:00Z", "duration_seconds": 420}
+  ],
+  "pagination": {"complete": true, "pages_fetched": 1, "server_total": 6},
+  "local_filter": {"applied": true},
+  "source_snapshot_digest": "sha256:success"
+}

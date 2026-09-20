@@ -85,6 +85,8 @@ dependencies = [
     "tenacity>=9,<10",
     # Git operations
     "gitpython>=3.1,<4",
+    # Commit history mining engine; pinned to an audited upstream commit.
+    "PyDriller @ git+https://github.com/ishepard/pydriller.git@a527c83ba81ee949cb84b977c155f337423743be",
     # YAML parsing
     "pyyaml>=6.0,<7",
     # Vector search (LanceDB — pure Python wheel)

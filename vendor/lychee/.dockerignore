@@ -1,0 +1,12 @@
+.git
+target
+assets
+fixtures
+.github
+.vscode
+docs
+.editorconfig
+lychee.example.toml
+Makefile
+LICENSE-MIT
+LICENSE-APACHE
