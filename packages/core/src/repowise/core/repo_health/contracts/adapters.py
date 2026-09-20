@@ -190,6 +190,7 @@ def analyzer_result_to_category_result(
     analysis_id: str,
     category: HealthCategory | None = None,
     confidence: Confidence | None = None,
+    analyzer_id: str | None = None,
 ) -> CategoryResult:
     """Adapt legacy result values while redacting absolute locations."""
 
@@ -238,7 +239,7 @@ def analyzer_result_to_category_result(
     )
     return CategoryResult(
         analysis_id=analysis_id,
-        analyzer_id=result.analyzer_id,
+        analyzer_id=analyzer_id or result.analyzer_id,
         analyzer_version=result.analyzer_version,
         category=resolved_category,
         status=status,
