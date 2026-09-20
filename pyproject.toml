@@ -132,6 +132,7 @@ dev = [
 repowise = "repowise.cli.main:cli"
 repowise-augment = "repowise.cli.augment_hook:main"
 repowise-rewrite = "repowise.cli.rewrite_hook:main"
+repowise-health-worker = "repowise.core.repo_health.worker_entrypoint:main"
 
 [project.urls]
 Homepage = "https://github.com/repowise-dev/repowise"

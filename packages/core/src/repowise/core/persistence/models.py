@@ -1953,6 +1953,35 @@ class RepoHealthAnalysisEnvelope(Base):
     )
 
 
+class RepoHealthTaskRecord(Base):
+    """Durable claim/lease state; deliberately separate from pipeline checkpoints."""
+
+    __tablename__ = "repo_health_tasks"
+
+    task_id: Mapped[str] = mapped_column(String(128), primary_key=True)
+    analysis_id: Mapped[str] = mapped_column(String(128), nullable=False)
+    idempotency_key: Mapped[str] = mapped_column(String(128), nullable=False)
+    analyzer_id: Mapped[str] = mapped_column(String(128), nullable=False)
+    payload_json: Mapped[str] = mapped_column(Text, nullable=False)
+    status: Mapped[str] = mapped_column(String(16), nullable=False, default="pending", server_default="pending")
+    attempt: Mapped[int] = mapped_column(Integer, nullable=False, default=1, server_default="1")
+    max_attempts: Mapped[int] = mapped_column(Integer, nullable=False, default=3, server_default="3")
+    worker_id: Mapped[str | None] = mapped_column(String(128), nullable=True)
+    lease_until: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    available_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
+    last_error: Mapped[str | None] = mapped_column(Text, nullable=True)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False, default=_now_utc)
+    updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False, default=_now_utc)
+
+    __table_args__ = (
+        UniqueConstraint(
+            "analysis_id", "idempotency_key", name="uq_repo_health_task_idempotency"
+        ),
+        Index("ix_repo_health_tasks_claim", "status", "available_at", "lease_until"),
+        Index("ix_repo_health_tasks_analysis", "analysis_id"),
+    )
+
+
 class HealthScoreProjection(Base):
     """One materialized composite score for a replayable health snapshot."""
 
