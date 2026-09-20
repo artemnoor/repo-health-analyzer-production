@@ -44,6 +44,20 @@ evidence proves that its callers are migrated.
 
 ## Audit scope and evidence
 
+The reproducible Phase 1 ledger is kept separately at
+`docs/research/archive/repo-health-audit-baseline.md` with its machine-readable
+counterpart `repo-health-audit-baseline.json`. It records the exact revision,
+dirty paths, tool versions, module/entry-point inventory, registry IDs,
+classification contract and verification failures. The ignored Graphify and
+AST import outputs referenced by that ledger are navigation evidence only and
+are not part of the production package.
+
+Behavioral, score, public-projection and generated-artifact freeze data is in
+`docs/research/archive/repo-health-behavior-baseline.json`. Copied-source
+provenance and notice preservation is in
+`docs/research/archive/repo-health-license-manifest.md`; the current missing
+`.sources` roots are recorded as a failed legal gate, not as deletion approval.
+
 Inspected:
 
 - packages/core, packages/server and packages/cli;

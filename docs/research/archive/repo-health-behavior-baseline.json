@@ -1,0 +1,102 @@
+{
+  "schema_version": "repo-health-behavior-baseline.v1",
+  "captured_at": "2026-09-20",
+  "repository_ref": "artem03102006/codex-external-audit-public-20260916",
+  "source_revision": "7abe0d66cf2863d9a2dfb514e6e9e5c3e63e86b3",
+  "policy": {
+    "score_version": "repo-health-score-v1",
+    "score_source_sha256": "fc1c5aa6048fc3122666acbf602aa391dfe8202c0dae1351136b8d643908a265",
+    "score_config_sha256": "2b5f0da7c5e6897f61454cb9e6358499e3e15892c455fc1cea194c9a852339ee",
+    "calibration_version": "repo-health-calibration-v2",
+    "calibration_source_sha256": "ca06ec8f79996e64183cfccd92b85380552c9bb9de723b97ad843b9700623066",
+    "calibration_revisions": [
+      "documentation-calibration-v2",
+      "activity-calibration-v2",
+      "cicd-calibration-v2"
+    ],
+    "weights": {
+      "Documentation": 0.15,
+      "Activity": 0.15,
+      "Issues": 0.15,
+      "CI/CD": 0.15,
+      "Security": 0.2,
+      "Code Health": 0.2
+    },
+    "coverage_policy": {
+      "formula": "K=sum(w_j*q_j)/sum(w_j), q_j=coverage_j*confidence_j",
+      "score_minimum_categories": 5,
+      "provisional_minimum_categories": 4,
+      "score_minimum_k": 0.75,
+      "provisional_minimum_k": 0.5
+    },
+    "security_caps": {
+      "confirmed_high": 60,
+      "confirmed_critical": 40,
+      "confirmed_secret": 40
+    },
+    "config_sha256": {
+      "vale": "de75e2222581f2239615f47a4f8ea70e6c346711bc103208cf700be3e5419916",
+      "pydriller": "0acf8ed63148ac41c55f9b6478e9533fe05144fb561b6e282ca9b23a5178b018",
+      "issues": "ddaeed0a85bd096211fa2de4991c98fee73800a7b6958271827b90727b00353d",
+      "cicd": "a359d5d6b339ba6c757552b1b643c33a4feeaee41dc632bd226dbcc23d873108",
+      "appsec": "abbb54987a7318ebee9b1510b96ae101358bc2a97308c909ccf731437e6c6cb9",
+      "code_health": "449863c3612eBCD797d486ba61f7f48cf8bc0652aba0f39c60aaE08379e9b378"
+    },
+    "runtime_policy_digests": {
+      "vale": "f810573e2dec8c11f6fdb3a2eb6cbb12559fcedb9390c81810a1f92271909d4a",
+      "pydriller": "0acf8ed63148ac41c55f9b6478e9533fe05144fb561b6e282ca9b23a5178b018",
+      "issues": "ddaeed0a85bd096211fa2de4991c98fee73800a7b6958271827b90727b00353d",
+      "cicd": "5d02da5bb9cb",
+      "code_health": "0d80c847b443790553c7560467df566490690938f0e02bf36214e3dd77401a57"
+    }
+  },
+  "fixture_digests": {
+    "tests/fixtures/cicd": "670fe98142426507306525b277d44aed2d750229f2205742e65c78c058193247",
+    "tests/fixtures/issues": "77d3734d9dcad3d9c875e8c7b1d940131b34bc29728a12950661e9b21488ba2b",
+    "tests/fixtures/code_health": "955aadd07a24fcccfbc5f4532726ce19b76e265f885955dad98c4e023a5ac438",
+    "tests/fixtures/coverage": "223fddce4585486c88a13dc21db0f1d088510628bafbd45b3d0e2f8c57034195",
+    "tests/fixtures/health/replay_repo": "0369b09873a14d001f8ddcee9941f92907fb3ad915b631b03448861832b79fe3",
+    "tests/fixtures/native": "52510f6b0d8c026e410f71e2cb6f71feebb3ecd0e06d8d288ec8e07ee124b94d"
+  },
+  "redacted_live_snapshot": {
+    "command": "uv run python scripts/verify_repo_health_score_v1.py",
+    "raw_payloads_written": false,
+    "token_logged": false,
+    "categories": {
+      "Documentation": {"analyzer_id": "vale.documentation", "status": "warn", "score": 39.93684210526316, "coverage": 1.0, "confidence": 1.0, "finding_count": 1, "evidence_count": 1},
+      "Activity": {"analyzer_id": "chaoss.activity", "status": "pass", "score": 66.23917469369593, "coverage": 1.0, "confidence": 1.0, "finding_count": 0, "evidence_count": 1},
+      "Issues": {"analyzer_id": "chaoss.issues_prs", "status": "warn", "score": null, "coverage": 0.7, "confidence": 0.525, "finding_count": 1, "evidence_count": 1},
+      "CI/CD": {"analyzer_id": "cicd.sourcecraft", "status": "warn", "score": 75.32894736842104, "coverage": 1.0, "confidence": 1.0, "finding_count": 1, "evidence_count": 5},
+      "Security": {"analyzer_id": "sourcecraft.appsec", "status": "warn", "score": 90.0, "coverage": 1.0, "confidence": 1.0, "finding_count": 1, "evidence_count": 1},
+      "Code Health": {"analyzer_id": "repowise.health", "status": "warn", "score": 80.0, "coverage": 0.6666666666666666, "confidence": 0.825, "finding_count": 0, "evidence_count": 0}
+    },
+    "score": {
+      "version": "repo-health-score-v1",
+      "presentation_state": "SCORE",
+      "overall": 40.0,
+      "score_before_cap": 72.03028779424356,
+      "coverage_k": 0.76,
+      "numeric_category_count": 5,
+      "security_cap": "confirmed_secret=40",
+      "category_statuses": {"Documentation": "MEASURED", "Activity": "MEASURED", "Issues": "PARTIAL", "CI/CD": "MEASURED", "Security": "MEASURED", "Code Health": "MEASURED"}
+    },
+    "known_unavailable_or_partial": ["Code Health: SonarQube unavailable", "Code Health: Git history partial", "Issues: partial source coverage", "CHAOSS/CollectOSS optional metric modules unavailable"]
+  },
+  "public_projection_baseline": {
+    "source_test": "tests/unit/health/test_analyzer_integration_parity.py:test_rest_mcp_cli_canonical_projection_parity",
+    "result": "passed in observability/parity gate",
+    "contract": "REST, MCP and CLI canonical projections equal after volatile fields are removed"
+  },
+  "verification": {
+    "score_and_calibration_unit": "9 passed",
+    "observability_and_parity": "32 passed",
+    "score_live": "passed; redacted snapshot captured",
+    "health_stack": "failed closed at vendor source ledger; no synthetic pass substituted",
+    "vendor_sources": "failed closed: 17 referenced .sources roots missing"
+  },
+  "generated_artifacts": [
+    {"path": "$out/", "owner": "pre-existing user worktree", "retention": "do not package; ownership review before cleanup"},
+    {"path": "spikes/*/runs", "owner": "research/live verification", "retention": "keep selected redacted evidence; remove generated runs only after P8 archive decision"},
+    {"path": "packages/core/src/graphify-out/", "owner": "audit tooling", "retention": "ignored audit output; never package"}
+  ]
+}
