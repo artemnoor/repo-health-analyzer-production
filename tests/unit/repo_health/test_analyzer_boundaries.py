@@ -1,86 +1,82 @@
+"""Six-category registry and independent contract-boundary tests."""
+
 from __future__ import annotations
 
 from datetime import UTC, datetime
 
-from repowise.core.analysis.analyzer_integration.contracts import AnalyzerResult, AnalyzerStatus
-from repowise.core.repo_health.analyzers.activity import bind_activity_analyzer
-from repowise.core.repo_health.analyzers.cicd import bind_cicd_analyzer
-from repowise.core.repo_health.analyzers.code_health import bind_code_health_analyzer
-from repowise.core.repo_health.analyzers.documentation import bind_documentation_analyzer
-from repowise.core.repo_health.analyzers.issues import bind_issues_analyzer
-from repowise.core.repo_health.analyzers.security import bind_security_analyzer
-from repowise.core.repo_health.contracts.adapters import analyzer_result_to_category_result
-from repowise.core.repo_health.contracts.requests import RepositoryRef
-from repowise.core.repo_health.contracts.results import AnalyzerInput, RepositoryFacts
+import pytest
 
-NOW = datetime(2026, 9, 20, 12, 0, tzinfo=UTC)
+from repo_health.analyzers import canonical_registry, register_default_factories
+from repo_health.contracts.requests import RepositoryRef
+from repo_health.contracts.results import AnalyzerInput, CategoryStatus, IssuesFacts, RepositoryFacts
 
 
-def analyzer_input(analyzer_id: str) -> AnalyzerInput:
-    facts = RepositoryFacts()
+def _repo() -> RepositoryRef:
+    return RepositoryRef(
+        repository_id="team/repository",
+        canonical_uri="https://sourcecraft.example/team/repository",
+        provider="sourcecraft",
+        head_sha="a" * 40,
+    )
+
+
+def _input(analyzer_id: str, *, available: bool = False) -> AnalyzerInput:
+    facts = RepositoryFacts(
+        repository=_repo(),
+        collected_at=datetime(2026, 1, 1, tzinfo=UTC),
+        issues=IssuesFacts(available=available, observations=({"key": "open_count", "value": 2},) if available else ()),
+    )
+    spec = canonical_registry.get(analyzer_id)[0]  # type: ignore[index]
     return AnalyzerInput(
         analysis_id="analysis-1",
-        repository=RepositoryRef(
-            repository_id="acme/example",
-            canonical_uri="https://github.com/acme/example",
-            provider="github",
-            ref="main",
-            head_sha="a" * 40,
-        ),
+        repository=_repo(),
         analyzer_id=analyzer_id,
-        analyzer_version="repo-health-test-v1",
+        analyzer_version=spec.version,
         facts=facts,
         facts_digest=facts.digest(),
         policy_digest="a" * 64,
-        deadline_at=NOW,
     )
 
 
-def legacy_result(analyzer_id: str) -> AnalyzerResult:
-    return AnalyzerResult(
-        analyzer_id=analyzer_id,
-        analyzer_version="legacy-v1",
-        status=AnalyzerStatus.PASS,
-        score=75,
-        available_weight=1,
-        total_weight=1,
+def test_registry_has_exactly_six_and_explicit_factories() -> None:
+    register_default_factories()
+    assert canonical_registry.ids() == (
+        "repo-health.activity",
+        "repo-health.cicd",
+        "repo-health.code-health",
+        "repo-health.documentation",
+        "repo-health.issues",
+        "repo-health.security",
     )
+    assert all(canonical_registry.get(item)[1] is not None for item in canonical_registry.ids())  # type: ignore[index]
 
 
-def adapter_for(canonical_id: str):
-    def adapt(result, *, analysis_id: str, category):
-        return analyzer_result_to_category_result(
-            result,
-            analysis_id=analysis_id,
-            category=category,
-            analyzer_id=canonical_id,
-        )
-
-    return adapt
+def test_unavailable_facts_are_skipped_not_zero() -> None:
+    register_default_factories()
+    result = canonical_registry.run("repo-health.issues", _input("repo-health.issues"))
+    assert result.status is CategoryStatus.SKIPPED
+    assert result.score is None
 
 
-def test_all_six_analyzers_are_independent_injected_boundaries() -> None:
-    cases = (
-        (
-            "repo-health.documentation",
-            "vale.documentation",
-            bind_documentation_analyzer,
-        ),
-        ("repo-health.activity", "chaoss.activity", bind_activity_analyzer),
-        ("repo-health.issues", "chaoss.issues_prs", bind_issues_analyzer),
-        ("repo-health.cicd", "cicd.sourcecraft", bind_cicd_analyzer),
-        ("repo-health.security", "sourcecraft.appsec", bind_security_analyzer),
-        ("repo-health.code-health", "repowise.health", bind_code_health_analyzer),
-    )
+def test_available_facts_return_serializable_category_result() -> None:
+    register_default_factories()
+    result = canonical_registry.run("repo-health.issues", _input("repo-health.issues", available=True))
+    assert result.status is CategoryStatus.PASS
+    assert result.score == 100.0
+    assert result.digest() == result.model_copy().digest()
 
-    for canonical_id, legacy_id, binder in cases:
-        factory = binder(
-            lambda _input, legacy_id=legacy_id: legacy_result(legacy_id),
-            adapter_for(canonical_id),
-        )
-        result = factory(analyzer_input(canonical_id))
 
-        assert result.analyzer_id == canonical_id
-        assert result.score == 75
-        assert result.coverage.covered_weight == 1
-        assert result.status.value == "pass"
+@pytest.mark.parametrize(
+    "module_name",
+    [
+        "repo_health.analyzers.documentation.analyzer",
+        "repo_health.analyzers.activity.analyzer",
+        "repo_health.analyzers.issues.analyzer",
+        "repo_health.analyzers.cicd.analyzer",
+        "repo_health.analyzers.security.analyzer",
+        "repo_health.analyzers.code_health.analyzer",
+    ],
+)
+def test_each_analyzer_imports_as_an_independent_boundary(module_name: str) -> None:
+    module = __import__(module_name, fromlist=["*"])
+    assert any(name.endswith("Analyzer") for name in vars(module))

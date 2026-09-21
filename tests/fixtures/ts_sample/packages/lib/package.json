@@ -1,9 +1,0 @@
-{
-  "name": "@org/lib",
-  "private": false,
-  "main": "./src/index.ts",
-  "exports": {
-    ".": "./src/index.ts",
-    "./locales/*": "./src/locales/*.ts"
-  }
-}

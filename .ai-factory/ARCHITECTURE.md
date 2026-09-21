@@ -1,51 +1,47 @@
-# Current architecture map
+# Target architecture map
 
-## Repository shape
+## Runtime tree
 
 | Area | Responsibility |
 | --- | --- |
-| `packages/core` | Core repository analysis, ingestion, facts, scoring, health projections, and domain contracts |
-| `packages/server` | Python API/server orchestration and persistence-facing boundaries |
-| `packages/cli` | CLI entry points and command workflows |
-| `packages/types` | Shared typed contracts for the JavaScript/TypeScript surfaces |
-| `packages/api-client` | Client-side API contract helpers |
-| `packages/web` | Next.js web UI and public health/ranking surfaces |
-| `packages/ui` | Reusable UI components |
-| `packages/vscode` | VS Code integration surface |
-| `tests` | Unit, integration, regression, fixture, and contract coverage |
-| `scripts` | Verification and developer/setup automation |
-| `vendor` | External source snapshots or vendored tools; do not treat them as application-owned modules |
-| `docs` | Product, architecture, API, testing, and operational documentation |
+| `src/repo_health/contracts` | Versioned transport-neutral request, facts, result, execution, and score schemas |
+| `src/repo_health/collection` | SourceCraft, Git, PyDriller, Vale, SonarQube, git-sizer, cache, and normalized facts |
+| `src/repo_health/analyzers` | Six independent analyzer boundaries and serialized worker harness |
+| `src/repo_health/scoring` | Frozen Repo Health Score v1 and pure calibration-v2 policy ports |
+| `src/repo_health/orchestration` | Collection, execution, partial failure, idempotency, and result composition |
+| `src/repo_health/execution` | Local bounded executor and durable worker executor |
+| `src/repo_health/persistence` | Repository/analysis/task state and immutable result storage |
+| `src/repo_health/api` | REST transport and lifecycle endpoints only |
+| `tests` | Unit, contract, adapter, integration, golden, and end-to-end gates |
+| `docs` | Current product, operations, API, and concise methodology documentation |
 
-## Important data flow
+## Canonical flow
 
-An analyzed checkout flows through ingestion and analyzers into persisted raw
-facts, canonical health projections, and explainable reports. API, CLI, MCP, and
-UI consumers should use the same canonical score/report contract rather than
-reimplementing scoring independently.
+`AnalysisRequest → collection → RepositoryFacts → analyzer executor → six
+CategoryResult values → ScoreEngineV1 → RepoHealthResult → persistence/API`
 
-The report distinguishes measured negative results from `unavailable`, `skipped`,
-or `inconclusive` measurements. Evidence and limitations are first-class output.
+The local and worker execution modes serialize the same `AnalyzerInput` and
+`CategoryResult` contracts. A worker can therefore move to another process or a
+queue without changing analyzer business logic.
 
-## Modularization direction
+## Dependency direction
 
-Future extraction should introduce explicit contracts around analyzer context,
-definitions, results, statuses, findings, evidence references, metric values,
-limitations, registry, runner, orchestrator, lifecycle, and process boundaries.
+`api → orchestration → execution/collection/persistence → contracts`
 
-The first extracted boundary is
-`packages/core/src/repowise/core/analysis/analyzer_integration/`. It is a
-side-effect-free neutral kernel for those contracts and execution mechanics.
-Health composition, adapters, persistence/checkpoint bridges, ingestion, and
-public projections remain at the health edge and are injected through ports.
-The legacy health integration imports remain compatibility facades during the
-fixture-parity migration.
+`analyzers → contracts + analyzer-specific facts/policy`
 
-External projects should be accessed through replaceable engines, adapters, or
-providers. The old working path remains the comparison baseline during migration.
+`scoring → contracts`
 
-## Change boundaries
+`adapters → external tools + contracts`
 
-Do not change product packages as part of infrastructure setup. For future module
-tasks, restrict the diff to the selected module and its tests/docs/configuration;
-preserve unrelated APIs, UI, scoring, and vendor contents.
+Contracts never import FastAPI, ORM/database implementations, provider payloads,
+or analyzer internals. Analyzers never import another analyzer. API code never
+calculates scores directly.
+
+## Deliberate deployment shape
+
+The production baseline is one API process with a scheduler and a worker
+execution abstraction. `LocalExecutor` is the low-overhead development mode;
+`WorkerExecutor` supplies durable task claims, leases, retries, timeouts, and
+idempotency. Separate network services, Kafka, Redis, Kubernetes, and service
+mesh remain future deployment options, not current product dependencies.

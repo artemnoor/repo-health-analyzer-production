@@ -1,2 +1,0 @@
-args = ["metrics", "--all", "--max-depth=1"]
-bin.name = "qlty"

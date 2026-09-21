@@ -1,8 +1,0 @@
-[extend]
-useDefault = true
-
-[[rules]]
-id = "audit-synthetic-secret"
-description = "Synthetic audit marker; never a usable credential"
-regex = '''AUDIT_SECRET_[A-Z0-9_]{20,}'''
-keywords = ["AUDIT_SECRET_"]

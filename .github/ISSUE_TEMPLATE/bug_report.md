@@ -1,36 +1,25 @@
 ---
-name: Bug Report
-about: Report a bug to help us improve Repowise
+name: Backend bug report
+about: Report a reproducible Repository Health Analyzer problem
 title: "[Bug] "
 labels: bug
 assignees: ""
 ---
 
-## Describe the Bug
+## Problem
 
-A clear and concise description of what the bug is.
+<!-- What happened, and what did you expect? -->
 
-## Steps to Reproduce
+## Reproduction
 
-1. Run `repowise ...`
-2. ...
-3. See error
-
-## Expected Behavior
-
-What you expected to happen.
-
-## Actual Behavior
-
-What actually happened. Include error messages or logs if available.
+<!-- Include the endpoint/worker command, sanitized input shape and correlation ID. -->
 
 ## Environment
 
-- OS: [e.g., Windows 11, macOS 14, Ubuntu 22.04]
-- Python version: [e.g., 3.12.1]
-- Repowise version: [e.g., 0.1.2] (`repowise --version`)
-- Installation method: [pip, pipx, Docker]
+- Python version:
+- Analyzer version/commit:
+- Execution mode: local / worker
 
-## Additional Context
+## Logs and evidence
 
-Any other context, screenshots, or log output.
+<!-- Redact SourceCraft tokens, secrets and private repository payloads. -->

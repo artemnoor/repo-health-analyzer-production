@@ -1,30 +1,30 @@
-# Repository Health Analyzer
+# SourceCraft Repository Health Analyzer
 
-Repository Health Analyzer turns the state of an open-source repository checkout
-into an explainable Repo Health Score from 0 to 100. It exposes canonical health
-reports, evidence, limitations, recommendations, ranking, comparison, history,
-replay/rescore, and related API/CLI/MCP/UI surfaces.
+This repository is a backend-only Python service that collects SourceCraft and
+Git facts, runs six isolated health analyzers, calculates the frozen Repo Health
+Score v1, persists immutable results, and exposes a small REST API plus scheduled
+background execution.
 
-## Current product boundary
+## Product boundary
 
-- Python API/CLI/server packages provide repository ingestion, analysis, facts,
-  persistence, scoring, projections, and service boundaries.
-- The web application provides the user-facing health report and public ranking
-  surfaces.
-- `RepoWise` and other external or vendored projects are current implementation
-  dependencies/sources, not the desired long-term application boundary.
-- The current setup task is infrastructure-only. No product refactor is part of
-  this baseline.
+- Runtime code lives in `src/repo_health`.
+- Contracts are versioned, typed Pydantic models and are transport-neutral.
+- Analyzer business logic does not import FastAPI, database implementations, or
+  another analyzer's internals.
+- External engines are optional adapters/process dependencies: Vale, PyDriller,
+  SonarQube, and git-sizer.
+- The repository intentionally contains no frontend, Node workspace, MCP server,
+  agent product, or copied upstream repository.
 
 ## Compatibility invariants
 
-- The canonical repository score remains `0..100`.
-- Missing or unavailable evidence is represented by explicit status/limitations,
-  not silently converted to a negative score or score zero.
-- Public responses must not expose local paths or raw evidence that is not meant
-  for public consumers.
-- Existing fixtures, replay behavior, API contracts, CLI behavior, and UI flows
-  are protected until a migration proves parity or improvement.
+- Documentation, Activity, Issues, CI/CD, Security, and Code Health behavior is
+  protected by golden calibration-v2 fixtures.
+- Repo Health Score v1 weights, K thresholds, and security caps are frozen.
+- Evidence, coverage, confidence, partial results, unavailable inputs, and
+  correlation IDs remain explicit in serialized results.
+- One analyzer failure must not discard successful categories from an analysis.
+- Legacy behavior may be removed only after parity and clean-checkout gates pass.
 
-See `.ai-factory/ARCHITECTURE.md` for the current map and `.ai-factory/RULES.md`
+See `.ai-factory/ARCHITECTURE.md` for the target map and `.ai-factory/RULES.md`
 for the permanent change policy.

@@ -1,0 +1,22 @@
+Repository Health Analyzer — retained dependency and provenance matrix
+
+This file covers dependencies used by the standalone backend. Version pins are
+recorded in uv.lock; upstream licenses remain with the installed distributions.
+
+| Dependency | Purpose | Integration mode | License | Production required | Local copied source |
+| --- | --- | --- | --- | --- | --- |
+| FastAPI | REST transport | Python library | MIT | YES | NO |
+| Pydantic | versioned contracts/validation | Python library | MIT | YES | NO |
+| httpx | SourceCraft HTTP client | Python library | BSD-3-Clause | YES | NO |
+| Uvicorn | ASGI runtime | Python library/entrypoint | BSD-3-Clause | YES | NO |
+| structlog | structured logging | Python library | MIT/Apache-2.0 | YES | NO |
+| PyDriller | Git history facts | Python library | BSD-3-Clause | YES | NO |
+| Vale | documentation lint facts | external executable adapter | MIT | optional tool | NO |
+| SonarQube | code-health facts | external service adapter | LGPL-3.0 / upstream terms | optional service | NO |
+| git-sizer | repository-size facts | external executable adapter | MIT | optional tool | NO |
+
+The repository's retained business source is covered by the root AGPL-3.0-or-
+later license. The former `vendor/` copies are not runtime dependencies and are
+removed as a whole; their notices are not silently reused as if they described
+the retained Python package. Before a release that bundles an optional tool,
+refresh its upstream notice and version-specific license record.

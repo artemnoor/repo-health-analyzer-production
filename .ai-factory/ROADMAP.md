@@ -1,16 +1,12 @@
-# Modularization roadmap
+# Repository Health Analyzer roadmap
 
-This roadmap records future work only; setup does not start implementation.
+The backend extraction baseline is implemented under `src/repo_health`.
 
-## Next candidate: Analyzer Integration Core
+Future work must preserve the frozen score and golden calibration behavior while
+improving operational adapters, observability, and optional process/queue
+deployment. New analyzers or integrations require a versioned contract, an
+adapter boundary, independent tests, and an explicit persistence/API decision.
 
-Preparation command:
+The durable workflow is:
 
-`/aif-explore ultra Analyzer Integration Core`
-
-Research targets include `AnalyzerContext`, `AnalyzerDefinition`,
-`AnalyzerResult`, `AnalyzerStatus`, `Finding`, `EvidenceRef`, `MetricValue`,
-`Limitation`, registry, runner, orchestrator, process boundaries, adapters, and
-lifecycle. Any extraction must follow the permanent rules in `RULES.md`, retain
-the old implementation for comparison, and use the task template in
-`templates/analyzer-integration-core.md`.
+`explore → plan → improve → implement → verify → review`

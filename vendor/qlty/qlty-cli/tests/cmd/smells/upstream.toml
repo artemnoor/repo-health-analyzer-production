@@ -1,3 +1,0 @@
-args = ["smells"]
-bin.name = "qlty"
-status.code = 0

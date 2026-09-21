@@ -1,9 +1,0 @@
-.git
-.github
-docs
-images
-*.md
-*.pdf
-*.py
-
-#!include:.gitignore

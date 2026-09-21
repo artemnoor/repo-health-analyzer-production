@@ -1,4 +1,0 @@
-bin.name = "qlty"
-args = ["fmt", "--all"]
-status.code = 0
-stderr = ""

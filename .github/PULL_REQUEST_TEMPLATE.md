@@ -1,24 +1,17 @@
 ## Summary
 
-<!-- What does this PR do? Keep it to 1-3 bullet points. -->
+<!-- Keep the change focused on the backend product boundary. -->
 
 -
 
-## Related Issues
+## Verification
 
-<!-- Link any related issues: Fixes #123, Closes #456 -->
+- [ ] `uv run ruff check src scripts tests`
+- [ ] target pytest suite passes
+- [ ] contract/parity checks pass
+- [ ] documentation and notices updated when needed
 
-## Test Plan
+## Compatibility
 
-<!-- How did you verify this works? -->
-
-- [ ] Tests pass (`pytest`)
-- [ ] Lint passes (`ruff check .`)
-- [ ] Web build passes (`npm run build`) *(if frontend changes)*
-
-## Checklist
-
-- [ ] My code follows the project's code style
-- [ ] I have added tests for new functionality
-- [ ] All existing tests still pass
-- [ ] I have updated documentation if needed
+- [ ] Score v1 and calibration-v2 behavior is unchanged, or the parity impact
+      is explicitly documented with updated golden fixtures.

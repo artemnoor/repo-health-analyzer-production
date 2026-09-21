@@ -1,9 +1,0 @@
-config_version = "0"
-
-[[source]]
-name = "config-exporter"
-directory = "config-exporter"
-
-[[plugin]]
-name = "config-exporter"
-version = "1.0.0"

@@ -1,5 +1,0 @@
-config_version = "0"
-
-[[source]]
-name = "custom"
-directory = "custom_source"

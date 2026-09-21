@@ -1,6 +1,6 @@
 ---
-name: Feature Request
-about: Suggest an idea for Repowise
+name: Backend feature request
+about: Propose a focused Repository Health Analyzer improvement
 title: "[Feature] "
 labels: enhancement
 assignees: ""
@@ -8,16 +8,12 @@ assignees: ""
 
 ## Problem
 
-A clear description of the problem you're trying to solve. Ex. "I'm always frustrated when..."
+<!-- Which backend user or operational need does this address? -->
 
-## Proposed Solution
+## Proposed boundary
 
-Describe the solution you'd like.
+<!-- Contract, collector, analyzer, scoring, persistence, API or execution? -->
 
-## Alternatives Considered
+## Compatibility impact
 
-Any alternative solutions or workarounds you've considered.
-
-## Additional Context
-
-Any other context, mockups, or examples.
+<!-- Explain effect on Score v1, calibration-v2, evidence and parity fixtures. -->

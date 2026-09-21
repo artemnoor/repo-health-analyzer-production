@@ -1,5 +1,0 @@
-extends: existence
-message: "Use a precise description instead of the AWS-shaped wording."
-level: warning
-tokens:
-  - '\bAWS-shaped\b'

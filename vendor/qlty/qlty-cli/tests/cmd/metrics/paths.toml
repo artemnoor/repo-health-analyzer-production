@@ -1,3 +1,0 @@
-args = ["metrics", "app"]
-bin.name = "qlty"
-status.code = 0

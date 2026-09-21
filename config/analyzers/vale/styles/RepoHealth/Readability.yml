@@ -1,6 +1,0 @@
-extends: readability
-message: "Grade level (%s) is above the Repo Health documentation target."
-level: warning
-grade: 12
-metrics:
-  - Flesch-Kincaid

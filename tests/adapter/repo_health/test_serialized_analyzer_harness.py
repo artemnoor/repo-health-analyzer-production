@@ -8,9 +8,9 @@ from datetime import UTC, datetime
 import pytest
 from pydantic import ValidationError
 
-from repowise.core.repo_health.analyzers.harness import execute_serialized
-from repowise.core.repo_health.contracts.requests import RepositoryRef
-from repowise.core.repo_health.contracts.results import (
+from repo_health.analyzers.harness import execute_serialized
+from repo_health.contracts.requests import RepositoryRef
+from repo_health.contracts.results import (
     AnalyzerInput,
     CategoryResult,
     CategoryStatus,
@@ -74,8 +74,8 @@ def test_subprocess_harness_matches_in_process_json() -> None:
     request = analyzer_input("repo-health.security")
     source = """
 import sys
-from repowise.core.repo_health.analyzers.harness import execute_serialized
-from repowise.core.repo_health.contracts.results import CategoryResult, CategoryStatus, Confidence, Coverage, HealthCategory
+from repo_health.analyzers.harness import execute_serialized
+from repo_health.contracts.results import CategoryResult, CategoryStatus, Confidence, Coverage, HealthCategory
 
 def factory(item):
     category = HealthCategory(item.analyzer_id.removeprefix('repo-health.').replace('-', '_'))
@@ -111,9 +111,9 @@ def test_harness_fails_closed_on_malformed_input() -> None:
 
 def test_worker_import_does_not_load_api_database_or_legacy_integrations() -> None:
     source = (
-        "import sys; import repowise.core.repo_health.analyzers.harness; "
+        "import sys; import repo_health.analyzers.harness; "
         "print(any(name == 'fastapi' or name == 'sqlalchemy' or "
-        "name.startswith('repowise.core.analysis.health.integrations') "
+        "name.startswith('repo_health.api') or name.startswith('repo_health.persistence') "
         "for name in sys.modules))"
     )
     child = subprocess.run([sys.executable, "-c", source], capture_output=True, text=True, check=True)

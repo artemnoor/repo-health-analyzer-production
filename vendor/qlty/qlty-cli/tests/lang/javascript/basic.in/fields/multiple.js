@@ -1,2 +1,0 @@
-this.foo;
-this.bar;

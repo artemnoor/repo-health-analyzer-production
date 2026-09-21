@@ -1,7 +1,0 @@
-require: rubocop-rails
-
-Style/EndOfLine:
-  EnforcedStyle: lf
-
-AllCops:
-  TargetRubyVersion: 3.x

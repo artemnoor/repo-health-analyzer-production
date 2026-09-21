@@ -1,3 +1,0 @@
-args = ["metrics", "--max-depth=1", "app/controllers"]
-bin.name = "qlty"
-status.code = 0

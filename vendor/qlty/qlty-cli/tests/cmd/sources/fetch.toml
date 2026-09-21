@@ -1,5 +1,0 @@
-bin.name = "qlty"
-args = ["sources", "fetch", "--no-upgrade-check"]
-stdout = ""
-stderr = ""
-status.code = 0

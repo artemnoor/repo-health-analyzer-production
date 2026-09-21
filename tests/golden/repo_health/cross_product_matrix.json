@@ -1,0 +1,13 @@
+{
+  "schema_version": "repo-health.v1",
+  "cases": [
+    {"id": "full-available-local", "selection": "full", "source_state": "available", "execution_state": "success", "executor_mode": "local", "delivery_state": "first", "score_state": "complete", "expected_analysis_state": "completed"},
+    {"id": "subset-available-worker", "selection": "documentation,security", "source_state": "available", "execution_state": "success", "executor_mode": "worker", "delivery_state": "first", "score_state": "partial", "expected_analysis_state": "completed"},
+    {"id": "full-partial-local", "selection": "full", "source_state": "partial", "execution_state": "success", "executor_mode": "local", "delivery_state": "first", "score_state": "partial", "expected_analysis_state": "completed"},
+    {"id": "full-unavailable-worker", "selection": "full", "source_state": "unavailable", "execution_state": "success", "executor_mode": "worker", "delivery_state": "first", "score_state": "missing", "expected_analysis_state": "partial"},
+    {"id": "single-analyzer-error-local", "selection": "security", "source_state": "available", "execution_state": "error", "executor_mode": "local", "delivery_state": "first", "score_state": "missing", "expected_analysis_state": "failed"},
+    {"id": "full-timeout-worker", "selection": "full", "source_state": "available", "execution_state": "timeout", "executor_mode": "worker", "delivery_state": "first", "score_state": "partial", "expected_analysis_state": "partial"},
+    {"id": "duplicate-idempotent-worker", "selection": "full", "source_state": "available", "execution_state": "success", "executor_mode": "worker", "delivery_state": "duplicate", "score_state": "complete", "expected_analysis_state": "completed"},
+    {"id": "security-cap-local", "selection": "security", "source_state": "available", "execution_state": "success", "executor_mode": "local", "delivery_state": "first", "score_state": "security_cap", "expected_analysis_state": "completed"}
+  ]
+}

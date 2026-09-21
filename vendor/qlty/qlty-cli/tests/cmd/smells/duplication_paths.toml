@@ -1,3 +1,0 @@
-args = ["smells", "app/models", "--no-snippets"]
-bin.name = "qlty"
-status.code = 0

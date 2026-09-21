@@ -1,191 +1,62 @@
-# Python
+# Python and packaging
 __pycache__/
 *.py[cod]
-*$py.class
 *.so
 .Python
-build/
-develop-eggs/
-dist/
-downloads/
-eggs/
-.eggs/
-/lib/
-/lib64/
-parts/
-sdist/
-var/
-wheels/
-share/python-wheels/
-*.egg-info/
-.installed.cfg
-*.egg
-
-# Virtual environments
 .venv/
 venv/
 ENV/
 env/
-# uv
+build/
+dist/
+*.egg-info/
 .uv/
 
-# Testing
-.tox/
-.nox/
-.coverage
-.coverage.*
-.cache
-nosetests.xml
-coverage.xml
-*.cover
-*.py,cover
-.hypothesis/
+# Test, type-checker, and linter output
 .pytest_cache/
 .pytest-rework-temp*/
-cover/
+.coverage*
+coverage.xml
 htmlcov/
-
-# mypy
+.hypothesis/
 .mypy_cache/
-.dmypy.json
-dmypy.json
-
-# ruff
 .ruff_cache/
+.tox/
+.nox/
 
-# IDEs
-.idea/
-.vscode/
-*.swp
-*.swo
-*~
-
-# Node / Next.js
-node_modules/
-.next/
-.nuxt/
-out/
-.npm
-.eslintcache
-.parcel-cache
-*.tsbuildinfo
-next-env.d.ts
-
-# Environment variables
+# Local configuration and secrets
 .env
-.env.local
-.env.*.local
+.env.*
 !.env.example
 
-# repowise runtime data
-.repowise/
-!.repowise/mcp.json.example
-.repowise-workspace/
-.repowise-workspace.yaml
-
-# repowise API keys (local)
-.repowise/.env
-
-# Benchmark output (large-repo scale runs): keep the dir, ignore results
-bench/results/
-
-# Database
+# Runtime state
 *.db
 *.db-shm
 *.db-wal
 *.sqlite
 *.sqlite3
-
-# LanceDB
-lancedb/
-lancedb_data/
-*.lance
-
-# Logs
-*.log
 logs/
-
-# Docker
-docker-compose.override.yml
-
-# OS
-.DS_Store
-.DS_Store?
-._*
-.Spotlight-V100
-.Trashes
-Thumbs.db
-ehthumbs.db
-
-# Office temp / lock files
-~$*
-
-# Claude Code
-.claude/
-
-# Local agent/tooling state; keep the published repository focused on the app.
-.agents/
-# Keep the AI Factory project contract and durable workflow artifacts in Git;
-# ignore generated/session state that should remain local to an agent run.
-.ai-factory/*
-!.ai-factory/config.yaml
-!.ai-factory/DESCRIPTION.md
-!.ai-factory/ARCHITECTURE.md
-!.ai-factory/RULES.md
-!.ai-factory/ROADMAP.md
-!.ai-factory/rules/
-!.ai-factory/rules/base.md
-!.ai-factory/templates/
-!.ai-factory/templates/*.md
-!.ai-factory/README.md
-!.ai-factory.json
-.claude-plugin/
-.codex/*
-!.codex/
-!.codex/skills/
-!.codex/skills/**
-.playwright-cli/
-graphify-out/
-packages/web/test-results/
-
-# Repository Health Analyzer source snapshots and generated native outputs
-.sources/
-.venv/
-bin/
-vendor/**/target/
-vendor/**/build/
-vendor/**/.gradle/
-vendor/**/.pytest_cache/
-vendor/**/__pycache__/
-# Junctions from the upstream source snapshots cannot be indexed reliably on Windows.
-vendor/chaoss/sirmordred/report
-vendor/chaoss/sirmordred/tests/menu.yaml
-vendor/qlty/plugins
-vendor/sonarqube/logs.sh
-vendor/sonarqube/start.sh
-vendor/sonarqube/stop.sh
-# Windows device-name paths from upstream repositories are not addressable by Git.
-vendor/**/aux
-vendor/**/aux.*
-vendor/**/con
-vendor/**/con.*
-vendor/**/nul
-vendor/**/nul.*
-vendor/**/prn
-vendor/**/prn.*
-vendor/**/com[1-9]
-vendor/**/com[1-9].*
-vendor/**/lpt[1-9]
-vendor/**/lpt[1-9].*
-# Keep upstream report renderers; only the explicit Windows junction path
-# above remains excluded.
-.health-cache/
+*.log
 artifacts/
+checkouts/
+.sources/
 
-# Research runs and upstream snapshots are local-only inputs. Keep the small
-# README/scripts/provenance files visible, but never stage generated output or
-# copied research repositories into the production checkout.
-/$out/
-spikes/**/runs/
-spikes/**/upstream/
-spikes/**/controlled-worktrees/
+# Local tools and generated files
+.idea/
+.vscode/
+.codex/
+.opencode/
+.well-known/
+.claude/
+.agents/
+node_modules/
+*.swp
+*.swo
+*~
+.DS_Store
+Thumbs.db
+
+# AI Factory session state; the tracked project contract remains visible.
+.ai-factory/plans/
+.ai-factory/qa/
+.ai-factory/references/

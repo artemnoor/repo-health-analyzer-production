@@ -1,3 +1,0 @@
-slack://channel?id=123
-file:///test_folder/test_file
-https://example.com
