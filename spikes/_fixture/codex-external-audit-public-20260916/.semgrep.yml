@@ -1,0 +1,6 @@
+rules:
+  - id: audit-open-redirect
+    languages: [javascript]
+    message: User-controlled URL is passed to redirect without validation.
+    severity: WARNING
+    pattern: res.redirect($URL)

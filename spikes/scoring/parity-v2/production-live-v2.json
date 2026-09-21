@@ -1,0 +1,310 @@
+{
+  "categories": {
+    "Activity": {
+      "analyzer_id": "chaoss.activity",
+      "confidence": 1.0,
+      "coverage": 1.0,
+      "diagnostics": {
+        "pydriller_status": "MEASURED"
+      },
+      "finding_count": 0,
+      "findings": [],
+      "limitation_count": 1,
+      "metrics": {
+        "pydriller:churn": 234,
+        "pydriller:unique_commits": 7
+      },
+      "score": 66.23917469369593,
+      "status": "pass"
+    },
+    "CI/CD": {
+      "analyzer_id": "cicd.sourcecraft",
+      "confidence": 1.0,
+      "coverage": 1.0,
+      "diagnostics": {
+        "cicd_status": "MEASURED"
+      },
+      "finding_count": 1,
+      "findings": [
+        {
+          "evidence": [
+            "/runs/3",
+            "/runs/9",
+            "/runs/10",
+            "/runs/11",
+            "/runs/12"
+          ],
+          "location": null,
+          "severity": "high",
+          "subject": "failure-rate"
+        }
+      ],
+      "limitation_count": 4,
+      "metrics": {
+        "cicd:failure_rate": 0.3125,
+        "cicd:success_rate": 0.6875,
+        "cicd:total_runs": 16
+      },
+      "score": 75.32894736842105,
+      "status": "warn"
+    },
+    "Code Health": {
+      "analyzer_id": "repowise.health",
+      "confidence": 0.825,
+      "coverage": 0.6666666666666666,
+      "diagnostics": {
+        "code_health": {
+          "baseline": {
+            "finding_count": 0,
+            "metric_count": 0,
+            "score": null,
+            "status": null
+          },
+          "confidence": 0.825,
+          "coverage": 0.6666666666666666,
+          "engine_coverage": {
+            "git_history": 1.0,
+            "git_sizer": 1.0,
+            "sonarqube": 0.0
+          },
+          "engine_statuses": {
+            "git_history": "PARTIAL",
+            "git_sizer": "MEASURED",
+            "sonarqube": "UNAVAILABLE"
+          },
+          "exclusions": {
+            "patterns": [
+              ".git/",
+              "vendor/",
+              "generated/",
+              "build/",
+              "dist/",
+              "out/",
+              "coverage/",
+              "node_modules/",
+              ".venv/",
+              "**/*.min.js",
+              "**/*.min.css"
+            ],
+            "policy_revision": "code-health-v1"
+          },
+          "git_structure_metrics": [
+            "max_blob_size",
+            "max_checkout_files",
+            "max_checkout_size",
+            "max_history_depth",
+            "max_path_depth",
+            "max_tree_entries",
+            "unique_blob_count",
+            "unique_commit_count",
+            "unique_ref_count",
+            "unique_tree_count"
+          ],
+          "limitations": [
+            "sonarqube unavailable",
+            "git_history produced partial facts"
+          ],
+          "policy_digest": "0d80c847b443790553c7560467df566490690938f0e02bf36214e3dd77401a57",
+          "policy_revision": "code-health-v1",
+          "sonar_issue_count": 0,
+          "sonar_measures": [],
+          "source_snapshot_digest": "f9bbecd61b598565331122c1a0b881a8b8f5db9ec69f8dbc584a7e45fedbeace",
+          "status": "PARTIAL",
+          "todo_count": 0
+        },
+        "code_health_components": {
+          "complexity": {
+            "eligible": false,
+            "score": null,
+            "weight": 0.15
+          },
+          "duplication": {
+            "eligible": false,
+            "score": null,
+            "weight": 0.15
+          },
+          "git_structure": {
+            "eligible": true,
+            "score": 99.127025,
+            "weight": 0.1
+          },
+          "hotspots_churn": {
+            "eligible": false,
+            "score": null,
+            "weight": 0.15
+          },
+          "maintainability_debt": {
+            "eligible": false,
+            "score": null,
+            "weight": 0.35
+          },
+          "todo_debt": {
+            "eligible": true,
+            "score": 100.0,
+            "weight": 0.1
+          }
+        },
+        "code_health_eligible_weight": 0.2,
+        "code_health_raw_score": 99.5635125,
+        "code_health_score_after": 80.0,
+        "code_health_score_before": null,
+        "code_health_total_weight": 1.0
+      },
+      "finding_count": 0,
+      "findings": [],
+      "limitation_count": 2,
+      "metrics": {},
+      "score": 80.0,
+      "status": "warn"
+    },
+    "Documentation": {
+      "analyzer_id": "vale.documentation",
+      "confidence": 1.0,
+      "coverage": 1.0,
+      "diagnostics": {},
+      "finding_count": 1,
+      "findings": [
+        {
+          "evidence": [
+            "/README.md/0"
+          ],
+          "location": {
+            "json_pointer": null,
+            "line_end": 3,
+            "line_start": 3,
+            "path": "README.md",
+            "symbol": null
+          },
+          "severity": "medium",
+          "subject": "RepoHealth.Clarity"
+        }
+      ],
+      "limitation_count": 0,
+      "metrics": {},
+      "score": 39.93684210526316,
+      "status": "warn"
+    },
+    "Issues": {
+      "analyzer_id": "chaoss.issues_prs",
+      "confidence": 0.5249999999999999,
+      "coverage": 0.7,
+      "diagnostics": {
+        "issues_status": "PARTIAL"
+      },
+      "finding_count": 1,
+      "findings": [
+        {
+          "evidence": [
+            "/issues/01a0a91d-9349-7450-8dab-ce341f3487ee"
+          ],
+          "location": null,
+          "severity": "medium",
+          "subject": "issue:01a0a91d-9349-7450-8dab-ce341f3487ee"
+        }
+      ],
+      "limitation_count": 5,
+      "metrics": {
+        "issues:open_issues": 1,
+        "issues:sample_size": 1
+      },
+      "score": null,
+      "status": "warn"
+    },
+    "Security": {
+      "analyzer_id": "sourcecraft.appsec",
+      "confidence": 1.0,
+      "coverage": 1.0,
+      "diagnostics": {
+        "active_severity_counts": {
+          "unknown": 1
+        },
+        "security_status": "MEASURED"
+      },
+      "finding_count": 1,
+      "findings": [
+        {
+          "evidence": [
+            "/findings/0"
+          ],
+          "location": {
+            "json_pointer": null,
+            "line_end": null,
+            "line_start": 1,
+            "path": "secret-fixture.txt",
+            "symbol": null
+          },
+          "severity": "medium",
+          "subject": "gitleaks:audit-synthetic-secret"
+        }
+      ],
+      "limitation_count": 0,
+      "metrics": {
+        "appsec:active_findings": 1
+      },
+      "score": 90.0,
+      "status": "warn"
+    }
+  },
+  "collections": {
+    "cicd": {
+      "pages": 1,
+      "records_after_local_filter": 16,
+      "records_received": 16,
+      "status": "MEASURED"
+    },
+    "issues": {
+      "pages": 1,
+      "records_after_local_filter": null,
+      "records_received": null,
+      "status": "MEASURED"
+    }
+  },
+  "raw_payloads_written": false,
+  "repository": "artem03102006/codex-external-audit-public-20260916",
+  "score": {
+    "applied_caps": [
+      {
+        "cap": 40.0,
+        "category": "Security",
+        "reason": "confirmed_secret"
+      }
+    ],
+    "category_quality": {
+      "Activity": 1.0,
+      "CI/CD": 1.0,
+      "Code Health": 0.5499999999999999,
+      "Documentation": 1.0,
+      "Issues": 0.0,
+      "Security": 1.0
+    },
+    "category_scores": {
+      "Activity": 66.23917469369593,
+      "CI/CD": 75.32894736842105,
+      "Code Health": 80.0,
+      "Documentation": 39.93684210526316,
+      "Issues": null,
+      "Security": 90.0
+    },
+    "category_statuses": {
+      "Activity": "MEASURED",
+      "CI/CD": "MEASURED",
+      "Code Health": "MEASURED",
+      "Documentation": "MEASURED",
+      "Issues": "PARTIAL",
+      "Security": "MEASURED"
+    },
+    "coverage_k": 0.7599999999999999,
+    "excluded_categories": [],
+    "numeric_category_count": 5,
+    "overall": 40.0,
+    "presentation_state": "SCORE",
+    "score_before_cap": 72.03028779424356,
+    "version": "repo-health-score-v1"
+  },
+  "sourcecraft_metadata": {
+    "default_branch": "main",
+    "repository_id_present": true,
+    "status": "MEASURED"
+  },
+  "token_logged": false
+}

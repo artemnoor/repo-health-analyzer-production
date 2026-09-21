@@ -1,0 +1,6 @@
+extends: substitution
+message: "Use the canonical product name '%s'."
+level: error
+ignorecase: true
+swap:
+  'sourcecraft': SourceCraft

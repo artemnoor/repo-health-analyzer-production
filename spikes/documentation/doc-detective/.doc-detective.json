@@ -1,0 +1,21 @@
+{
+  "autoUpdate": false,
+  "telemetry": {
+    "send": false
+  },
+  "fileTypes": [
+    {
+      "name": "markdown",
+      "extensions": ["md", "markdown", "mdx"],
+      "markup": [
+        {
+          "name": "checkHyperlink",
+          "regex": [
+            "(?<!\\!)\\[[^\\]]+\\]\\(\\s*(https?:\\/\\/[^\\s)]+)(?:\\s+\"[^\"]*\")?\\s*\\)"
+          ],
+          "actions": ["checkLink"]
+        }
+      ]
+    }
+  ]
+}

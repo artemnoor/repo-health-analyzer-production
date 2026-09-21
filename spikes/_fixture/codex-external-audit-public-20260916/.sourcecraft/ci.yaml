@@ -1,0 +1,97 @@
+on:
+  pull_request:
+    - workflows: [appsec-sast, appsec-secrets, appsec-sca]
+      filter:
+        source_branches: ["**"]
+        target_branches: ["main"]
+  push:
+    - workflows: [appsec-sast, appsec-secrets, appsec-sca]
+      filter:
+        branches: ["main"]
+
+workflows:
+  appsec-sast:
+    tasks:
+      - name: sast-scan
+        cubes:
+          - name: semgrep
+            image:
+              name: semgrep/semgrep:latest
+              entrypoint: ""
+            script:
+              - semgrep --config "$SOURCECRAFT_WORKSPACE/.semgrep.yml" --sarif --output "$SOURCECRAFT_WORKSPACE/sast.sarif" "$SOURCECRAFT_WORKSPACE" || true
+          - name: sast-upload
+            image:
+              name: sourcecraft/scan-result-uploader:0.6.0
+            script:
+              - export APPSEC_REPOSITORY_ID="$SOURCECRAFT_REPO_ID"
+              - export APPSEC_CUSTOM_ENGINE_NAME="semgrep"
+              - export APPSEC_CUSTOM_ENGINE_TYPE="SAST"
+              - export APPSEC_SCAN_RESULT_TYPE="SARIF"
+              - export APPSEC_SCAN_RESULT_PATH="$SOURCECRAFT_WORKSPACE/sast.sarif"
+              - /app/bin/scan-result-uploader
+          - name: sast-readback
+            allow_failure: true
+            image:
+              name: python:3.13-slim
+              entrypoint: ""
+            script:
+              - python -m pip install --quiet grpcio grpcio-tools
+              - python "$SOURCECRAFT_WORKSPACE/appsec_readback.py" sast semgrep
+
+  appsec-secrets:
+    tasks:
+      - name: secret-scan
+        cubes:
+          - name: gitleaks
+            image:
+              name: zricethezav/gitleaks:latest
+              entrypoint: ""
+            script:
+              - gitleaks dir "$SOURCECRAFT_WORKSPACE" --report-format sarif --report-path "$SOURCECRAFT_WORKSPACE/secrets.sarif" --exit-code 0
+          - name: secrets-upload
+            image:
+              name: sourcecraft/scan-result-uploader:0.6.0
+            script:
+              - export APPSEC_REPOSITORY_ID="$SOURCECRAFT_REPO_ID"
+              - export APPSEC_CUSTOM_ENGINE_NAME="gitleaks"
+              - export APPSEC_CUSTOM_ENGINE_TYPE="SECRETS"
+              - export APPSEC_SCAN_RESULT_TYPE="SARIF"
+              - export APPSEC_SCAN_RESULT_PATH="$SOURCECRAFT_WORKSPACE/secrets.sarif"
+              - /app/bin/scan-result-uploader
+          - name: secrets-readback
+            allow_failure: true
+            image:
+              name: python:3.13-slim
+              entrypoint: ""
+            script:
+              - python -m pip install --quiet grpcio grpcio-tools
+              - python "$SOURCECRAFT_WORKSPACE/appsec_readback.py" secrets gitleaks
+
+  appsec-sca:
+    tasks:
+      - name: sca-scan
+        cubes:
+          - name: syft
+            image:
+              name: anchore/syft:latest
+              entrypoint: "/syft"
+              args: ["dir:/sourcecraft/workspace", "-o", "spdx-json=/sourcecraft/workspace/sbom.spdx.json"]
+          - name: sca-upload
+            image:
+              name: sourcecraft/scan-result-uploader:0.6.0
+            script:
+              - export APPSEC_REPOSITORY_ID="$SOURCECRAFT_REPO_ID"
+              - export APPSEC_CUSTOM_ENGINE_NAME="syft"
+              - export APPSEC_CUSTOM_ENGINE_TYPE="SCA"
+              - export APPSEC_SCAN_RESULT_TYPE="SBOM"
+              - export APPSEC_SCAN_RESULT_PATH="$SOURCECRAFT_WORKSPACE/sbom.spdx.json"
+              - /app/bin/scan-result-uploader
+          - name: sca-readback
+            allow_failure: true
+            image:
+              name: python:3.13-slim
+              entrypoint: ""
+            script:
+              - python -m pip install --quiet grpcio grpcio-tools
+              - python "$SOURCECRAFT_WORKSPACE/appsec_readback.py" sca syft

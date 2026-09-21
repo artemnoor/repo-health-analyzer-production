@@ -1,0 +1,6 @@
+rules:
+  - id: repo-health-controlled-eval
+    languages: [python]
+    message: Controlled validation fixture contains an unsafe dynamic evaluation.
+    severity: ERROR
+    pattern: eval(...)
