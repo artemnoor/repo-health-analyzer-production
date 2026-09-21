@@ -32,8 +32,11 @@ curl.exe http://127.0.0.1:8000/readyz
 ```
 
 Set `SOURCECRAFT_URL` and `SOURCECRAFT_TOKEN` for live SourceCraft collection.
-Tokens are resolved at execution time and are not stored in contracts, task
-rows, logs or responses. See [.env.example](.env.example).
+Set `VALE_PATH`, `GIT_SIZER_PATH`, `SONAR_URL` and `SONAR_TOKEN` only when those
+optional engines are available. Missing engines degrade only their category;
+they never become fabricated zero facts. Tokens are resolved at execution time
+and are not stored in contracts, task rows, logs or responses. See
+[.env.example](.env.example).
 
 ## Verify
 
@@ -42,6 +45,8 @@ uv run pytest -q tests/unit/repo_health tests/contract/repo_health tests/adapter
 uv run python scripts/verify_contracts.py --all
 uv run python scripts/verify_parity.py
 uv run python -m repo_health.worker --check
+uv run python scripts/verify_external_tools.py
+uv run python scripts/verify_production_composition.py
 ```
 
 ## Documentation

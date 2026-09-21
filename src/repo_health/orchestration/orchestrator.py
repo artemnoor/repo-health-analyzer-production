@@ -3,14 +3,16 @@
 from __future__ import annotations
 
 import hashlib
+from collections.abc import Sequence
 from datetime import UTC, datetime
 from pathlib import Path
+from typing import Protocol
 
 import structlog
 
 from ..analyzers import CANONICAL_ANALYZER_IDS, canonical_registry, register_default_factories
 from ..collection.service import CollectionService
-from ..contracts.execution import AnalyzerTask
+from ..contracts.execution import AnalyzerTask, ExecutionOutcome
 from ..contracts.requests import AnalysisRequest
 from ..contracts.results import (
     AnalysisEnvelope,
@@ -30,6 +32,10 @@ from ..scoring.v1 import ScoreEngineV1
 log = structlog.get_logger("repo_health.orchestration")
 
 
+class ExecutorPort(Protocol):
+    async def execute_many(self, tasks: Sequence[AnalyzerTask]) -> tuple[ExecutionOutcome, ...]: ...
+
+
 class AnalysisOrchestrator:
     """One lifecycle with pluggable collection, execution and persistence."""
 
@@ -38,7 +44,7 @@ class AnalysisOrchestrator:
         *,
         collection: CollectionService,
         persistence: PersistencePort,
-        executor: LocalExecutor | None = None,
+        executor: ExecutorPort | None = None,
         score_engine: ScoreEngineV1 | None = None,
     ) -> None:
         self.collection = collection

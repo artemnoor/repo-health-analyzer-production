@@ -32,6 +32,7 @@ from ..contracts.results import (
     SecurityFacts,
     SourceStatus,
 )
+from .merge import merge_repository_facts
 from .ports import CollectionContext, CollectionError, ProviderCollectorPort
 
 log = structlog.get_logger("repo_health.collection.sourcecraft")
@@ -328,19 +329,7 @@ def _record_failure(facts: RepositoryFacts, source_id: str, state: CollectionSta
 
 
 def _merge_facts(left: RepositoryFacts, right: RepositoryFacts) -> RepositoryFacts:
-    updates: dict[str, Any] = {
-        "repository": right.repository or left.repository,
-        "collected_at": right.collected_at or left.collected_at,
-        "source_versions": {**left.source_versions, **right.source_versions},
-        "source_statuses": (*left.source_statuses, *right.source_statuses),
-        "capabilities": (*left.capabilities, *right.capabilities),
-        "limitations": (*left.limitations, *right.limitations),
-    }
-    for group in _GROUPS:
-        value = getattr(right, group)
-        if value.available or value.observations or value.limitations:
-            updates[group] = value
-    return left.model_copy(update=updates)
+    return merge_repository_facts(left, right)
 
 
 class SourceCraftRepositoryCollector(SourceCraftResourceCollector):
@@ -364,11 +353,231 @@ class SourceCraftCicdCollector(SourceCraftResourceCollector):
         super().__init__(client=client, source_id="sourcecraft.cicd", path=path, fact_group="cicd")
 
 
-class SourceCraftAppSecCollector(SourceCraftResourceCollector):
-    """AppSec REST adapter; no alternate local security engine is implied."""
+class SourceCraftAppSecCollector:
+    """Bounded SourceCraft AppSec chain: scans → defect groups → findings."""
 
-    def __init__(self, *, client: SourceCraftClient, path: str = "/api/appsec") -> None:
-        super().__init__(client=client, source_id="sourcecraft.appsec", path=path, fact_group="security")
+    source_id = "sourcecraft.appsec"
+    provider = "sourcecraft"
+
+    def __init__(
+        self,
+        *,
+        client: SourceCraftClient,
+        scans_path: str = "/v1/scans",
+        defect_groups_path: str = "/v1/defect-groups",
+        findings_path: str = "/v1/findings",
+        max_groups: int = 100,
+    ) -> None:
+        if max_groups <= 0:
+            raise ValueError("max_groups must be positive")
+        self.client = client
+        self.scans_path = scans_path
+        self.defect_groups_path = defect_groups_path
+        self.findings_path = findings_path
+        self.max_groups = max_groups
+
+    def collect(self, repository: RepositoryRef, *, context: CollectionContext) -> RepositoryFacts:
+        responses: list[SourceCraftResponse] = []
+        limitations: list[Limitation] = []
+        observations: dict[str, object] = {}
+
+        scans = self._stage(
+            repository,
+            source_id="sourcecraft.appsec.scans",
+            path=self.scans_path,
+            params={"repository_id": repository.repository_id, "ref": repository.ref},
+        )
+        responses.append(scans)
+        if scans.limitation:
+            limitations.append(scans.limitation)
+        if scans.state is not CollectionState.AVAILABLE or not scans.payload:
+            return self._facts(repository, responses, observations, limitations, available=False)
+
+        scan_rows = _payload_rows(scans.payload, "scans", "items", "data")
+        if not scan_rows:
+            limitation = Limitation(code="appsec.no_scan", reason="SourceCraft returned no completed AppSec scan")
+            return self._facts(repository, responses, observations, [*limitations, limitation], available=False)
+        selected_scan = _select_latest(scan_rows)
+        scan_id = _identifier(selected_scan, "id", "scan_id")
+        if not scan_id:
+            limitation = Limitation(code="appsec.malformed_scan", reason="SourceCraft scan response has no stable identifier")
+            return self._facts(repository, responses, observations, [*limitations, limitation], available=False)
+        observations["scan_count"] = len(scan_rows)
+
+        groups = self._stage(
+            repository,
+            source_id="sourcecraft.appsec.defect-groups",
+            path=self.defect_groups_path,
+            params={"scan_id": scan_id},
+        )
+        responses.append(groups)
+        if groups.limitation:
+            limitations.append(groups.limitation)
+        if groups.state is not CollectionState.AVAILABLE or groups.payload is None:
+            observations["partial"] = True
+            return self._facts(repository, responses, observations, limitations, available=True)
+
+        group_rows = _payload_rows(groups.payload, "defect_groups", "groups", "items", "data")
+        observations["defect_group_count"] = len(group_rows)
+        severity_counts = {"critical": 0, "high": 0, "medium": 0, "low": 0}
+        finding_count = 0
+        unavailable_groups = 0
+        for index, group in enumerate(group_rows[: self.max_groups], start=1):
+            group_id = _identifier(group, "id", "group_id", "defect_group_id")
+            if not group_id:
+                unavailable_groups += 1
+                limitations.append(
+                    Limitation(code=f"appsec.group_{index}_malformed", reason="Defect group has no stable identifier")
+                )
+                continue
+            findings = self._stage(
+                repository,
+                source_id=f"sourcecraft.appsec.findings.{index}",
+                path=self.findings_path,
+                params={"scan_id": scan_id, "defect_group_id": group_id},
+            )
+            responses.append(findings)
+            if findings.limitation:
+                limitations.append(findings.limitation)
+            if findings.state is not CollectionState.AVAILABLE or findings.payload is None:
+                unavailable_groups += 1
+                continue
+            rows = _payload_rows(findings.payload, "findings", "items", "data")
+            for finding in rows:
+                if not _is_active(finding):
+                    continue
+                finding_count += 1
+                severity = _severity(finding)
+                if severity in severity_counts:
+                    severity_counts[severity] += 1
+
+        observations.update(
+            {
+                "finding_count": finding_count,
+                "active_count": finding_count,
+                "critical_count": severity_counts["critical"],
+                "high_count": severity_counts["high"],
+                "medium_count": severity_counts["medium"],
+                "low_count": severity_counts["low"],
+                "groups_with_unavailable_findings": unavailable_groups,
+                "partial": unavailable_groups > 0 or len(group_rows) > self.max_groups,
+            }
+        )
+        if len(group_rows) > self.max_groups:
+            limitations.append(
+                Limitation(code="appsec.groups_capped", reason="AppSec defect-group collection was bounded by limits")
+            )
+        return self._facts(repository, responses, observations, limitations, available=True)
+
+    def _stage(
+        self,
+        repository: RepositoryRef,
+        *,
+        source_id: str,
+        path: str,
+        params: Mapping[str, str],
+    ) -> SourceCraftResponse:
+        try:
+            return self.client.get_json(repository=repository, source_id=source_id, path=path, params=params)
+        except SourceCraftAuthError:
+            return SourceCraftResponse(
+                source_id=source_id,
+                source_version=None,
+                state=CollectionState.PERMISSION_DENIED,
+                payload=None,
+                limitation=Limitation(code=f"{source_id}.permission_denied", reason="SourceCraft denied AppSec access"),
+            )
+        except SourceCraftUnavailableError:
+            return SourceCraftResponse(
+                source_id=source_id,
+                source_version=None,
+                state=CollectionState.UNAVAILABLE,
+                payload=None,
+                limitation=Limitation(code=f"{source_id}.unavailable", reason="SourceCraft AppSec is unavailable"),
+            )
+        except (SourceCraftPayloadError, CollectionError, ValueError):
+            return SourceCraftResponse(
+                source_id=source_id,
+                source_version=None,
+                state=CollectionState.ERROR,
+                payload=None,
+                limitation=Limitation(code=f"{source_id}.malformed", reason="SourceCraft AppSec response is malformed"),
+            )
+
+    @staticmethod
+    def _facts(
+        repository: RepositoryRef,
+        responses: Sequence[SourceCraftResponse],
+        observations: Mapping[str, object],
+        limitations: Sequence[Limitation],
+        *,
+        available: bool,
+    ) -> RepositoryFacts:
+        statuses = tuple(
+            SourceStatus(
+                source_id=response.source_id,
+                state=response.state,
+                source_version=response.source_version,
+                collected_at=datetime.now(UTC),
+                limitations=(response.limitation,) if response.limitation else (),
+            )
+            for response in responses
+        )
+        group = SecurityFacts(
+            available=available,
+            observations=tuple({"key": key, "value": value} for key, value in observations.items()),
+            limitations=tuple(limitations),
+        )
+        return RepositoryFacts(
+            repository=repository,
+            source_versions={response.source_id: response.source_version or "unknown" for response in responses},
+            source_statuses=statuses,
+            security=group,
+            limitations=tuple(limitations),
+        )
+
+
+def _payload_rows(payload: Mapping[str, Any] | None, *keys: str) -> list[Mapping[str, Any]]:
+    if payload is None:
+        return []
+    for key in keys:
+        value = payload.get(key)
+        if isinstance(value, list):
+            return [item for item in value if isinstance(item, Mapping)]
+    if any(key in payload for key in ("id", "scan_id", "group_id", "defect_group_id")):
+        return [payload]
+    return []
+
+
+def _identifier(row: Mapping[str, Any], *keys: str) -> str | None:
+    for key in keys:
+        value = row.get(key)
+        if isinstance(value, str) and value.strip() and len(value.strip()) <= 256:
+            return value.strip()
+        if isinstance(value, (int, float)) and not isinstance(value, bool):
+            return str(value)
+    return None
+
+
+def _select_latest(rows: Sequence[Mapping[str, Any]]) -> Mapping[str, Any]:
+    return sorted(
+        rows,
+        key=lambda row: (
+            str(row.get("updated_at") or row.get("created_at") or row.get("finished_at") or ""),
+            _identifier(row, "id", "scan_id") or "",
+        ),
+        reverse=True,
+    )[0]
+
+
+def _is_active(row: Mapping[str, Any]) -> bool:
+    state = str(row.get("status") or row.get("state") or "active").casefold()
+    return state not in {"closed", "resolved", "fixed", "suppressed", "false_positive", "inactive"}
+
+
+def _severity(row: Mapping[str, Any]) -> str:
+    value = str(row.get("severity") or row.get("priority") or row.get("level") or "medium").casefold()
+    return {"moderate": "medium", "major": "high", "blocker": "critical"}.get(value, value)
 
 
 __all__ = [

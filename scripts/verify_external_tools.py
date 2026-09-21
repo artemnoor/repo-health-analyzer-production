@@ -4,11 +4,12 @@ from __future__ import annotations
 
 import argparse
 import json
-import os
 import shutil
 from pathlib import Path
 
-TOOLS = ("git", "vale", "git-sizer", "sonar-scanner")
+from repo_health.config import RuntimeConfig
+
+TOOLS = ("git", "vale", "git-sizer")
 
 
 def _tool_status(name: str) -> dict[str, object]:
@@ -17,10 +18,14 @@ def _tool_status(name: str) -> dict[str, object]:
 
 
 def collect_report(root: Path) -> dict[str, object]:
+    config = RuntimeConfig.from_environment()
+    capabilities = {item.engine: item.public_dict() for item in config.capability_report()}
     return {
         "root": str(root),
         "tools": {name: _tool_status(name) for name in TOOLS},
-        "sonarqube_url_configured": bool(os.environ.get("SONARQUBE_URL")),
+        "capabilities": capabilities,
+        "sonarqube_url_configured": config.sonar_url is not None,
+        "sourcecraft_url_configured": config.sourcecraft_url is not None,
         "runtime_mode": "adapter/process-boundary",
     }
 

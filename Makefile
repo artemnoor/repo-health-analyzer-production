@@ -1,4 +1,4 @@
-.PHONY: install test lint typecheck verify api worker build docker
+.PHONY: install test lint compile verify api worker build docker
 
 install:
 	uv sync --extra dev
@@ -9,14 +9,17 @@ test:
 lint:
 	uv run ruff check src scripts tests
 
-typecheck:
-	uv run mypy src/repo_health
+compile:
+	uv run python -m compileall -q src scripts tests
 
 verify:
 	$(MAKE) lint
+	$(MAKE) compile
 	$(MAKE) test
 	uv run python scripts/verify_contracts.py --all
-	uv run python scripts/verify_parity.py
+	uv run python scripts/verify_parity.py --score-only
+	uv run python scripts/verify_parity.py --legacy-replay --fail-on-unmapped
+	uv run python scripts/verify_parity.py --execution local --execution worker
 
 api:
 	uv run repo-health-api

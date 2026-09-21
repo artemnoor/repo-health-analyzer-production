@@ -10,6 +10,7 @@ import structlog
 
 from ..contracts.requests import AnalysisRequest
 from ..contracts.results import CollectionState, Limitation, RepositoryFacts, SourceStatus
+from .merge import merge_repository_facts
 from .ports import CollectionContext, CollectionLimits, CollectorPort
 
 log = structlog.get_logger("repo_health.collection.service")
@@ -82,19 +83,7 @@ class CollectionService:
 
     @staticmethod
     def _merge(left: RepositoryFacts, right: RepositoryFacts) -> RepositoryFacts:
-        updates = {
-            "repository": right.repository or left.repository,
-            "collected_at": right.collected_at or left.collected_at,
-            "source_versions": {**left.source_versions, **right.source_versions},
-            "source_statuses": (*left.source_statuses, *right.source_statuses),
-            "capabilities": (*left.capabilities, *right.capabilities),
-            "limitations": (*left.limitations, *right.limitations),
-        }
-        for group in ("git", "documentation", "issues", "cicd", "security", "code_health"):
-            value = getattr(right, group)
-            if value.available or value.observations or value.limitations:
-                updates[group] = value
-        return left.model_copy(update=updates)
+        return merge_repository_facts(left, right)
 
 
 __all__ = ["CollectionService"]

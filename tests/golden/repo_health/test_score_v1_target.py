@@ -13,7 +13,7 @@ from repo_health.contracts.results import (
     HealthCategory,
     ScoreInput,
 )
-from repo_health.scoring.v1 import ScoreEngineV1
+from repo_health.scoring.v1 import DEFAULT_REPO_HEALTH_WEIGHTS, ScoreEngineV1
 
 
 def _repo() -> RepositoryRef:
@@ -72,6 +72,55 @@ def test_score_v1_security_cap_is_frozen() -> None:
     assert result.overall_score == 60.0
     assert result.applied_caps == ({"category": "Security", "cap": 60.0, "reason": "confirmed_high"},)
     assert result.score_status == "warn"
+
+
+@pytest.mark.parametrize(
+    ("signals", "cap_reason"),
+    [
+        ({"critical_findings": 1}, "confirmed_critical"),
+        ({"confirmed_secret_count": 1}, "confirmed_secret"),
+        ({"secret_findings": 1, "critical_findings": 1}, "confirmed_secret"),
+    ],
+)
+def test_score_v1_critical_and_secret_caps_are_frozen(signals: dict[str, int], cap_reason: str) -> None:
+    result = ScoreEngineV1().score(_all(security_signals=signals))
+    assert result.score_before_caps == pytest.approx(80.0)
+    assert result.overall_score == pytest.approx(40.0)
+    assert result.applied_caps == ({"category": "Security", "cap": 40.0, "reason": cap_reason},)
+    assert result.score_status == "fail"
+
+
+def test_score_v1_weights_and_insufficient_data_thresholds_are_frozen() -> None:
+    assert DEFAULT_REPO_HEALTH_WEIGHTS == {
+        "Documentation": 0.15,
+        "Activity": 0.15,
+        "Issues": 0.15,
+        "CI/CD": 0.15,
+        "Security": 0.20,
+        "Code Health": 0.20,
+    }
+    partial = _all().model_copy(update={"issues": None, "cicd": None})
+    provisional = ScoreEngineV1().score(partial)
+    assert provisional.presentation_state == "PROVISIONAL_SCORE"
+    assert provisional.score_status == "warn"
+    assert provisional.coverage_k == pytest.approx(0.70)
+
+    insufficient = _all().model_copy(
+        update={
+            "documentation": _category(
+                "analysis-1", "repo-health.documentation", HealthCategory.DOCUMENTATION, signals={}
+            ).model_copy(update={"coverage": Coverage(status="partial", covered=0, total=1)}),
+            "activity": None,
+            "issues": None,
+            "cicd": None,
+            "security": None,
+            "code_health": None,
+        }
+    )
+    result = ScoreEngineV1().score(insufficient)
+    assert result.overall_score is None
+    assert result.presentation_state == "INSUFFICIENT_DATA"
+    assert result.score_status == "inconclusive"
 
 
 def test_score_v1_missing_category_is_not_zero() -> None:

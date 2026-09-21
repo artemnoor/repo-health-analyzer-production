@@ -22,7 +22,13 @@ jobs:
           enable-cache: true
       - run: uv sync --frozen --extra dev
       - run: uv run ruff check src scripts tests
+      - run: uv run python -m compileall -q src scripts tests
       - run: uv run pytest -q tests/unit/repo_health tests/contract/repo_health tests/adapter/repo_health tests/integration/repo_health tests/golden/repo_health tests/e2e
       - run: uv run python scripts/verify_contracts.py --all
-      - run: uv run python scripts/verify_parity.py
+      - run: uv run python scripts/verify_parity.py --score-only
+      - run: uv run python scripts/verify_parity.py --legacy-replay --fail-on-unmapped
+      - run: uv run python scripts/verify_parity.py --execution local --execution worker
+      - run: uv run python scripts/verify_external_tools.py
+      - run: uv run python scripts/verify_production_composition.py
+      - run: git diff --check
       - run: uv build

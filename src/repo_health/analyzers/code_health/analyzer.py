@@ -116,7 +116,11 @@ class CodeHealthAnalyzer(Analyzer):
             explicit = number("code_health_score", number("score"))
             score = max(0.0, min(100.0, explicit)) if explicit is not None else None
         confidence = number("confidence", 1.0 if eligible else 0.0) or 0.0
-        partial = observations.get("partial") is True or observations.get("collection_state") == "partial"
+        partial = (
+            observations.get("partial") is True
+            or observations.get("collection_state") == "partial"
+            or bool(analyzer_input.facts.code_health.limitations)
+        )
         if partial and score is not None:
             score = min(score, 80.0)
         findings: list[Finding] = []

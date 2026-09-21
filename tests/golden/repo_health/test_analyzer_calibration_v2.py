@@ -87,6 +87,7 @@ def test_six_category_analyzers_emit_policy_score_and_evidence() -> None:
                 ),
             ),
             100.0,
+            "a08e94e127ea50ec438eee2caae8e093bb248cbe99438ec427a5d492643f90e5",
         ),
         (
             "repo-health.activity",
@@ -102,6 +103,7 @@ def test_six_category_analyzers_emit_policy_score_and_evidence() -> None:
                 ),
             ),
             66.23917469369593,
+            "01e238f1b8c37016405f14f76b3a7ba7c108aeefed7ce10e4581377e7a03e273",
         ),
         (
             "repo-health.issues",
@@ -125,6 +127,7 @@ def test_six_category_analyzers_emit_policy_score_and_evidence() -> None:
                 ),
             ),
             80.0,
+            "0a4cf8170bcc128faa780b09a7baaffff97ad3fd6d85845e1001bb2112fba08c",
         ),
         (
             "repo-health.cicd",
@@ -140,6 +143,7 @@ def test_six_category_analyzers_emit_policy_score_and_evidence() -> None:
                 ),
             ),
             100.0,
+            "deaf4d1646fa027fd8ee1dfe2388e1f479939f6f4ee8f000e9a58469c3ddd642",
         ),
         (
             "repo-health.security",
@@ -152,6 +156,7 @@ def test_six_category_analyzers_emit_policy_score_and_evidence() -> None:
                 ),
             ),
             75.0,
+            "4ebad7bb832f3b2ff5b9525a94a7dbace6078589d3fbca7d3563b3592185346b",
         ),
         (
             "repo-health.code-health",
@@ -164,12 +169,60 @@ def test_six_category_analyzers_emit_policy_score_and_evidence() -> None:
                 ),
             ),
             100.0,
+            "03f1281de2ab35b7a4b05cc162a1a6acf2c08fc3700483a2bf9a711331e93d1f",
         ),
     )
-    for analyzer_id, group_name, group, expected in cases:
+    for analyzer_id, group_name, group, expected, expected_digest in cases:
         result = _run(analyzer_id, group_name, group)
         assert result.score == pytest.approx(expected)
         assert result.status in {CategoryStatus.PASS, CategoryStatus.WARN}
         assert result.evidence
         assert result.evidence[0].source == analyzer_id
+        assert result.coverage.status == "complete"
+        assert result.confidence.level == "high"
+        assert all(item.redaction == "none" for item in result.evidence)
+        assert all(
+            set(finding.evidence_ids) <= {item.evidence_id for item in result.evidence} for finding in result.findings
+        )
+        assert result.digest() == expected_digest
         assert result.digest() == result.model_copy().digest()
+
+
+def test_code_health_preserves_evidence_when_only_todo_facts_are_available() -> None:
+    result = _run(
+        "repo-health.code-health",
+        "code_health",
+        CodeHealthFacts(
+            available=True,
+            observations=(
+                {"key": "source_file_count", "value": 3},
+                {"key": "todo_count", "value": 1},
+                {"key": "fixme_count", "value": 0},
+            ),
+        ),
+    )
+
+    assert result.score is None
+    assert result.status is CategoryStatus.INCONCLUSIVE
+    assert len(result.evidence) == 1
+
+
+def test_code_health_limitations_activate_existing_partial_policy() -> None:
+    result = _run(
+        "repo-health.code-health",
+        "code_health",
+        CodeHealthFacts(
+            available=True,
+            observations=(
+                {"key": "ncloc", "value": 100},
+                {"key": "maintainability_rating", "value": "A"},
+            ),
+            limitations=(
+                {"code": "sonarqube.unavailable", "reason": "SonarQube is not configured"},
+            ),
+        ),
+    )
+
+    assert result.score == pytest.approx(80.0)
+    assert result.status is CategoryStatus.WARN
+    assert any(item.code == "code_health.partial" for item in result.limitations)
