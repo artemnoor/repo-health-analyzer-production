@@ -9,6 +9,7 @@ import pytest
 
 from repo_health.collection.ports import CollectionContext
 from repo_health.collection.sourcecraft import (
+    SourceCraftAppSecCollector,
     SourceCraftAuthError,
     SourceCraftClient,
     SourceCraftCollector,
@@ -160,6 +161,68 @@ def test_sourcecraft_collector_isolates_one_resource_failure() -> None:
     assert facts.security.available is False
     assert any(item.state is CollectionState.PERMISSION_DENIED for item in facts.source_statuses)
     assert any(item.code == "security.sourcecraft.unavailable" for item in facts.limitations)
+
+
+def test_appsec_collector_uses_scans_groups_findings_chain_and_redacts() -> None:
+    calls: list[str] = []
+
+    def transport(_method: str, url: str, **_kwargs: object) -> FakeResponse:
+        calls.append(url.rsplit("/", 1)[-1])
+        if url.endswith("/v1/scans"):
+            return FakeResponse(200, {"scans": [{"id": "scan-1", "created_at": "2026-01-01T00:00:00Z"}]})
+        if url.endswith("/v1/defect-groups"):
+            return FakeResponse(200, {"defect_groups": [{"id": "group-1"}]})
+        return FakeResponse(
+            200,
+            {
+                "findings": [
+                    {"severity": "critical", "status": "open"},
+                    {"severity": "low", "status": "resolved"},
+                    {"severity": "high", "status": "open", "token": "must-not-cross"},
+                ]
+            },
+        )
+
+    client = SourceCraftClient(
+        base_url="https://sourcecraft.example",
+        credentials=lambda_provider("secret-token"),
+        transport=transport,
+        retry_attempts=1,
+    )
+    facts = SourceCraftAppSecCollector(client=client).collect(_repository(), context=_context())
+    observations = {item.key: item.value for item in facts.security.observations}
+
+    assert calls == ["scans", "defect-groups", "findings"]
+    assert observations["active_count"] == 2
+    assert observations["critical_count"] == 1
+    assert observations["high_count"] == 1
+    assert observations["low_count"] == 0
+    assert observations["partial"] is False
+    assert "secret-token" not in facts.model_dump_json()
+    assert "must-not-cross" not in facts.model_dump_json()
+
+
+def test_appsec_group_failure_is_partial_and_preserves_scan_evidence() -> None:
+    def transport(_method: str, url: str, **_kwargs: object) -> FakeResponse:
+        if url.endswith("/v1/scans"):
+            return FakeResponse(200, {"scans": [{"id": "scan-1"}]})
+        if url.endswith("/v1/defect-groups"):
+            return FakeResponse(200, {"defect_groups": [{"id": "group-1"}]})
+        return FakeResponse(503, {})
+
+    client = SourceCraftClient(
+        base_url="https://sourcecraft.example",
+        credentials=lambda_provider("token"),
+        transport=transport,
+        retry_attempts=1,
+    )
+    facts = SourceCraftAppSecCollector(client=client).collect(_repository(), context=_context())
+    observations = {item.key: item.value for item in facts.security.observations}
+
+    assert facts.security.available is True
+    assert observations["partial"] is True
+    assert observations["groups_with_unavailable_findings"] == 1
+    assert any(item.code == "sourcecraft.appsec.findings.1.unavailable" for item in facts.limitations)
 
 
 class _LambdaProvider:

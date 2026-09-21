@@ -46,14 +46,11 @@ class GitCollector:
         head = self._run(root, ("rev-parse", "HEAD"), context=context).stdout.strip().lower()
         if not re.fullmatch(r"[0-9a-f]{40,64}", head):
             return self._failure(repository, "git.invalid_head", "Git did not return an immutable head")
-        count_output = self._run(root, ("rev-list", "--count", repository.ref), context=context)
-        commit_count = _int(count_output.stdout)
         branch_output = self._run(root, ("symbolic-ref", "--short", "-q", "HEAD"), context=context)
         branch = branch_output.stdout.strip() or repository.ref
         observations = {
             "head_sha": head,
             "ref": branch[:255],
-            "commit_count": commit_count,
         }
         group = GitFacts(
             available=True,
@@ -94,13 +91,6 @@ class GitCollector:
             source_statuses=(SourceStatus(source_id="git", state=CollectionState.ERROR, limitations=(limitation,)),),
             limitations=(limitation,),
         )
-
-
-def _int(value: str) -> int:
-    try:
-        return max(0, int(value.strip()))
-    except (TypeError, ValueError):
-        return 0
 
 
 __all__ = ["CheckoutPort", "ExplicitCheckout", "GitCollector", "GitRunner"]

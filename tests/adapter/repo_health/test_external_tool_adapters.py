@@ -2,7 +2,9 @@
 
 from __future__ import annotations
 
+import subprocess
 from pathlib import Path
+from typing import ClassVar
 
 from repo_health.collection.code_health.git_sizer import GitSizerCollector
 from repo_health.collection.code_health.sonarqube import SonarQubeCollector
@@ -22,6 +24,20 @@ class FakeRunner:
     def run(self, request) -> ProcessOutput:
         del request
         return self.output
+
+
+class FakeHttpResponse:
+    status_code = 200
+    headers: ClassVar[dict[str, str]] = {"sonarqube-version": "10.4"}
+
+    def json(self) -> object:
+        return {"component": {"measures": [{"metric": "ncloc", "value": "42"}]}}
+
+
+class FakeSonarCredentials:
+    def resolve(self, *, repository: RepositoryRef) -> str:
+        del repository
+        return "sonar-secret"
 
 
 def _repository() -> RepositoryRef:
@@ -81,11 +97,31 @@ def test_sonarqube_snapshot_and_todo_scan_are_normalized(tmp_path: Path) -> None
     assert todo["fixme_count"] == 1
 
 
+def test_sonarqube_rest_adapter_uses_configured_endpoint_without_persisting_token(tmp_path: Path) -> None:
+    seen: dict[str, object] = {}
+
+    def transport(method: str, url: str, **kwargs: object) -> FakeHttpResponse:
+        seen.update(method=method, url=url, kwargs=kwargs)
+        return FakeHttpResponse()
+
+    facts = SonarQubeCollector(
+        base_url="https://sonar.example",
+        credentials=FakeSonarCredentials(),
+        transport=transport,
+    ).collect(_repository(), context=_context(tmp_path))
+
+    assert seen["method"] == "GET"
+    assert seen["url"] == "https://sonar.example/api/measures/component"
+    assert seen["kwargs"]["params"]["component"] == "team/repository"  # type: ignore[index]
+    assert facts.code_health.available is True
+    assert {item.key: item.value for item in facts.code_health.observations}["ncloc"] == 42
+    assert "sonar-secret" not in facts.model_dump_json()
+
+
 def test_git_collector_uses_explicit_checkout_and_fake_process(tmp_path: Path) -> None:
     outputs = iter(
         [
             _output("a" * 40 + "\n"),
-            _output("12\n"),
             _output("main\n"),
         ]
     )
@@ -97,7 +133,7 @@ def test_git_collector_uses_explicit_checkout_and_fake_process(tmp_path: Path) -
 
     facts = GitCollector(runner=Runner()).collect(_repository(), context=_context(tmp_path))
     assert facts.git.available is True
-    assert {item.key: item.value for item in facts.git.observations}["commit_count"] == 12
+    assert {item.key: item.value for item in facts.git.observations} == {"head_sha": "a" * 40, "ref": "main"}
 
 
 def test_pydriller_unavailable_is_not_an_empty_success(tmp_path: Path, monkeypatch) -> None:
@@ -105,3 +141,26 @@ def test_pydriller_unavailable_is_not_an_empty_success(tmp_path: Path, monkeypat
     facts = PyDrillerCollector().collect(_repository(), context=_context(tmp_path))
     assert facts.git.available is False
     assert facts.source_statuses[0].state.value == "unavailable"
+
+
+def test_pydriller_reads_history_from_a_linked_worktree_without_mutating_git_metadata(tmp_path: Path) -> None:
+    source = tmp_path / "source"
+    source.mkdir()
+    (source / "main.py").write_text("print('ok')\n", encoding="utf-8")
+    for command in (
+        ("git", "init", "-q"),
+        ("git", "config", "user.email", "repo-health@example.invalid"),
+        ("git", "config", "user.name", "Repo Health Test"),
+        ("git", "add", "main.py"),
+        ("git", "-c", "commit.gpgsign=false", "commit", "-m", "fixture"),
+    ):
+        subprocess.run(command, cwd=source, check=True, capture_output=True, text=True)
+    worktree = tmp_path / "worktree"
+    subprocess.run(("git", "worktree", "add", "--detach", str(worktree), "HEAD"), cwd=source, check=True, capture_output=True, text=True)
+
+    facts = PyDrillerCollector().collect(
+        _repository().model_copy(update={"ref": "HEAD"}), context=_context(worktree)
+    )
+
+    assert facts.git.available is True
+    assert dict((item.key, item.value) for item in facts.git.observations)["unique_commits"] == 1

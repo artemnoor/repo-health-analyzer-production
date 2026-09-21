@@ -34,6 +34,10 @@ class PersistenceDecodeError(ValueError):
     """Stored JSON is corrupt or no longer satisfies the target contract."""
 
 
+class LeaseOwnershipError(RuntimeError):
+    """A worker attempted to finish a task it no longer owns."""
+
+
 class SQLitePersistence:
     def __init__(self, path: str | Path = ":memory:") -> None:
         self.path = str(path)
@@ -270,7 +274,7 @@ class SQLitePersistence:
             ).fetchone()
         return self._decode_task(refreshed)
 
-    def complete_task(self, outcome: ExecutionOutcome) -> AnalyzerTaskRecord:
+    def complete_task(self, outcome: ExecutionOutcome, *, worker_id: str) -> AnalyzerTaskRecord:
         current = now_utc()
         with self._lock:
             row = self._connection.execute(
@@ -283,6 +287,15 @@ class SQLitePersistence:
                 if existing.outcome is not None and existing.outcome.to_json() == outcome.to_json():
                     return existing
                 raise ImmutableResultConflict(outcome.task_id)
+            if row["status"] != "running" or row["lease_owner"] != worker_id:
+                log.warning(
+                    "analyzer_task_completion_rejected",
+                    task_id=outcome.task_id,
+                    worker_id=worker_id,
+                    lease_owner=row["lease_owner"],
+                    task_status=row["status"],
+                )
+                raise LeaseOwnershipError(outcome.task_id)
             terminal_status = "completed" if outcome.state.value == "completed" else "failed"
             self._connection.execute(
                 "UPDATE analyzer_tasks SET status=?,outcome=?,lease_owner=NULL,lease_expires_at=NULL,updated_at=? WHERE task_id=?",
@@ -306,14 +319,25 @@ class SQLitePersistence:
             self._connection.commit()
         return cursor.rowcount == 1
 
-    def fail_task(self, task_id: str, *, retry: bool, error: str, available_at: datetime) -> None:
+    def fail_task(self, task_id: str, *, worker_id: str, retry: bool, error: str, available_at: datetime) -> None:
         current = now_utc()
         with self._lock:
-            row = self._connection.execute("SELECT status FROM analyzer_tasks WHERE task_id=?", (task_id,)).fetchone()
+            row = self._connection.execute(
+                "SELECT status, lease_owner FROM analyzer_tasks WHERE task_id=?", (task_id,)
+            ).fetchone()
             if row is None:
                 raise KeyError(task_id)
             if row["status"] == "completed":
                 raise ImmutableResultConflict(task_id)
+            if row["status"] != "running" or row["lease_owner"] != worker_id:
+                log.warning(
+                    "analyzer_task_failure_rejected",
+                    task_id=task_id,
+                    worker_id=worker_id,
+                    lease_owner=row["lease_owner"],
+                    task_status=row["status"],
+                )
+                raise LeaseOwnershipError(task_id)
             self._connection.execute(
                 "UPDATE analyzer_tasks SET status=?,available_at=?,lease_owner=NULL,lease_expires_at=NULL,updated_at=? WHERE task_id=?",
                 ("retry" if retry else "failed", _iso(available_at), _iso(current), task_id),
@@ -365,4 +389,10 @@ def _parse_dt(value: str) -> datetime:
     return datetime.fromisoformat(value).astimezone(UTC)
 
 
-__all__ = ["IdempotencyConflict", "ImmutableResultConflict", "PersistenceDecodeError", "SQLitePersistence"]
+__all__ = [
+    "IdempotencyConflict",
+    "ImmutableResultConflict",
+    "LeaseOwnershipError",
+    "PersistenceDecodeError",
+    "SQLitePersistence",
+]

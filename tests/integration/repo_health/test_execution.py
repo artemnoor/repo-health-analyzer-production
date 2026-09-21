@@ -126,6 +126,98 @@ async def test_orchestrator_runs_canonical_pipeline_and_persists_result(tmp_path
 
 
 @pytest.mark.asyncio
+async def test_orchestrator_runs_full_six_category_pipeline_through_worker_queue(tmp_path: Path) -> None:
+    class AllFacts:
+        source_id = "fixture"
+
+        def collect(self, repository, *, context):
+            del context
+            groups = {
+                name: {"available": True, "observations": ({"key": "score", "value": 80},)}
+                for name in ("git", "documentation", "issues", "cicd", "security", "code_health")
+            }
+            return RepositoryFacts(
+                repository=repository,
+                collected_at=datetime(2026, 1, 1, tzinfo=UTC),
+                source_versions={"fixture": "v1"},
+                **groups,
+            )
+
+    store = SQLitePersistence()
+    register_default_factories()
+    factories = {
+        analyzer_id: canonical_registry.get(analyzer_id)[1]  # type: ignore[index]
+        for analyzer_id in canonical_registry.ids()
+    }
+    worker = WorkerExecutor(
+        persistence=store,
+        local=LocalExecutor({key: value for key, value in factories.items() if value is not None}),
+        worker_id="worker-orchestrator",
+    )
+    orchestrator = AnalysisOrchestrator(collection=CollectionService((AllFacts(),)), persistence=store, executor=worker)
+    envelope = await orchestrator.analyze(
+        _request().model_copy(update={"idempotency_key": "worker-orchestrator-test"}), checkout_path=tmp_path
+    )
+    assert envelope.status.state.value == "completed"
+    assert len(envelope.category_results) == 6
+    assert {item.analyzer_id for item in envelope.category_results} == set(canonical_registry.ids())
+    assert envelope.score is not None
+    assert store.get_analysis(envelope.analysis_id).envelope.score is not None  # type: ignore[union-attr]
+    store.close()
+
+
+@pytest.mark.asyncio
+async def test_orchestrator_persists_partial_result_when_one_analyzer_fails(tmp_path: Path) -> None:
+    class AllFacts:
+        source_id = "fixture"
+
+        def collect(self, repository, *, context):
+            del context
+            groups = {
+                name: {"available": True, "observations": ({"key": "score", "value": 80},)}
+                for name in ("git", "documentation", "issues", "cicd", "security", "code_health")
+            }
+            return RepositoryFacts(
+                repository=repository,
+                collected_at=datetime(2026, 1, 1, tzinfo=UTC),
+                source_versions={"fixture": "v1"},
+                **groups,
+            )
+
+    register_default_factories()
+    factories = {
+        analyzer_id: canonical_registry.get(analyzer_id)[1]  # type: ignore[index]
+        for analyzer_id in canonical_registry.ids()
+    }
+
+    def explode(_input):
+        raise RuntimeError("injected analyzer failure")
+
+    factories["repo-health.issues"] = explode
+    store = SQLitePersistence()
+    orchestrator = AnalysisOrchestrator(
+        collection=CollectionService((AllFacts(),)),
+        persistence=store,
+        executor=LocalExecutor({key: value for key, value in factories.items() if value is not None}),
+    )
+    request = _request().model_copy(update={"idempotency_key": "partial-analyzer-test"})
+    envelope = await orchestrator.analyze(request, checkout_path=tmp_path)
+    assert envelope.status.state.value == "partial"
+    assert len(envelope.category_results) == 6
+    failed = next(item for item in envelope.category_results if item.analyzer_id == "repo-health.issues")
+    assert failed.status is CategoryStatus.ERROR
+    assert sum(item.status is CategoryStatus.ERROR for item in envelope.category_results) == 1
+    assert envelope.score is not None
+    assert envelope.score.overall_score is None
+    assert envelope.score.presentation_state == "INSUFFICIENT_DATA"
+    assert envelope.score.score_status == "inconclusive"
+    persisted = store.get_analysis(envelope.analysis_id)
+    assert persisted is not None
+    assert persisted.envelope.category_results == envelope.category_results
+    store.close()
+
+
+@pytest.mark.asyncio
 async def test_worker_executor_reuses_serialized_task_and_matches_local_result() -> None:
     task = _task()
     register_default_factories()

@@ -3,7 +3,6 @@
 from __future__ import annotations
 
 import asyncio
-import os
 import uuid
 from contextlib import asynccontextmanager
 from datetime import UTC, datetime
@@ -15,21 +14,12 @@ from fastapi import BackgroundTasks, FastAPI, HTTPException, Request, status
 from fastapi.responses import JSONResponse
 from pydantic import BaseModel, ConfigDict, Field, ValidationError
 
-from ..collection import (
-    CollectionService,
-    SourceCraftAppSecCollector,
-    SourceCraftCicdCollector,
-    SourceCraftClient,
-    SourceCraftCollector,
-    SourceCraftIssuesCollector,
-)
-from ..collection.ports import CollectionContext
+from ..config import RuntimeConfig
 from ..contracts.requests import AnalysisRequest, RepositoryRef
-from ..contracts.results import RepositoryFacts
-from ..infrastructure.git import GitCollector
 from ..infrastructure.scheduler import IntervalScheduler
 from ..orchestration import AnalysisOrchestrator
 from ..persistence import IdempotencyConflict, SQLitePersistence
+from ..runtime import ProductionRuntime, build_production_runtime
 
 log = structlog.get_logger("repo_health.api")
 
@@ -70,66 +60,32 @@ def _to_repository_ref(body: RepositoryRegistration) -> RepositoryRef:
         raise HTTPException(status_code=422, detail="invalid repository reference") from exc
 
 
-def _build_runtime() -> tuple[AnalysisOrchestrator, SQLitePersistence]:
-    persistence = SQLitePersistence(os.environ.get("REPO_HEALTH_DB", "repo-health.sqlite3"))
-    sourcecraft_url = os.environ.get("SOURCECRAFT_URL", "").strip()
-    collectors: list[Any] = [GitCollector()]
-    if sourcecraft_url:
-        client = SourceCraftClient(base_url=sourcecraft_url)
-        collectors.append(
-            SourceCraftCollector(
-                (
-                    SourceCraftIssuesCollector(client=client),
-                    SourceCraftCicdCollector(client=client),
-                    SourceCraftAppSecCollector(client=client),
-                )
-            )
-        )
-    else:
-        collectors.append(_UnavailableCollector())
-    return AnalysisOrchestrator(collection=CollectionService(collectors), persistence=persistence), persistence
-
-
-class _UnavailableCollector:
-    source_id = "sourcecraft"
-
-    def collect(self, repository: RepositoryRef, *, context: CollectionContext) -> RepositoryFacts:
-        del context
-        from ..contracts.results import CollectionState, Limitation, SourceStatus
-
-        limitation = Limitation(code="sourcecraft.not_configured", reason="SOURCECRAFT_URL is not configured")
-        return RepositoryFacts(
-            repository=repository,
-            source_versions={"sourcecraft": "unavailable"},
-            source_statuses=(
-                SourceStatus(source_id=self.source_id, state=CollectionState.UNAVAILABLE, limitations=(limitation,)),
-            ),
-            limitations=(limitation,),
-        )
-
-
 def create_app(
     *, orchestrator: AnalysisOrchestrator | None = None, persistence: SQLitePersistence | None = None
 ) -> FastAPI:
     owned_runtime = orchestrator is None
+    runtime: ProductionRuntime | None = None
     if orchestrator is None:
-        orchestrator, owned_persistence = _build_runtime()
-        persistence = owned_persistence
+        runtime = build_production_runtime(mode="api")
+        orchestrator = runtime.orchestrator
+        persistence = runtime.persistence
     assert orchestrator is not None
     store = persistence or orchestrator.persistence
+    config = runtime.config if runtime is not None else RuntimeConfig.from_environment()
     scheduler = IntervalScheduler()
 
     @asynccontextmanager
     async def lifespan(_app: FastAPI):
         yield
         await scheduler.shutdown()
-        if owned_runtime and hasattr(store, "close"):
-            store.close()
+        if owned_runtime and runtime is not None:
+            runtime.close()
 
     app = FastAPI(title="SourceCraft Repository Health Analyzer", version="repo-health-api-v1", lifespan=lifespan)
     app.state.orchestrator = orchestrator
     app.state.persistence = store
     app.state.scheduler = scheduler
+    app.state.runtime = runtime
 
     @app.middleware("http")
     async def correlation_middleware(request: Request, call_next):
@@ -158,11 +114,22 @@ def create_app(
 
     @app.get("/readyz")
     async def readyz() -> dict[str, Any]:
-        configured = bool(os.environ.get("SOURCECRAFT_URL"))
+        capabilities = (
+            runtime.public_capabilities()
+            if runtime is not None
+            else {item.engine: item.public_dict() for item in config.capability_report()}
+        )
+        sourcecraft = capabilities.get("sourcecraft", {})
         return {
             "status": "ready",
             "service": "repo-health-api",
-            "sourcecraft": {"configured": configured, "token_present": bool(os.environ.get("SOURCECRAFT_TOKEN"))},
+            "degraded": any(item["state"] != "available" for item in capabilities.values()),
+            "capabilities": capabilities,
+            "sourcecraft": {
+                "configured": sourcecraft.get("configured", config.sourcecraft_url is not None),
+                "token_present": config.sourcecraft_token_present,
+                "state": sourcecraft.get("state", "unavailable"),
+            },
         }
 
     @app.post("/repositories", status_code=status.HTTP_201_CREATED)
@@ -190,6 +157,7 @@ def create_app(
             requested_analyzer_ids=body.requested_analyzer_ids,
             mode=body.mode,
             as_of=as_of,
+            config_digest=config.digest(),
             idempotency_key=body.idempotency_key,
             timeout_seconds=body.timeout_seconds,
         )
@@ -201,7 +169,7 @@ def create_app(
             if isinstance(exc, ValueError):
                 raise HTTPException(status_code=422, detail="invalid analysis request") from exc
             raise
-        root = Path(os.environ.get("REPO_HEALTH_CHECKOUT_ROOT", ".")).resolve()
+        root = Path(config.checkout_root).resolve()
         checkout = root / request_contract.repository.repository_id.replace("/", "_")
         background.add_task(_run_background, request_contract, checkout)
         return {
@@ -228,11 +196,19 @@ def create_app(
 
     @app.get("/integrations/sourcecraft/status")
     async def sourcecraft_status() -> dict[str, Any]:
+        capabilities = (
+            runtime.public_capabilities()
+            if runtime is not None
+            else {item.engine: item.public_dict() for item in config.capability_report()}
+        )
+        sourcecraft = capabilities.get("sourcecraft", {})
         return {
             "provider": "sourcecraft",
-            "configured": bool(os.environ.get("SOURCECRAFT_URL")),
+            "configured": sourcecraft.get("configured", config.sourcecraft_url is not None),
             "credential_source": "environment",
-            "token_present": bool(os.environ.get("SOURCECRAFT_TOKEN")),
+            "token_present": config.sourcecraft_token_present,
+            "state": sourcecraft.get("state", "unavailable"),
+            "reason": sourcecraft.get("reason", "SourceCraft capability was not detected"),
         }
 
     @app.get("/scheduler/status")
@@ -242,7 +218,7 @@ def create_app(
     @app.post("/scheduler/analyses", status_code=status.HTTP_202_ACCEPTED)
     async def schedule_analysis(body: ScheduledAnalysisCreate) -> dict[str, Any]:
         job_name = f"analysis-{uuid.uuid4().hex}"
-        root = Path(os.environ.get("REPO_HEALTH_CHECKOUT_ROOT", ".")).resolve()
+        root = Path(config.checkout_root).resolve()
         checkout = root / body.repository.repository_id.replace("/", "_")
 
         async def scheduled_run() -> None:
@@ -253,6 +229,7 @@ def create_app(
                     mode=body.mode,
                     as_of=datetime.now(UTC),
                     idempotency_key=f"{job_name}-{uuid.uuid4().hex}",
+                    config_digest=config.digest(),
                 )
                 orchestrator.start(request_contract)
                 await orchestrator.analyze(request_contract, checkout_path=checkout)

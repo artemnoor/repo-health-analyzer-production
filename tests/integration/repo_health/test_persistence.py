@@ -22,6 +22,7 @@ from repo_health.contracts.results import (
 from repo_health.persistence import (
     IdempotencyConflict,
     ImmutableResultConflict,
+    LeaseOwnershipError,
     PersistenceDecodeError,
     SQLitePersistence,
 )
@@ -102,7 +103,7 @@ def test_task_claim_and_commit_are_durable() -> None:
         started_at=datetime.now(UTC),
         finished_at=datetime.now(UTC),
     )
-    completed = store.complete_task(outcome)
+    completed = store.complete_task(outcome, worker_id="worker-1")
     assert completed.status == "completed"
     assert completed.outcome is not None
     assert store.get_summary(request.analysis_id) is not None
@@ -152,7 +153,13 @@ def test_retry_claim_increments_attempt_and_duplicate_task_payload_is_rejected()
         )
     claimed = store.claim_task(worker_id="worker-1", now=datetime.now(UTC), lease_seconds=30)
     assert claimed is not None
-    store.fail_task(task.task_id, retry=True, error="transient", available_at=datetime.now(UTC) - timedelta(seconds=1))
+    store.fail_task(
+        task.task_id,
+        worker_id="worker-1",
+        retry=True,
+        error="transient",
+        available_at=datetime.now(UTC) - timedelta(seconds=1),
+    )
     retried = store.claim_task(worker_id="worker-2", now=datetime.now(UTC), lease_seconds=30)
     assert retried is not None
     assert retried.attempt == 2
@@ -174,4 +181,32 @@ def test_expired_lease_is_reclaimed_and_heartbeat_is_owner_scoped() -> None:
     assert reclaimed is not None
     assert reclaimed.attempt == 2
     assert reclaimed.lease_owner == "worker-2"
+    result = CategoryResult(
+        analysis_id=request.analysis_id,
+        analyzer_id=task.analyzer_id,
+        analyzer_version=task.analyzer_version,
+        category=HealthCategory.ISSUES,
+        status=CategoryStatus.SKIPPED,
+        coverage=Coverage(status="unavailable"),
+        confidence=Confidence(value=0.0, level="unknown"),
+    )
+    outcome = ExecutionOutcome(
+        task_id=task.task_id,
+        analysis_id=request.analysis_id,
+        state=ExecutionState.COMPLETED,
+        result=result,
+        attempt=1,
+        started_at=first_time,
+        finished_at=first_time,
+    )
+    with pytest.raises(LeaseOwnershipError):
+        store.complete_task(outcome, worker_id="worker-1")
+    with pytest.raises(LeaseOwnershipError):
+        store.fail_task(
+            task.task_id,
+            worker_id="worker-1",
+            retry=False,
+            error="stale-worker",
+            available_at=first_time,
+        )
     store.close()

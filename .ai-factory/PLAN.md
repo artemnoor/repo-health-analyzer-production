@@ -3,8 +3,10 @@
 Status: backend extraction and radical cleanup implemented; final verification
 gates passed from a clean Git index archive.
 
-The canonical implementation plan is
-[`plans/radical-repo-health-backend-extraction/index.md`](plans/radical-repo-health-backend-extraction/index.md).
+The historical implementation plan is preserved as local AI Factory session
+state and is intentionally excluded from the production archive. The tracked
+architecture and rules files are the durable project contract; verification
+commands below are the durable execution surface.
 
 ## Product boundary
 

@@ -123,7 +123,7 @@ class Analyzer(ABC):
             Metric(
                 name=key,
                 value=value,
-                score=float(value) if key.endswith("score") and _number(value) is not None else None,
+                score=float(value) if key.endswith("score") and _number(value) else None,
                 evidence_ids=(evidence_id,),
             )
             for key, value in sorted(metrics_by_name.items())

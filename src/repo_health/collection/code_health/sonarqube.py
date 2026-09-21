@@ -4,32 +4,139 @@ from __future__ import annotations
 
 import json
 from collections.abc import Callable, Mapping
-from typing import Any
+from typing import Any, Protocol
+
+import httpx
+import structlog
 
 from ...contracts.requests import RepositoryRef
 from ...contracts.results import CodeHealthFacts, CollectionState, Limitation, RepositoryFacts, SourceStatus
+
+log = structlog.get_logger("repo_health.collection.sonarqube")
+
+
+class SonarCredentialProvider(Protocol):
+    def resolve(self, *, repository: RepositoryRef) -> str | None: ...
 
 
 class SonarQubeSnapshotError(ValueError):
     pass
 
 
+class SonarQubeTransportError(RuntimeError):
+    pass
+
+
 class SonarQubeCollector:
     source_id = "sonarqube"
 
-    def __init__(self, *, fetch: Callable[[RepositoryRef], Mapping[str, Any] | str] | None = None) -> None:
+    _METRICS = (
+        "ncloc",
+        "sqale_index",
+        "sqale_rating",
+        "maintainability_rating",
+        "code_smells",
+        "bugs",
+        "vulnerabilities",
+        "complexity",
+        "cognitive_complexity",
+        "duplicated_lines_density",
+    )
+
+    def __init__(
+        self,
+        *,
+        fetch: Callable[[RepositoryRef], Mapping[str, Any] | str] | None = None,
+        base_url: str | None = None,
+        credentials: SonarCredentialProvider | None = None,
+        transport: Callable[..., Any] | None = None,
+        timeout_seconds: float = 30.0,
+    ) -> None:
+        if timeout_seconds <= 0:
+            raise ValueError("SonarQube timeout must be positive")
         self.fetch = fetch
+        self.base_url = base_url.rstrip("/") if base_url else None
+        self.credentials = credentials
+        self._transport = transport
+        self.timeout_seconds = timeout_seconds
 
     def collect(self, repository: RepositoryRef, *, context) -> RepositoryFacts:
         del context
-        if self.fetch is None:
-            return _failure(repository, "sonarqube.not_configured", "SonarQube REST integration is not configured")
         try:
-            return self.from_snapshot(repository, self.fetch(repository))
-        except (SonarQubeSnapshotError, OSError, TimeoutError):
+            if self.fetch is not None:
+                return self.from_snapshot(repository, self.fetch(repository))
+            snapshot = self._fetch_remote(repository)
+            return self.from_snapshot(repository, snapshot)
+        except PermissionError:
+            return _failure(
+                repository,
+                "sonarqube.permission_denied",
+                "SonarQube rejected the configured credential",
+                state=CollectionState.PERMISSION_DENIED,
+            )
+        except TimeoutError:
+            return _failure(
+                repository,
+                "sonarqube.timeout",
+                "SonarQube exceeded its collection timeout",
+                state=CollectionState.TIMEOUT,
+            )
+        except SonarQubeTransportError:
+            return _failure(repository, "sonarqube.unavailable", "SonarQube REST service is unavailable")
+        except (SonarQubeSnapshotError, OSError, ValueError):
             return _failure(
                 repository, "sonarqube.malformed", "SonarQube returned an invalid response", state=CollectionState.ERROR
             )
+
+    def _fetch_remote(self, repository: RepositoryRef) -> Mapping[str, Any] | str:
+        if not self.base_url:
+            raise SonarQubeTransportError("SonarQube REST integration is not configured")
+        if self.credentials is None:
+            raise SonarQubeTransportError("SonarQube credential provider is not configured")
+        token = self.credentials.resolve(repository=repository)
+        if not token:
+            raise SonarQubeTransportError("SonarQube credential is not configured")
+        params = {
+            "component": repository.repository_id,
+            "metricKeys": ",".join(self._METRICS),
+        }
+        url = f"{self.base_url}/api/measures/component"
+        try:
+            if self._transport is not None:
+                response = self._transport(
+                    "GET",
+                    url,
+                    params=params,
+                    headers={"Accept": "application/json", "User-Agent": "repo-health-analyzer/1"},
+                    auth=(token, ""),
+                    timeout=self.timeout_seconds,
+                )
+            else:
+                with httpx.Client(timeout=self.timeout_seconds, follow_redirects=True) as client:
+                    response = client.get(
+                        url,
+                        params=params,
+                        headers={"Accept": "application/json", "User-Agent": "repo-health-analyzer/1"},
+                        auth=(token, ""),
+                    )
+        except (TimeoutError, httpx.TimeoutException):
+            raise
+        except Exception as exc:
+            log.warning("sonarqube_request_failed", repository_id=repository.repository_id, error_type=type(exc).__name__)
+            raise SonarQubeTransportError("SonarQube transport failed") from exc
+        status_code = int(response.status_code)
+        if status_code in {401, 403}:
+            raise PermissionError("SonarQube access denied")
+        if status_code == 408 or status_code == 504:
+            raise TimeoutError("SonarQube request timed out")
+        if status_code < 200 or status_code >= 300:
+            raise SonarQubeTransportError(f"SonarQube returned status {status_code}")
+        payload = response.json()
+        if not isinstance(payload, Mapping):
+            raise SonarQubeSnapshotError("SonarQube response must be an object")
+        headers = getattr(response, "headers", {})
+        version = str(headers.get("sonarqube-version") or payload.get("server_version") or "unknown")[:128]
+        return {**payload, "server_version": version}
 
     def from_snapshot(self, repository: RepositoryRef, snapshot: Mapping[str, Any] | str) -> RepositoryFacts:
         payload = _decode(snapshot)

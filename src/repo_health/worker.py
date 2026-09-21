@@ -5,33 +5,31 @@ from __future__ import annotations
 import argparse
 import asyncio
 import json
-import os
 
-from .analyzers import CANONICAL_ANALYZER_IDS, canonical_registry, register_default_factories
-from .execution import LocalExecutor, WorkerExecutor
-from .persistence import SQLitePersistence
+from .analyzers import CANONICAL_ANALYZER_IDS
+from .runtime import build_production_runtime
 
 
 def check() -> dict[str, object]:
-    register_default_factories()
-    canonical_registry.validate()
-    return {"service": "repo-health-worker", "status": "ready", "analyzers": list(CANONICAL_ANALYZER_IDS)}
+    runtime = build_production_runtime(mode="worker")
+    try:
+        return {
+            "service": "repo-health-worker",
+            "status": "ready",
+            "analyzers": list(CANONICAL_ANALYZER_IDS),
+            "collector_source_ids": list(runtime.collector_source_ids),
+            "capabilities": runtime.public_capabilities(),
+        }
+    finally:
+        runtime.close()
 
 
 async def run_once() -> bool:
-    # The queue lifecycle is intentionally explicit; deployments can inject a
-    # configured CollectionService and factories instead of importing the API.
-    store = SQLitePersistence(os.environ.get("REPO_HEALTH_DB", "repo-health.sqlite3"))
+    runtime = build_production_runtime(mode="worker")
     try:
-        register_default_factories()
-        factories = {analyzer_id: canonical_registry.get(analyzer_id)[1] for analyzer_id in CANONICAL_ANALYZER_IDS}  # type: ignore[index]
-        executor = LocalExecutor(factories)
-        worker = WorkerExecutor(
-            persistence=store, local=executor, worker_id=os.environ.get("REPO_HEALTH_WORKER_ID", "worker-1")
-        )
-        return await worker.run_once() is not None
+        return await runtime.worker_executor.run_once() is not None
     finally:
-        store.close()
+        runtime.close()
 
 
 def main(argv: list[str] | None = None) -> int:
