@@ -39,6 +39,7 @@ def _run(analyzer_id: str, group_name: str, group) -> object:
     )
     request = AnalyzerInput(
         analysis_id="calibration-v2",
+        as_of=datetime(2026, 1, 1, tzinfo=UTC),
         repository=REPOSITORY,
         analyzer_id=analyzer_id,
         analyzer_version=spec.version,
@@ -217,12 +218,10 @@ def test_code_health_limitations_activate_existing_partial_policy() -> None:
                 {"key": "ncloc", "value": 100},
                 {"key": "maintainability_rating", "value": "A"},
             ),
-            limitations=(
-                {"code": "sonarqube.unavailable", "reason": "SonarQube is not configured"},
-            ),
+            limitations=({"code": "sonarqube.unavailable", "reason": "SonarQube is not configured"},),
         ),
     )
 
-    assert result.score == pytest.approx(80.0)
-    assert result.status is CategoryStatus.WARN
-    assert any(item.code == "code_health.partial" for item in result.limitations)
+    assert result.score is None
+    assert result.status is CategoryStatus.INCONCLUSIVE
+    assert any(item.code == "code_health.core_unavailable" for item in result.limitations)

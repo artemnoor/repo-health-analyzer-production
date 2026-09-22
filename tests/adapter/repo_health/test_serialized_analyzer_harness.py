@@ -25,6 +25,7 @@ def analyzer_input(analyzer_id: str) -> AnalyzerInput:
     facts = RepositoryFacts()
     return AnalyzerInput(
         analysis_id="analysis-harness-1",
+        as_of=datetime(2026, 9, 20, 12, 0, tzinfo=UTC),
         repository=RepositoryRef(
             repository_id="acme/example",
             canonical_uri="https://github.com/acme/example",

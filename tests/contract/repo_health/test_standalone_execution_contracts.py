@@ -31,6 +31,7 @@ def _task() -> AnalyzerTask:
     )
     analyzer_input = AnalyzerInput(
         analysis_id="analysis-contract",
+        as_of=datetime(2026, 9, 20, 12, 0, tzinfo=UTC),
         repository=repository,
         analyzer_id="repo-health.documentation",
         analyzer_version="repo-health-documentation-v1",

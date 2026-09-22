@@ -37,6 +37,7 @@ def test_serialized_worker_returns_category_result_without_api_imports() -> None
     )
     payload = AnalyzerInput(
         analysis_id="process-analysis",
+        as_of=datetime(2026, 1, 1, tzinfo=UTC),
         repository=repository,
         analyzer_id=analyzer_id,
         analyzer_version=spec.version,
@@ -104,6 +105,7 @@ def test_all_six_analyzers_have_local_and_subprocess_result_parity() -> None:
         )
         analyzer_input = AnalyzerInput(
             analysis_id="parity-analysis",
+            as_of=datetime(2026, 1, 1, tzinfo=UTC),
             repository=repository,
             analyzer_id=analyzer_id,
             analyzer_version=spec.version,

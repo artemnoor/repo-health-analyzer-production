@@ -12,13 +12,15 @@ import re
 import time
 from collections.abc import Callable, Mapping, Sequence
 from dataclasses import dataclass
-from datetime import UTC, datetime
+from datetime import UTC, datetime, timedelta
 from typing import Any, Protocol
+from urllib.parse import quote, urlsplit
 
 import structlog
 
 from ..contracts.requests import RepositoryRef
 from ..contracts.results import (
+    AppSecScanState,
     CicdFacts,
     CodeHealthFacts,
     CollectionState,
@@ -63,11 +65,17 @@ class EnvironmentCredentialProvider:
         if not normalized or not re.fullmatch(r"[A-Z][A-Z0-9_]{0,127}", normalized):
             raise ValueError("credential environment variable must be an uppercase name")
         self.variable = normalized
+        self._fallback_variables = (
+            ("SOURCECRAFT_TOKEN", "SOURCECRAFT_PAT") if normalized == "SOURCECRAFT_TOKEN" else (normalized,)
+        )
 
     def resolve(self, *, repository: RepositoryRef) -> str | None:
         del repository
-        token = os.environ.get(self.variable)
-        return token.strip() if token and token.strip() else None
+        for variable in self._fallback_variables:
+            token = os.environ.get(variable)
+            if token and token.strip():
+                return token.strip()
+        return None
 
 
 class SourceCraftAuthError(CollectionError):
@@ -88,6 +96,16 @@ class SourceCraftResponse:
     source_version: str | None
     state: CollectionState
     payload: Mapping[str, Any] | None
+    limitation: Limitation | None = None
+
+
+@dataclass(frozen=True, slots=True)
+class SourceCraftPageSet:
+    """Bounded page-token collection result for one official list endpoint."""
+
+    rows: tuple[Mapping[str, Any], ...]
+    responses: tuple[SourceCraftResponse, ...]
+    complete: bool
     limitation: Limitation | None = None
 
 
@@ -205,6 +223,75 @@ class SourceCraftClient:
             return SourceCraftResponse(source_id, version, CollectionState.AVAILABLE, payload)
 
         raise AssertionError("SourceCraft retry loop did not return or raise")
+
+    def get_json_pages(
+        self,
+        *,
+        repository: RepositoryRef,
+        source_id: str,
+        path: str,
+        rows_key: str,
+        params: Mapping[str, str] | None = None,
+        max_pages: int = 100,
+        max_rows: int = 10_000,
+    ) -> SourceCraftPageSet:
+        """Follow the official ``next_page_token`` envelope without raw payload leakage."""
+
+        if not rows_key or max_pages <= 0 or max_rows <= 0:
+            raise ValueError("SourceCraft page collection limits must be positive")
+        fixed_params = dict(params or {})
+        rows: list[Mapping[str, Any]] = []
+        responses: list[SourceCraftResponse] = []
+        seen_tokens: set[str] = set()
+        page_token: str | None = None
+        for _page_number in range(1, max_pages + 1):
+            page_params = dict(fixed_params)
+            if page_token:
+                page_params["page_token"] = page_token
+            response = self.get_json(
+                repository=repository,
+                source_id=source_id,
+                path=path,
+                params=page_params,
+            )
+            responses.append(response)
+            if response.state is not CollectionState.AVAILABLE or response.payload is None:
+                return SourceCraftPageSet(
+                    rows=tuple(rows),
+                    responses=tuple(responses),
+                    complete=False,
+                    limitation=response.limitation,
+                )
+            raw_rows = response.payload.get(rows_key)
+            if not isinstance(raw_rows, list):
+                raise SourceCraftPayloadError(f"SourceCraft {source_id} response is missing the {rows_key} array")
+            for row in raw_rows:
+                if not isinstance(row, Mapping):
+                    raise SourceCraftPayloadError(f"SourceCraft {source_id} contains a malformed {rows_key} row")
+                rows.append(row)
+                if len(rows) >= max_rows:
+                    limitation = Limitation(
+                        code=f"{source_id}.pages_capped",
+                        reason="SourceCraft pagination was bounded by collection limits",
+                    )
+                    return SourceCraftPageSet(
+                        rows=tuple(rows[:max_rows]),
+                        responses=tuple(responses),
+                        complete=False,
+                        limitation=limitation,
+                    )
+            next_token = response.payload.get("next_page_token")
+            if next_token is None or str(next_token).strip() == "":
+                return SourceCraftPageSet(rows=tuple(rows), responses=tuple(responses), complete=True)
+            if not isinstance(next_token, str) or next_token in seen_tokens:
+                raise SourceCraftPayloadError(f"SourceCraft {source_id} returned an invalid page token")
+            seen_tokens.add(next_token)
+            page_token = next_token
+        limitation = Limitation(
+            code=f"{source_id}.pages_capped",
+            reason="SourceCraft pagination reached the configured page limit",
+        )
+        return SourceCraftPageSet(rows=tuple(rows), responses=tuple(responses), complete=False, limitation=limitation)
 
     def _retry(self, source_id: str, repository_id: str, attempt: int, *, reason: str) -> None:
         delay = self.retry_backoff_seconds * (2 ** (attempt - 1))
@@ -340,17 +427,230 @@ class SourceCraftRepositoryCollector(SourceCraftResourceCollector):
 
 
 class SourceCraftIssuesCollector(SourceCraftResourceCollector):
-    """Issues resource adapter preserving partial/unavailable source status."""
+    """Official SourceCraft Issues adapter with bounded comment enrichment."""
 
-    def __init__(self, *, client: SourceCraftClient, path: str = "/api/issues") -> None:
-        super().__init__(client=client, source_id="sourcecraft.issues", path=path, fact_group="issues")
+    def __init__(
+        self,
+        *,
+        client: SourceCraftClient,
+        path: str | None = None,
+        comments_path_template: str | None = None,
+    ) -> None:
+        # ``path`` remains injectable for contract tests, while production
+        # defaults are built from the official repository route.
+        super().__init__(
+            client=client,
+            source_id="sourcecraft.issues",
+            path=path or "",
+            fact_group="issues",
+        )
+        self.comments_path_template = comments_path_template
+
+    def collect(self, repository: RepositoryRef, *, context: CollectionContext) -> RepositoryFacts:
+        path = self.path or _repository_resource_path(repository, "issues")
+        pages = self.client.get_json_pages(
+            repository=repository,
+            source_id=self.source_id,
+            path=path,
+            rows_key="issues",
+            params={"page_size": "100"},
+            max_pages=context.limits.max_provider_pages,
+            max_rows=context.limits.max_provider_pages * 100,
+        )
+        limitations = list(_page_limitations(pages, self.source_id))
+        rows = list(pages.rows)
+        if not rows:
+            # An empty, successfully fetched history is not evidence of a
+            # healthy issue process. Keep the provider available for
+            # provenance, but leave the analyzer without numeric observations
+            # so its existing inconclusive semantics remain intact.
+            return _normalized_fact_group(
+                repository,
+                fact_group="issues",
+                responses=pages.responses,
+                observations={},
+                limitations=limitations,
+                available=bool(pages.responses and pages.responses[0].state is CollectionState.AVAILABLE),
+            )
+        observations: dict[str, object] = {
+            "sample_size": len(rows),
+            "issue_count": len(rows),
+            "open_count": sum(_issue_status(row) in {"open", "in_progress"} for row in rows),
+            "closed_count": sum(_issue_status(row) == "closed" for row in rows),
+            "coverage": 1.0 if pages.complete else 0.5,
+            "confidence": 1.0 if pages.complete else 0.5,
+        }
+        cutoff = context.request.as_of - timedelta(days=90)
+        observations["trend_created"] = sum(_timestamp(row.get("created_at"), cutoff) for row in rows)
+        observations["trend_closed"] = sum(
+            _issue_status(row) == "closed" and _timestamp(row.get("updated_at"), cutoff) for row in rows
+        )
+
+        open_ages = []
+        for row in rows:
+            if _issue_status(row) not in {"open", "in_progress"}:
+                continue
+            created = _parse_timestamp(row.get("created_at"))
+            if created and created <= context.request.as_of:
+                open_ages.append((context.request.as_of - created).total_seconds() / 3600.0)
+        if open_ages:
+            observations["open_age_p75_hours"] = _percentile(open_ages, 0.75)
+            stale_ages = [age for age in open_ages if age >= 30.0 * 24.0]
+            observations["stale_count"] = len(stale_ages)
+            observations["stale_ratio"] = len(stale_ages) / len(open_ages)
+
+        comment_rows: list[tuple[Mapping[str, Any], tuple[Mapping[str, Any], ...]]] = []
+        responses = list(pages.responses)
+        comments_complete = bool(rows)
+        comment_limit = min(len(rows), context.limits.max_provider_pages * 100)
+        for index, row in enumerate(rows[:comment_limit], start=1):
+            slug = _identifier(row, "slug", "id")
+            if not slug:
+                comments_complete = False
+                limitations.append(
+                    Limitation(
+                        code="sourcecraft.issues.comments_malformed",
+                        reason="SourceCraft issue has no stable slug for comment collection",
+                    )
+                )
+                continue
+            comments_path = self.comments_path_template
+            if comments_path:
+                comments_path = comments_path.format(issue_slug=quote(slug, safe=""))
+            else:
+                comments_path = _repository_resource_path(repository, f"issues/{quote(slug, safe='')}/comments")
+            try:
+                comments = self.client.get_json_pages(
+                    repository=repository,
+                    source_id=f"{self.source_id}.comments.{index}",
+                    path=comments_path,
+                    rows_key="issue_comments",
+                    params={"page_size": "100"},
+                    max_pages=context.limits.max_provider_pages,
+                    max_rows=context.limits.max_provider_pages * 100,
+                )
+            except (
+                SourceCraftAuthError,
+                SourceCraftUnavailableError,
+                SourceCraftPayloadError,
+                CollectionError,
+                ValueError,
+            ):
+                comments_complete = False
+                limitations.append(
+                    Limitation(
+                        code="sourcecraft.issues.comments_unavailable",
+                        reason="SourceCraft issue comments could not be collected",
+                    )
+                )
+                continue
+            responses.extend(comments.responses)
+            limitations.extend(_page_limitations(comments, f"{self.source_id}.comments.{index}"))
+            if not comments.complete:
+                comments_complete = False
+            comment_rows.append((row, comments.rows))
+
+        response_hours = []
+        close_hours = []
+        answered_count = 0
+        for issue, comments in comment_rows:
+            if comments:
+                answered_count += 1
+                created = _parse_timestamp(issue.get("created_at"))
+                first_comment = min(
+                    (value for value in (_parse_timestamp(item.get("created_at")) for item in comments) if value),
+                    default=None,
+                )
+                if created and first_comment and first_comment >= created:
+                    response_hours.append((first_comment - created).total_seconds() / 3600.0)
+            if _issue_status(issue) == "closed":
+                created = _parse_timestamp(issue.get("created_at"))
+                updated = _parse_timestamp(issue.get("updated_at"))
+                if created and updated and updated >= created:
+                    close_hours.append((updated - created).total_seconds() / 3600.0)
+        if comments_complete:
+            observations["comments_available"] = bool(rows)
+            observations["answered_count"] = answered_count
+            if response_hours:
+                observations["response_median_hours"] = _percentile(response_hours, 0.50)
+                observations["response_p75_hours"] = _percentile(response_hours, 0.75)
+        else:
+            observations["comments_available"] = False
+            limitations.append(
+                Limitation(
+                    code="sourcecraft.issues.comments_partial",
+                    reason="Issue comments are incomplete; response metrics remain unavailable",
+                )
+            )
+        if close_hours:
+            observations["close_median_hours"] = _percentile(close_hours, 0.50)
+            observations["close_p75_hours"] = _percentile(close_hours, 0.75)
+            observations["mature_count"] = len(close_hours)
+
+        return _normalized_fact_group(
+            repository,
+            fact_group="issues",
+            responses=responses,
+            observations=observations,
+            limitations=limitations,
+            available=bool(pages.responses and pages.responses[0].state is CollectionState.AVAILABLE),
+        )
 
 
 class SourceCraftCicdCollector(SourceCraftResourceCollector):
-    """CI/CD resource adapter for calibration-v2 source observations."""
+    """Official SourceCraft CI/CD run adapter for calibration-v2 observations."""
 
-    def __init__(self, *, client: SourceCraftClient, path: str = "/api/cicd") -> None:
-        super().__init__(client=client, source_id="sourcecraft.cicd", path=path, fact_group="cicd")
+    def __init__(self, *, client: SourceCraftClient, path: str | None = None) -> None:
+        super().__init__(client=client, source_id="sourcecraft.cicd", path=path or "", fact_group="cicd")
+
+    def collect(self, repository: RepositoryRef, *, context: CollectionContext) -> RepositoryFacts:
+        path = self.path or _repository_resource_path(repository, "cicd/runs")
+        pages = self.client.get_json_pages(
+            repository=repository,
+            source_id=self.source_id,
+            path=path,
+            rows_key="runs",
+            params={"page_size": "100"},
+            max_pages=context.limits.max_provider_pages,
+            max_rows=context.limits.max_provider_pages * 100,
+        )
+        limitations = list(_page_limitations(pages, self.source_id))
+        rows = list(pages.rows)
+        terminal = [row for row in rows if _ci_status(row) in _TERMINAL_CI_STATUSES]
+        failures = [row for row in terminal if _ci_status(row) in _FAILED_CI_STATUSES]
+        durations = [duration for row in terminal if (duration := _run_duration_seconds(row)) is not None]
+        ordered = sorted(rows, key=_run_sort_key, reverse=True)
+        failure_streak = 0
+        for row in ordered:
+            if _ci_status(row) in _FAILED_CI_STATUSES:
+                failure_streak += 1
+            else:
+                break
+        observations: dict[str, object] = {
+            "run_count": len(rows),
+            "total_runs": len(rows),
+            "decisive_runs": len(terminal),
+            "success_count": sum(_ci_status(row) == "success" for row in terminal),
+            "failed_count": len(failures),
+            "failure_rate": len(failures) / len(terminal) if terminal else None,
+            "success_rate": sum(_ci_status(row) == "success" for row in terminal) / len(terminal) if terminal else None,
+            "failure_streak": failure_streak,
+            "coverage": 1.0 if pages.complete else 0.5,
+            "confidence": 1.0 if pages.complete else 0.5,
+        }
+        if durations:
+            observations["p50_seconds"] = _percentile(durations, 0.50)
+            observations["p95_seconds"] = _percentile(durations, 0.95)
+        if ordered:
+            observations["last_run_status"] = _ci_status(ordered[0])
+        return _normalized_fact_group(
+            repository,
+            fact_group="cicd",
+            responses=pages.responses,
+            observations=observations,
+            limitations=limitations,
+            available=bool(pages.responses and pages.responses[0].state is CollectionState.AVAILABLE),
+        )
 
 
 class SourceCraftAppSecCollector:
@@ -358,6 +658,7 @@ class SourceCraftAppSecCollector:
 
     source_id = "sourcecraft.appsec"
     provider = "sourcecraft"
+    fact_group = "security"
 
     def __init__(
         self,
@@ -391,17 +692,77 @@ class SourceCraftAppSecCollector:
         if scans.limitation:
             limitations.append(scans.limitation)
         if scans.state is not CollectionState.AVAILABLE or not scans.payload:
-            return self._facts(repository, responses, observations, limitations, available=False)
+            scan_state = (
+                AppSecScanState.UNAVAILABLE
+                if scans.state in {CollectionState.UNAVAILABLE, CollectionState.PERMISSION_DENIED}
+                else AppSecScanState.FAILED
+            )
+            return self._facts(
+                repository,
+                responses,
+                observations,
+                limitations,
+                available=scan_state is not AppSecScanState.UNAVAILABLE,
+                scan_state=scan_state,
+            )
 
         scan_rows = _payload_rows(scans.payload, "scans", "items", "data")
         if not scan_rows:
             limitation = Limitation(code="appsec.no_scan", reason="SourceCraft returned no completed AppSec scan")
-            return self._facts(repository, responses, observations, [*limitations, limitation], available=False)
+            return self._facts(
+                repository,
+                responses,
+                observations,
+                [*limitations, limitation],
+                available=True,
+                scan_state=AppSecScanState.NO_SCAN,
+            )
         selected_scan = _select_latest(scan_rows)
         scan_id = _identifier(selected_scan, "id", "scan_id")
         if not scan_id:
-            limitation = Limitation(code="appsec.malformed_scan", reason="SourceCraft scan response has no stable identifier")
-            return self._facts(repository, responses, observations, [*limitations, limitation], available=False)
+            limitation = Limitation(
+                code="appsec.malformed_scan", reason="SourceCraft scan response has no stable identifier"
+            )
+            return self._facts(
+                repository,
+                responses,
+                observations,
+                [*limitations, limitation],
+                available=True,
+                scan_state=AppSecScanState.FAILED,
+            )
+        scan_status = _appsec_scan_status(selected_scan)
+        if scan_status in {"failed", "error", "cancelled", "canceled"}:
+            limitation = Limitation(
+                code="appsec.scan_failed", reason="SourceCraft AppSec scan did not finish successfully"
+            )
+            return self._facts(
+                repository,
+                responses,
+                observations,
+                [*limitations, limitation],
+                available=True,
+                scan_state=AppSecScanState.FAILED,
+            )
+        if scan_status not in {
+            None,
+            "finished",
+            "completed",
+            "complete",
+            "success",
+            "succeeded",
+            "finished_zero_findings",
+            "finished_with_findings",
+        }:
+            limitation = Limitation(code="appsec.scan_partial", reason="SourceCraft AppSec scan is not finished")
+            return self._facts(
+                repository,
+                responses,
+                observations,
+                [*limitations, limitation],
+                available=True,
+                scan_state=AppSecScanState.PARTIAL,
+            )
         observations["scan_count"] = len(scan_rows)
 
         groups = self._stage(
@@ -415,7 +776,14 @@ class SourceCraftAppSecCollector:
             limitations.append(groups.limitation)
         if groups.state is not CollectionState.AVAILABLE or groups.payload is None:
             observations["partial"] = True
-            return self._facts(repository, responses, observations, limitations, available=True)
+            return self._facts(
+                repository,
+                responses,
+                observations,
+                limitations,
+                available=True,
+                scan_state=AppSecScanState.PARTIAL,
+            )
 
         group_rows = _payload_rows(groups.payload, "defect_groups", "groups", "items", "data")
         observations["defect_group_count"] = len(group_rows)
@@ -467,7 +835,21 @@ class SourceCraftAppSecCollector:
             limitations.append(
                 Limitation(code="appsec.groups_capped", reason="AppSec defect-group collection was bounded by limits")
             )
-        return self._facts(repository, responses, observations, limitations, available=True)
+        scan_state = (
+            AppSecScanState.PARTIAL
+            if observations["partial"]
+            else AppSecScanState.FINISHED_WITH_FINDINGS
+            if finding_count
+            else AppSecScanState.FINISHED_ZERO_FINDINGS
+        )
+        return self._facts(
+            repository,
+            responses,
+            observations,
+            limitations,
+            available=True,
+            scan_state=scan_state,
+        )
 
     def _stage(
         self,
@@ -512,6 +894,7 @@ class SourceCraftAppSecCollector:
         limitations: Sequence[Limitation],
         *,
         available: bool,
+        scan_state: AppSecScanState,
     ) -> RepositoryFacts:
         statuses = tuple(
             SourceStatus(
@@ -523,9 +906,25 @@ class SourceCraftAppSecCollector:
             )
             for response in responses
         )
+        normalized_observations = dict(observations)
+        normalized_observations.setdefault("appsec_scan_state", scan_state.value)
+        normalized_observations.setdefault(
+            "coverage",
+            1.0
+            if scan_state
+            in {
+                AppSecScanState.FINISHED_ZERO_FINDINGS,
+                AppSecScanState.FINISHED_WITH_FINDINGS,
+            }
+            else 0.5
+            if scan_state is AppSecScanState.PARTIAL
+            else 0.0,
+        )
+        normalized_observations.setdefault("confidence", normalized_observations["coverage"])
         group = SecurityFacts(
             available=available,
-            observations=tuple({"key": key, "value": value} for key, value in observations.items()),
+            scan_state=scan_state,
+            observations=tuple({"key": key, "value": value} for key, value in normalized_observations.items()),
             limitations=tuple(limitations),
         )
         return RepositoryFacts(
@@ -535,6 +934,136 @@ class SourceCraftAppSecCollector:
             security=group,
             limitations=tuple(limitations),
         )
+
+
+_TERMINAL_CI_STATUSES = frozenset({"success", "failed", "canceled", "timeout", "skipped", "rejected"})
+# Cancellation and skip are observed terminal states, not failures. They stay
+# in the denominator as non-success outcomes without being silently reclassified
+# as broken runs.
+_FAILED_CI_STATUSES = frozenset({"failed", "timeout", "rejected"})
+
+
+def _repository_resource_path(repository: RepositoryRef, resource: str) -> str:
+    """Build an official SourceCraft path from an unambiguous repository identity."""
+
+    parts = [part for part in repository.repository_id.split("/") if part]
+    if len(parts) == 2:
+        organization, repo = parts
+    else:
+        parsed = urlsplit(repository.canonical_uri)
+        path_parts = [part for part in parsed.path.split("/") if part]
+        if len(path_parts) < 2 or parsed.username or parsed.password:
+            raise SourceCraftPayloadError("SourceCraft repository identity is ambiguous")
+        organization, repo = path_parts[:2]
+    if not all(re.fullmatch(r"[A-Za-z0-9._-]{1,128}", part) for part in (organization, repo)):
+        raise SourceCraftPayloadError("SourceCraft repository identity contains an invalid slug")
+    return f"/repos/{quote(organization, safe='')}/{quote(repo, safe='')}/{resource.lstrip('/')}"
+
+
+def _page_limitations(pages: SourceCraftPageSet, source_id: str) -> tuple[Limitation, ...]:
+    limitations: list[Limitation] = []
+    if pages.limitation:
+        limitations.append(pages.limitation)
+    if not pages.responses:
+        limitations.append(
+            Limitation(code=f"{source_id}.unavailable", reason="SourceCraft returned no provider response")
+        )
+    return tuple(limitations)
+
+
+def _normalized_fact_group(
+    repository: RepositoryRef,
+    *,
+    fact_group: str,
+    responses: Sequence[SourceCraftResponse],
+    observations: Mapping[str, object],
+    limitations: Sequence[Limitation],
+    available: bool,
+) -> RepositoryFacts:
+    group_type = _GROUPS[fact_group]
+    group = group_type(
+        available=available,
+        observations=tuple(
+            FactObservation(key=key, value=value) for key, value in sorted(observations.items()) if value is not None
+        ),
+        limitations=tuple(limitations),
+    )
+    statuses = tuple(
+        SourceStatus(
+            source_id=response.source_id,
+            state=response.state,
+            source_version=response.source_version,
+            collected_at=datetime.now(UTC),
+            limitations=(response.limitation,) if response.limitation else (),
+        )
+        for response in responses
+    )
+    return RepositoryFacts(
+        repository=repository,
+        collected_at=datetime.now(UTC),
+        source_versions={response.source_id: response.source_version or "unknown" for response in responses},
+        source_statuses=statuses,
+        limitations=tuple(limitations),
+        **{fact_group: group},
+    )
+
+
+def _parse_timestamp(value: object) -> datetime | None:
+    if not isinstance(value, str) or not value.strip():
+        return None
+    try:
+        parsed = datetime.fromisoformat(value.replace("Z", "+00:00"))
+    except ValueError:
+        return None
+    return parsed.astimezone(UTC) if parsed.tzinfo and parsed.utcoffset() is not None else None
+
+
+def _timestamp(value: object, cutoff: datetime) -> bool:
+    parsed = _parse_timestamp(value)
+    return bool(parsed and parsed >= cutoff)
+
+
+def _issue_status(row: Mapping[str, Any]) -> str:
+    value = row.get("status")
+    if isinstance(value, Mapping):
+        value = value.get("slug") or value.get("status_type") or value.get("name")
+    return str(value or "unknown").casefold().replace(" ", "_")
+
+
+def _ci_status(row: Mapping[str, Any]) -> str:
+    return str(row.get("status") or "unknown").casefold()
+
+
+def _run_sort_key(row: Mapping[str, Any]) -> datetime:
+    dates = row.get("dates")
+    if isinstance(dates, Mapping):
+        for key in ("finished_at", "updated_at", "started_at", "created_at"):
+            parsed = _parse_timestamp(dates.get(key))
+            if parsed:
+                return parsed
+    return datetime.min.replace(tzinfo=UTC)
+
+
+def _run_duration_seconds(row: Mapping[str, Any]) -> float | None:
+    dates = row.get("dates")
+    if not isinstance(dates, Mapping):
+        return None
+    started = _parse_timestamp(dates.get("started_at"))
+    finished = _parse_timestamp(dates.get("finished_at"))
+    if not started or not finished or finished < started:
+        return None
+    return (finished - started).total_seconds()
+
+
+def _percentile(values: Sequence[float], percentile: float) -> float:
+    ordered = sorted(float(value) for value in values)
+    if not ordered:
+        raise ValueError("percentile requires at least one value")
+    position = (len(ordered) - 1) * percentile
+    lower = int(position)
+    upper = min(lower + 1, len(ordered) - 1)
+    fraction = position - lower
+    return ordered[lower] + (ordered[upper] - ordered[lower]) * fraction
 
 
 def _payload_rows(payload: Mapping[str, Any] | None, *keys: str) -> list[Mapping[str, Any]]:
@@ -570,6 +1099,14 @@ def _select_latest(rows: Sequence[Mapping[str, Any]]) -> Mapping[str, Any]:
     )[0]
 
 
+def _appsec_scan_status(row: Mapping[str, Any]) -> str | None:
+    for key in ("status", "scan_status", "state"):
+        value = row.get(key)
+        if isinstance(value, str) and value.strip():
+            return value.strip().casefold().replace("-", "_")
+    return None
+
+
 def _is_active(row: Mapping[str, Any]) -> bool:
     state = str(row.get("status") or row.get("state") or "active").casefold()
     return state not in {"closed", "resolved", "fixed", "suppressed", "false_positive", "inactive"}
@@ -589,6 +1126,7 @@ __all__ = [
     "SourceCraftClient",
     "SourceCraftCollector",
     "SourceCraftIssuesCollector",
+    "SourceCraftPageSet",
     "SourceCraftPayloadError",
     "SourceCraftRepositoryCollector",
     "SourceCraftResourceCollector",

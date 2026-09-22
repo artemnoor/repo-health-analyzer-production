@@ -7,8 +7,16 @@ from datetime import UTC, datetime
 import pytest
 
 from repo_health.analyzers import canonical_registry, register_default_factories
+from repo_health.analyzers.security import SecurityAnalyzer
 from repo_health.contracts.requests import RepositoryRef
-from repo_health.contracts.results import AnalyzerInput, CategoryStatus, IssuesFacts, RepositoryFacts
+from repo_health.contracts.results import (
+    AnalyzerInput,
+    AppSecScanState,
+    CategoryStatus,
+    IssuesFacts,
+    RepositoryFacts,
+    SecurityFacts,
+)
 
 
 def _repo() -> RepositoryRef:
@@ -29,6 +37,7 @@ def _input(analyzer_id: str, *, available: bool = False) -> AnalyzerInput:
     spec = canonical_registry.get(analyzer_id)[0]  # type: ignore[index]
     return AnalyzerInput(
         analysis_id="analysis-1",
+        as_of=datetime(2026, 1, 1, tzinfo=UTC),
         repository=_repo(),
         analyzer_id=analyzer_id,
         analyzer_version=spec.version,
@@ -64,6 +73,66 @@ def test_available_facts_return_serializable_category_result() -> None:
     assert result.status is CategoryStatus.PASS
     assert result.score == 100.0
     assert result.digest() == result.model_copy().digest()
+
+
+@pytest.mark.parametrize("scan_state", [AppSecScanState.NO_SCAN, AppSecScanState.FAILED])
+def test_appsec_nonterminal_results_are_inconclusive_not_zero(scan_state: AppSecScanState) -> None:
+    facts = RepositoryFacts(
+        repository=_repo(),
+        security=SecurityFacts(
+            available=True,
+            scan_state=scan_state,
+            observations=(
+                {"key": "coverage", "value": 0.0},
+                {"key": "confidence", "value": 0.0},
+            ),
+        ),
+    )
+    analyzer = SecurityAnalyzer()
+    result = analyzer.analyze(
+        AnalyzerInput(
+            analysis_id="security-lifecycle",
+            as_of=datetime(2026, 1, 1, tzinfo=UTC),
+            repository=_repo(),
+            analyzer_id=analyzer.id,
+            analyzer_version=analyzer.version,
+            facts=facts,
+            facts_digest=facts.digest(),
+            policy_digest=analyzer.policy_digest,
+        )
+    )
+
+    assert result.status is CategoryStatus.INCONCLUSIVE
+    assert result.score is None
+    assert result.coverage.status == "unavailable"
+
+
+def test_appsec_partial_without_measured_findings_is_inconclusive() -> None:
+    facts = RepositoryFacts(
+        repository=_repo(),
+        security=SecurityFacts(
+            available=True,
+            scan_state=AppSecScanState.PARTIAL,
+            observations=({"key": "coverage", "value": 0.5},),
+        ),
+    )
+    analyzer = SecurityAnalyzer()
+    result = analyzer.analyze(
+        AnalyzerInput(
+            analysis_id="security-partial",
+            as_of=datetime(2026, 1, 1, tzinfo=UTC),
+            repository=_repo(),
+            analyzer_id=analyzer.id,
+            analyzer_version=analyzer.version,
+            facts=facts,
+            facts_digest=facts.digest(),
+            policy_digest=analyzer.policy_digest,
+        )
+    )
+
+    assert result.status is CategoryStatus.INCONCLUSIVE
+    assert result.score is None
+    assert result.coverage.status == "unavailable"
 
 
 @pytest.mark.parametrize(

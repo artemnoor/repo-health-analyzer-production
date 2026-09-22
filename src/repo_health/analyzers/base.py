@@ -38,7 +38,11 @@ class AnalyzerEvaluation:
     findings: tuple[Finding, ...] = ()
     limitations: tuple[Limitation, ...] = ()
     coverage: float | None = None
+    coverage_covered: int | None = None
+    coverage_total: int | None = None
+    coverage_reason: str | None = None
     confidence: float | None = None
+    confidence_reason: str | None = None
     score_signals: Mapping[str, int] = field(default_factory=dict)
 
 
@@ -95,6 +99,9 @@ class Analyzer(ABC):
                 analyzer_id=self.id,
                 analyzer_version=self.version,
                 category=self.category,
+                assessment_profile=analyzer_input.assessment_profile,
+                used_sources=analyzer_input.facts.used_sources,
+                capability_states=analyzer_input.facts.capability_states,
                 status=CategoryStatus.SKIPPED,
                 coverage=Coverage(status="unavailable", reason=limitation.reason),
                 confidence=Confidence(value=0.0, level="unknown", reason=limitation.reason),
@@ -137,6 +144,14 @@ class Analyzer(ABC):
             evaluation.confidence if evaluation.confidence is not None else observations.get("confidence"),
             default=coverage_value,
         )
+        coverage_covered = evaluation.coverage_covered if evaluation.coverage_covered is not None else len(observations)
+        coverage_total = evaluation.coverage_total if evaluation.coverage_total is not None else len(observations)
+        if evaluation.coverage_total is not None:
+            coverage_status = (
+                "complete" if coverage_value >= 1.0 else "partial" if coverage_covered > 0 else "unavailable"
+            )
+        else:
+            coverage_status = "complete" if coverage_value >= 1.0 else "available" if coverage_value > 0 else "partial"
         score = evaluation.score
         status = evaluation.status or (
             CategoryStatus.INCONCLUSIVE
@@ -154,20 +169,24 @@ class Analyzer(ABC):
             analyzer_id=self.id,
             analyzer_version=self.version,
             category=self.category,
+            assessment_profile=analyzer_input.assessment_profile,
+            used_sources=analyzer_input.facts.used_sources,
+            capability_states=analyzer_input.facts.capability_states,
             status=status,
             score=score,
             metrics=metrics,
             findings=evaluation.findings,
             evidence=(evidence,),
             coverage=Coverage(
-                status="complete" if coverage_value >= 1.0 else "available" if coverage_value > 0 else "partial",
-                covered=len(observations),
-                total=len(observations),
-                reason=None,
+                status=coverage_status,
+                covered=coverage_covered,
+                total=coverage_total,
+                reason=evaluation.coverage_reason,
             ),
             confidence=Confidence(
                 value=confidence_value,
                 level="high" if confidence_value >= 0.9 else "medium" if confidence_value >= 0.5 else "low",
+                reason=evaluation.confidence_reason,
             ),
             limitations=(*group.limitations, *evaluation.limitations),
             diagnostics_digest=hashlib.sha256(repr(sorted(observations.items())).encode()).hexdigest(),

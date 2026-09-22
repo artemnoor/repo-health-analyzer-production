@@ -48,6 +48,7 @@ def _task(request: AnalysisRequest) -> AnalyzerTask:
     facts = RepositoryFacts(repository=_repo())
     analyzer_input = AnalyzerInput(
         analysis_id=request.analysis_id,
+        as_of=request.as_of,
         repository=_repo(),
         analyzer_id=spec.id,
         analyzer_version=spec.version,

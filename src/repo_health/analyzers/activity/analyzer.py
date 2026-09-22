@@ -40,7 +40,7 @@ class ActivityAnalyzer(Analyzer):
             if isinstance(raw_latest, str):
                 try:
                     timestamp = datetime.fromisoformat(raw_latest.replace("Z", "+00:00"))
-                    reference = analyzer_input.facts.collected_at or datetime.now(UTC)
+                    reference = analyzer_input.as_of
                     latest_age = max(0.0, (reference - timestamp.astimezone(UTC)).total_seconds() / 86400.0)
                 except ValueError:
                     latest_age = None

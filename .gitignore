@@ -42,6 +42,7 @@ checkouts/
 .sources/
 
 # Local tools and generated files
+.scannerwork/
 .idea/
 .vscode/
 .codex/

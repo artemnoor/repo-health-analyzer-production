@@ -34,7 +34,6 @@ class SonarQubeCollector:
         "ncloc",
         "sqale_index",
         "sqale_rating",
-        "maintainability_rating",
         "code_smells",
         "bugs",
         "vulnerabilities",
@@ -122,7 +121,9 @@ class SonarQubeCollector:
         except (TimeoutError, httpx.TimeoutException):
             raise
         except Exception as exc:
-            log.warning("sonarqube_request_failed", repository_id=repository.repository_id, error_type=type(exc).__name__)
+            log.warning(
+                "sonarqube_request_failed", repository_id=repository.repository_id, error_type=type(exc).__name__
+            )
             raise SonarQubeTransportError("SonarQube transport failed") from exc
         status_code = int(response.status_code)
         if status_code in {401, 403}:
@@ -162,6 +163,19 @@ class SonarQubeCollector:
             observations.append({"key": str(key), "value": scalar})
         if not observations:
             raise SonarQubeSnapshotError("SonarQube response has no measures")
+        # SonarQube's REST API exposes the maintainability grade as the
+        # numeric ``sqale_rating`` metric (1..5) in current releases.  The
+        # analyzer contract intentionally remains provider-neutral and already
+        # accepts the historical letter form, so normalize at the adapter
+        # boundary rather than changing scoring semantics.
+        rating = next((item["value"] for item in observations if item["key"] == "sqale_rating"), None)
+        if rating is not None and not any(item["key"] == "maintainability_rating" for item in observations):
+            try:
+                grade = {1: "A", 2: "B", 3: "C", 4: "D", 5: "E"}.get(int(float(rating)))
+            except (TypeError, ValueError):
+                grade = None
+            if grade:
+                observations.append({"key": "maintainability_rating", "value": grade})
         group = CodeHealthFacts(available=True, observations=tuple(observations))
         status = SourceStatus(
             source_id=self.source_id,

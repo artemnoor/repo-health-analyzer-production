@@ -89,6 +89,9 @@ async def test_production_composition_runs_all_six_categories_local_and_worker(t
         assert local_result.score is not None
         assert worker_result.score is not None
         assert local_result.score.overall_score == pytest.approx(worker_result.score.overall_score, abs=0.01)
+        facts_json = local_result.facts.model_dump_json()
+        assert "contributor_identity_policy" in facts_json
+        assert "repo-health@example.invalid" not in facts_json
         assert any(item.code == "vale.missing" for item in local_result.facts.limitations)
         assert any(item.code == "sonarqube.unavailable" for item in local_result.facts.limitations)
     finally:

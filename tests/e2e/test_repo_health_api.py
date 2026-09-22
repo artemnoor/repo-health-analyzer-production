@@ -81,6 +81,25 @@ def test_api_repository_registration_and_analysis_are_contract_valid(client: Tes
     assert client.get(f"/analyses/{analysis_id}/result").status_code in {200, 202}
 
 
+def test_api_does_not_accept_owner_extended_without_trusted_identity(client: TestClient) -> None:
+    repository = {
+        "repository_id": "team/owner-profile",
+        "canonical_uri": "https://sourcecraft.example/team/owner-profile",
+        "provider": "sourcecraft",
+    }
+
+    response = client.post(
+        "/analyses",
+        json={
+            "repository": repository,
+            "assessment_profile": "owner_extended",
+            "idempotency_key": "owner-profile-without-auth",
+        },
+    )
+
+    assert response.status_code == 422
+
+
 def test_api_persists_completed_result_with_six_categories(completed_client: TestClient) -> None:
     repository = {
         "repository_id": "team/completed",

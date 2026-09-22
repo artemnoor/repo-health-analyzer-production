@@ -59,16 +59,35 @@ def _output(stdout: str, *, exit_code: int | None = 0, **kwargs) -> ProcessOutpu
     return ProcessOutput("fixture", exit_code, stdout, "", 1, **kwargs)
 
 
-def test_vale_fixture_maps_only_bounded_observations(tmp_path: Path) -> None:
+def test_vale_fixture_maps_bounded_findings_without_fabricating_surface(tmp_path: Path) -> None:
     facts = ValeCollector(runner=FakeRunner(_output('{"findings":[{"file":"docs/a.md","severity":"error"}]}'))).collect(
         _repository(), context=_context(tmp_path)
     )
     assert facts.documentation.available is True
-    assert {item.key: item.value for item in facts.documentation.observations} == {
-        "error_count": 1,
-        "finding_count": 1,
-        "file_count": 1,
-    }
+    observations = {item.key: item.value for item in facts.documentation.observations}
+    assert observations["error_count"] == 1
+    assert observations["finding_count"] == 1
+    assert observations["file_count"] == 1
+    assert "completeness" not in observations
+
+
+def test_vale_real_file_keyed_json_preserves_findings_and_analyzed_files(tmp_path: Path) -> None:
+    (tmp_path / "README.md").write_text("# README\n", encoding="utf-8")
+    docs = tmp_path / "docs"
+    docs.mkdir()
+    (docs / "guide.md").write_text("# Guide\n", encoding="utf-8")
+    facts = ValeCollector(
+        runner=FakeRunner(_output('{"README.md":[{"Severity":"error","Message":"bad prose"}],"docs/guide.md":[]}'))
+    ).collect(_repository(), context=_context(tmp_path))
+    observations = {item.key: item.value for item in facts.documentation.observations}
+    assert observations["error_count"] == 1
+    assert observations["finding_count"] == 1
+    assert observations["file_count"] == 2
+    assert observations["analyzed_files"] == 2
+    assert observations["discovered_files"] == 2
+    assert observations["readme_present"] is True
+    assert observations["words"] == 2
+    assert observations["completeness"] < 100
 
 
 def test_external_tool_failures_are_explicit(tmp_path: Path) -> None:
@@ -113,6 +132,7 @@ def test_sonarqube_rest_adapter_uses_configured_endpoint_without_persisting_toke
     assert seen["method"] == "GET"
     assert seen["url"] == "https://sonar.example/api/measures/component"
     assert seen["kwargs"]["params"]["component"] == "team/repository"  # type: ignore[index]
+    assert "maintainability_rating" not in seen["kwargs"]["params"]["metricKeys"]  # type: ignore[index]
     assert facts.code_health.available is True
     assert {item.key: item.value for item in facts.code_health.observations}["ncloc"] == 42
     assert "sonar-secret" not in facts.model_dump_json()
@@ -156,11 +176,15 @@ def test_pydriller_reads_history_from_a_linked_worktree_without_mutating_git_met
     ):
         subprocess.run(command, cwd=source, check=True, capture_output=True, text=True)
     worktree = tmp_path / "worktree"
-    subprocess.run(("git", "worktree", "add", "--detach", str(worktree), "HEAD"), cwd=source, check=True, capture_output=True, text=True)
-
-    facts = PyDrillerCollector().collect(
-        _repository().model_copy(update={"ref": "HEAD"}), context=_context(worktree)
+    subprocess.run(
+        ("git", "worktree", "add", "--detach", str(worktree), "HEAD"),
+        cwd=source,
+        check=True,
+        capture_output=True,
+        text=True,
     )
+
+    facts = PyDrillerCollector().collect(_repository().model_copy(update={"ref": "HEAD"}), context=_context(worktree))
 
     assert facts.git.available is True
     assert dict((item.key, item.value) for item in facts.git.observations)["unique_commits"] == 1
