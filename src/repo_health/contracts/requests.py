@@ -13,6 +13,7 @@ import json
 import re
 from collections.abc import Mapping
 from datetime import UTC, datetime
+from enum import StrEnum
 from typing import Any, ClassVar, Literal
 from urllib.parse import urlsplit, urlunsplit
 
@@ -28,6 +29,23 @@ _SHA_RE = re.compile(r"^(?:[0-9a-f]{40}|[0-9a-f]{64})$")
 _DIGEST_RE = re.compile(r"^[0-9a-f]{8,128}$")
 _ANALYZER_ID_RE = re.compile(r"^[a-z0-9][a-z0-9._-]{0,127}$")
 _SECRET_MARKERS = ("api_key", "apikey", "bearer ", "password", "secret", "token")
+
+
+class AssessmentProfile(StrEnum):
+    """Observation scope, not a selector for a different scoring formula."""
+
+    PUBLIC = "public"
+    OWNER_EXTENDED = "owner_extended"
+
+
+class SourceCraftAccessState(StrEnum):
+    """Safe authorization metadata; never contains a PAT value."""
+
+    NOT_REQUESTED = "not_requested"
+    CREDENTIAL_PRESENT = "credential_present"
+    AUTHORIZED = "authorized"
+    DENIED = "denied"
+    UNAVAILABLE = "unavailable"
 
 
 class ContractValidationError(ValueError):
@@ -227,6 +245,44 @@ def _normalize_analyzer_ids(value: object) -> tuple[str, ...]:
     return tuple(sorted(normalized))
 
 
+def _normalize_stable_ids(value: object, *, field_name: str) -> tuple[str, ...]:
+    """Normalize bounded, secret-free identity/scope labels."""
+
+    if value is None:
+        return ()
+    if isinstance(value, str):
+        value = (value,)
+    try:
+        values = tuple(value)  # type: ignore[arg-type]
+    except TypeError as exc:
+        raise ValueError(f"{field_name} must be an iterable of identifiers") from exc
+    normalized: set[str] = set()
+    for item in values:
+        identifier = _normalize_optional_identifier(item, field_name=field_name)
+        if identifier is None:
+            raise ValueError(f"{field_name} must contain non-empty identifiers")
+        normalized.add(identifier)
+    return tuple(sorted(normalized))
+
+
+class AuthorizationContext(_VersionedContract):
+    """Trusted identity/access metadata with no credential material."""
+
+    schema_version: Literal[CONTRACT_SCHEMA_VERSION] = CONTRACT_SCHEMA_VERSION
+    identity_provider: Literal["yandex_id"] = "yandex_id"
+    identity_subject: str | None = Field(default=None, max_length=128)
+    sourcecraft_access: SourceCraftAccessState = SourceCraftAccessState.NOT_REQUESTED
+    sourcecraft_credential_present: bool = False
+    sourcecraft_scopes: tuple[str, ...] = ()
+
+    _identity_subject = field_validator("identity_subject", mode="before")(
+        lambda value: _normalize_optional_identifier(value, field_name="identity_subject")
+    )
+    _sourcecraft_scopes = field_validator("sourcecraft_scopes", mode="before")(
+        lambda value: _normalize_stable_ids(value, field_name="sourcecraft_scopes")
+    )
+
+
 class RepositoryRef(_VersionedContract):
     """Provider-neutral repository identity used by every execution mode."""
 
@@ -269,6 +325,8 @@ class AnalysisRequest(_VersionedContract):
     schema_version: Literal[CONTRACT_SCHEMA_VERSION] = CONTRACT_SCHEMA_VERSION
     analysis_id: str | None = Field(default=None, max_length=128)
     repository: RepositoryRef
+    assessment_profile: AssessmentProfile = AssessmentProfile.PUBLIC
+    authorization_context: AuthorizationContext = Field(default_factory=AuthorizationContext)
     requested_analyzer_ids: tuple[str, ...] = ()
     mode: str = Field(default="full", min_length=1, max_length=32)
     as_of: datetime
@@ -303,6 +361,11 @@ class AnalysisRequest(_VersionedContract):
     def _validate_lifecycle(self) -> AnalysisRequest:
         if self.deadline_at is not None and self.deadline_at <= self.as_of:
             raise ValueError("deadline_at must be after as_of")
+        if self.assessment_profile is AssessmentProfile.OWNER_EXTENDED and (
+            self.authorization_context.identity_subject is None
+            or self.authorization_context.sourcecraft_access is not SourceCraftAccessState.AUTHORIZED
+        ):
+            raise ValueError("OWNER_EXTENDED requires a trusted Yandex identity and authorized SourceCraft access")
         if self.analysis_id is None:
             payload = self.model_dump(mode="json", exclude={"analysis_id"})
             derived = hashlib.sha256(canonical_json(payload).encode("utf-8")).hexdigest()[:32]
@@ -333,8 +396,11 @@ def parse_analysis_request(payload: Mapping[str, Any]) -> AnalysisRequest:
 __all__ = [
     "CONTRACT_SCHEMA_VERSION",
     "AnalysisRequest",
+    "AssessmentProfile",
+    "AuthorizationContext",
     "ContractValidationError",
     "RepositoryRef",
+    "SourceCraftAccessState",
     "UnsupportedContractVersion",
     "canonical_json",
     "contract_digest",

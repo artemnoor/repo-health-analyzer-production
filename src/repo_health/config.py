@@ -45,6 +45,7 @@ class RuntimeConfig(BaseModel):
     worker_id: str = Field(default="worker-1", min_length=1, max_length=128)
     sourcecraft_url: str | None = Field(default=None, max_length=2048)
     vale_path: str = Field(default="vale", min_length=1, max_length=2048)
+    vale_config_path: str | None = Field(default=None, max_length=2048)
     git_sizer_path: str = Field(default="git-sizer", min_length=1, max_length=2048)
     sonar_url: str | None = Field(default=None, max_length=2048)
     sourcecraft_token_present: bool = False
@@ -64,9 +65,12 @@ class RuntimeConfig(BaseModel):
             worker_id=values.get("REPO_HEALTH_WORKER_ID", "worker-1").strip() or "worker-1",
             sourcecraft_url=optional("SOURCECRAFT_URL"),
             vale_path=values.get("VALE_PATH", "vale").strip() or "vale",
+            vale_config_path=optional("VALE_CONFIG_PATH"),
             git_sizer_path=values.get("GIT_SIZER_PATH", "git-sizer").strip() or "git-sizer",
             sonar_url=optional("SONAR_URL"),
-            sourcecraft_token_present=bool(values.get("SOURCECRAFT_TOKEN", "").strip()),
+            sourcecraft_token_present=bool(
+                values.get("SOURCECRAFT_TOKEN", "").strip() or values.get("SOURCECRAFT_PAT", "").strip()
+            ),
             sonar_token_present=bool(values.get("SONAR_TOKEN", "").strip()),
         )
 
@@ -79,6 +83,7 @@ class RuntimeConfig(BaseModel):
             "worker_id": self.worker_id,
             "sourcecraft_url": self.sourcecraft_url,
             "vale_path": self.vale_path,
+            "vale_config_path": self.vale_config_path,
             "git_sizer_path": self.git_sizer_path,
             "sonar_url": self.sonar_url,
         }
@@ -103,7 +108,7 @@ class RuntimeConfig(BaseModel):
                 self.sourcecraft_url,
                 self.sourcecraft_token_present,
                 url_name="SOURCECRAFT_URL",
-                token_name="SOURCECRAFT_TOKEN",
+                token_name="SOURCECRAFT_TOKEN or SOURCECRAFT_PAT",
             ),
             CapabilityStatus(
                 engine="git.todo-history",

@@ -20,6 +20,7 @@ from pydantic import BaseModel, ConfigDict, Field, field_validator, model_valida
 from .requests import (
     CONTRACT_SCHEMA_VERSION,
     AnalysisRequest,
+    AssessmentProfile,
     RepositoryRef,
     canonical_json,
     contract_digest,
@@ -158,6 +159,26 @@ class CollectionState(StrEnum):
     TIMEOUT = "timeout"
     PERMISSION_DENIED = "permission_denied"
     ERROR = "error"
+
+
+class ProviderCapabilityState(StrEnum):
+    """Safe capability state carried with an assessment snapshot."""
+
+    AVAILABLE = "available"
+    PARTIAL = "partial"
+    UNAVAILABLE = "unavailable"
+    MISCONFIGURED = "misconfigured"
+
+
+class AppSecScanState(StrEnum):
+    """Lifecycle state of the selected SourceCraft AppSec scan."""
+
+    NO_SCAN = "no_scan"
+    FINISHED_ZERO_FINDINGS = "finished_zero_findings"
+    FINISHED_WITH_FINDINGS = "finished_with_findings"
+    FAILED = "failed"
+    UNAVAILABLE = "unavailable"
+    PARTIAL = "partial"
 
 
 class Confidence(_ContractBase):
@@ -340,6 +361,18 @@ class SourceStatus(_ContractBase):
         return self
 
 
+class CapabilityStatus(_ContractBase):
+    """Provider/tool capability metadata without credentials or payloads."""
+
+    capability_id: str = Field(min_length=1, max_length=128)
+    state: ProviderCapabilityState
+    reason: str = Field(min_length=1, max_length=512)
+
+    _capability_id = field_validator("capability_id", mode="before")(
+        lambda value: _normalize_id(value, field_name="capability_id")
+    )
+
+
 class Metric(_ContractBase):
     name: str = Field(min_length=1, max_length=128)
     value: float | int | str | bool | None = None
@@ -412,7 +445,7 @@ class CicdFacts(FactGroup):
 
 
 class SecurityFacts(FactGroup):
-    pass
+    scan_state: AppSecScanState | None = None
 
 
 class CodeHealthFacts(FactGroup):
@@ -423,6 +456,7 @@ class RepositoryFacts(_ContractBase):
     """Normalized facts grouped by bounded context, never raw provider data."""
 
     repository: RepositoryRef | None = None
+    assessment_profile: AssessmentProfile = AssessmentProfile.PUBLIC
     source_snapshot_digest: str | None = Field(default=None, max_length=128)
     collected_at: datetime | None = None
     source_versions: dict[str, str] = Field(default_factory=dict)
@@ -434,10 +468,15 @@ class RepositoryFacts(_ContractBase):
     security: SecurityFacts = Field(default_factory=SecurityFacts)
     code_health: CodeHealthFacts = Field(default_factory=CodeHealthFacts)
     capabilities: tuple[str, ...] = ()
+    used_sources: tuple[str, ...] = ()
+    capability_states: tuple[CapabilityStatus, ...] = ()
     limitations: tuple[Limitation, ...] = ()
 
     _capabilities = field_validator("capabilities", mode="before")(
         lambda value: _stable_ids(value, field_name="capabilities")
+    )
+    _used_sources = field_validator("used_sources", mode="before")(
+        lambda value: _stable_ids(value, field_name="used_sources")
     )
     _source_snapshot_digest = field_validator("source_snapshot_digest", mode="before")(
         lambda value: None if value is None else _normalize_digest(value, field_name="source_snapshot_digest")
@@ -470,6 +509,11 @@ class RepositoryFacts(_ContractBase):
         object.__setattr__(
             self, "source_statuses", tuple(sorted(self.source_statuses, key=lambda item: item.source_id))
         )
+        object.__setattr__(
+            self,
+            "capability_states",
+            tuple(sorted(self.capability_states, key=lambda item: item.capability_id)),
+        )
         return self
 
     def digest_payload(self) -> dict[str, Any]:
@@ -483,6 +527,15 @@ class RepositoryFacts(_ContractBase):
         payload = self.model_dump(mode="json")
         payload.pop("collected_at", None)
         payload.pop("source_snapshot_digest", None)
+        if self.assessment_profile is AssessmentProfile.PUBLIC and not self.used_sources and not self.capability_states:
+            # Existing default/public facts keep their cache and evidence
+            # identity.  Non-default context is intentionally part of the
+            # digest so public and owner snapshots cannot collide.
+            payload.pop("assessment_profile", None)
+            payload.pop("used_sources", None)
+            payload.pop("capability_states", None)
+            if isinstance(payload.get("security"), dict) and self.security.scan_state is None:
+                payload["security"].pop("scan_state", None)
         for status in payload.get("source_statuses", ()):
             status.pop("collected_at", None)
             status.pop("snapshot_digest", None)
@@ -496,7 +549,9 @@ class AnalyzerInput(_ContractBase):
     """Input an analyzer can consume without knowing the collector internals."""
 
     analysis_id: str = Field(min_length=1, max_length=128)
+    as_of: datetime
     repository: RepositoryRef
+    assessment_profile: AssessmentProfile = AssessmentProfile.PUBLIC
     analyzer_id: str = Field(min_length=1, max_length=128)
     analyzer_version: str = Field(min_length=1, max_length=128)
     facts: RepositoryFacts
@@ -519,6 +574,7 @@ class AnalyzerInput(_ContractBase):
     _policy_digest = field_validator("policy_digest", mode="before")(
         lambda value: _normalize_digest(value, field_name="policy_digest")
     )
+    _as_of = field_validator("as_of", mode="after")(lambda value: _normalize_utc(value, field_name="as_of"))
     _deadline_at = field_validator("deadline_at", mode="after")(
         lambda value: None if value is None else _normalize_utc(value, field_name="deadline_at")
     )
@@ -527,6 +583,8 @@ class AnalyzerInput(_ContractBase):
     def _facts_digest_matches(self) -> AnalyzerInput:
         if self.facts_digest != self.facts.digest():
             raise ValueError("facts_digest does not match normalized RepositoryFacts")
+        if self.facts.assessment_profile is not self.assessment_profile:
+            raise ValueError("AnalyzerInput profile must match RepositoryFacts")
         return self
 
 
@@ -537,6 +595,9 @@ class CategoryResult(_ContractBase):
     analyzer_id: str = Field(min_length=1, max_length=128)
     analyzer_version: str = Field(min_length=1, max_length=128)
     category: HealthCategory
+    assessment_profile: AssessmentProfile = AssessmentProfile.PUBLIC
+    used_sources: tuple[str, ...] = ()
+    capability_states: tuple[CapabilityStatus, ...] = ()
     status: CategoryStatus
     score: float | None = Field(default=None, ge=0.0, le=100.0)
     metrics: tuple[Metric, ...] = ()
@@ -560,6 +621,9 @@ class CategoryResult(_ContractBase):
     )
     _diagnostics_digest = field_validator("diagnostics_digest", mode="before")(
         lambda value: None if value is None else _normalize_digest(value, field_name="diagnostics_digest")
+    )
+    _used_sources = field_validator("used_sources", mode="before")(
+        lambda value: _stable_ids(value, field_name="used_sources")
     )
 
     @field_validator("score_signals", mode="before")
@@ -599,6 +663,16 @@ class CategoryResult(_ContractBase):
         object.__setattr__(self, "evidence", tuple(sorted(self.evidence, key=lambda item: item.evidence_id)))
         object.__setattr__(self, "limitations", tuple(sorted(self.limitations, key=lambda item: item.code)))
         return self
+
+    def digest(self) -> str:
+        """Keep legacy default-result digests stable while hashing new context."""
+
+        payload = self.model_dump(mode="json")
+        if self.assessment_profile is AssessmentProfile.PUBLIC and not self.used_sources and not self.capability_states:
+            payload.pop("assessment_profile", None)
+            payload.pop("used_sources", None)
+            payload.pop("capability_states", None)
+        return contract_digest(payload)
 
 
 class AnalysisStatus(_ContractBase):
@@ -645,6 +719,9 @@ class ScoreInput(_ContractBase):
 
     analysis_id: str = Field(min_length=1, max_length=128)
     repository: RepositoryRef
+    assessment_profile: AssessmentProfile = AssessmentProfile.PUBLIC
+    used_sources: tuple[str, ...] = ()
+    capability_states: tuple[CapabilityStatus, ...] = ()
     documentation: CategoryResult | None = None
     activity: CategoryResult | None = None
     issues: CategoryResult | None = None
@@ -664,9 +741,22 @@ class ScoreInput(_ContractBase):
     _policy_digest = field_validator("policy_digest", mode="before")(
         lambda value: None if value is None else _normalize_digest(value, field_name="policy_digest")
     )
+    _used_sources = field_validator("used_sources", mode="before")(
+        lambda value: _stable_ids(value, field_name="used_sources")
+    )
 
     @model_validator(mode="after")
     def _same_analysis_id(self) -> ScoreInput:
+        for category in (
+            self.documentation,
+            self.activity,
+            self.issues,
+            self.cicd,
+            self.security,
+            self.code_health,
+        ):
+            if category is not None and category.assessment_profile is not self.assessment_profile:
+                raise ValueError("all CategoryResult values must use the ScoreInput assessment_profile")
         for category in (
             self.documentation,
             self.activity,
@@ -698,6 +788,9 @@ class RepoHealthResult(_ContractBase):
 
     analysis_id: str = Field(min_length=1, max_length=128)
     repository: RepositoryRef
+    assessment_profile: AssessmentProfile = AssessmentProfile.PUBLIC
+    used_sources: tuple[str, ...] = ()
+    capability_states: tuple[CapabilityStatus, ...] = ()
     status: AnalysisStatus
     overall_score: float | None = Field(default=None, ge=0.0, le=100.0)
     score_before_caps: float | None = Field(default=None, ge=0.0, le=100.0)
@@ -729,6 +822,9 @@ class RepoHealthResult(_ContractBase):
     _policy_digest = field_validator("policy_digest", "score_config_digest", mode="before")(
         lambda value, info: None if value is None else _normalize_digest(value, field_name=info.field_name)
     )
+    _used_sources = field_validator("used_sources", mode="before")(
+        lambda value: _stable_ids(value, field_name="used_sources")
+    )
 
     @model_validator(mode="after")
     def _same_analysis_id(self) -> RepoHealthResult:
@@ -744,6 +840,8 @@ class RepoHealthResult(_ContractBase):
         ):
             if category is not None and category.analysis_id != self.analysis_id:
                 raise ValueError("all CategoryResult values must use the result analysis_id")
+            if category is not None and category.assessment_profile is not self.assessment_profile:
+                raise ValueError("all CategoryResult values must use the result assessment_profile")
         object.__setattr__(self, "limitations", tuple(sorted(self.limitations, key=lambda item: item.code)))
         return self
 
@@ -753,6 +851,7 @@ class AnalysisEnvelope(_ContractBase):
 
     analysis_id: str = Field(min_length=1, max_length=128)
     request: AnalysisRequest
+    assessment_profile: AssessmentProfile = AssessmentProfile.PUBLIC
     facts: RepositoryFacts | None = None
     facts_digest: str | None = Field(default=None, max_length=128)
     category_results: tuple[CategoryResult, ...] = ()
@@ -806,6 +905,8 @@ class AnalysisEnvelope(_ContractBase):
     def _envelope_is_consistent(self) -> AnalysisEnvelope:
         if self.request.analysis_id != self.analysis_id:
             raise ValueError("request and envelope must use the same analysis_id")
+        if self.request.assessment_profile is not self.assessment_profile:
+            raise ValueError("request and envelope must use the same assessment_profile")
         if self.status.analysis_id != self.analysis_id:
             raise ValueError("status and envelope must use the same analysis_id")
         if self.facts is not None:
@@ -818,6 +919,8 @@ class AnalysisEnvelope(_ContractBase):
                 raise ValueError("category results must use the envelope analysis_id")
         if self.score is not None and self.score.analysis_id != self.analysis_id:
             raise ValueError("score and envelope must use the same analysis_id")
+        if self.score is not None and self.score.assessment_profile is not self.assessment_profile:
+            raise ValueError("score and envelope must use the same assessment_profile")
         if self.finished_at is not None and self.finished_at < self.created_at:
             raise ValueError("finished_at must be after created_at")
         return self
@@ -828,6 +931,9 @@ __all__ = [
     "AnalysisState",
     "AnalysisStatus",
     "AnalyzerInput",
+    "AppSecScanState",
+    "AssessmentProfile",
+    "CapabilityStatus",
     "CategoryResult",
     "CategoryStatus",
     "CicdFacts",
@@ -846,6 +952,7 @@ __all__ = [
     "IssuesFacts",
     "Limitation",
     "Metric",
+    "ProviderCapabilityState",
     "RepoHealthResult",
     "RepositoryFacts",
     "ScoreBreakdown",

@@ -45,6 +45,7 @@ def _task(analyzer_id: str = "repo-health.issues", *, timeout: float = 30.0) -> 
 
     input_contract = AnalyzerInput(
         analysis_id="analysis-execution",
+        as_of=datetime(2026, 1, 1, tzinfo=UTC),
         repository=_repo(),
         analyzer_id=analyzer_id,
         analyzer_version=spec.version,

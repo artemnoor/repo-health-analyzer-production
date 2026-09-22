@@ -113,6 +113,7 @@ class SQLitePersistence:
         envelope = AnalysisEnvelope(
             analysis_id=request.analysis_id,
             request=request,
+            assessment_profile=request.assessment_profile,
             status=AnalysisStatus(analysis_id=request.analysis_id, state=AnalysisState.QUEUED),
             idempotency_key=key,
             policy_digest=request.policy_digest,

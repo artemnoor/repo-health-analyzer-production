@@ -2,7 +2,7 @@
 
 from collections.abc import Mapping
 
-from ...contracts.results import CategoryStatus, Confidence, Finding, HealthCategory, Limitation
+from ...contracts.results import CategoryStatus, CollectionState, Confidence, Finding, HealthCategory, Limitation
 from ..base import Analyzer, AnalyzerEvaluation
 from .policy import POLICY_DIGEST
 
@@ -14,6 +14,21 @@ class CodeHealthAnalyzer(Analyzer):
     fact_group = "code_health"
     policy_digest = POLICY_DIGEST
     negative_keys = ("bug_count", "code_smell_count", "todo_count", "fixme_count")
+    _SONAR_QUALITY_KEYS = frozenset(
+        {
+            "maintainability_rating",
+            "sqale_rating",
+            "technical_debt_minutes",
+            "sqale_index",
+            "code_smells",
+            "cognitive_complexity",
+            "cyclomatic_complexity",
+            "complexity",
+            "duplicated_lines_density",
+            "duplicated_lines",
+        }
+    )
+    _REQUIRED_SOURCES = ("sonarqube", "git-sizer", "git.todo-history")
 
     @staticmethod
     def _inverse(value: float | None, good: float, bad: float) -> float | None:
@@ -108,21 +123,46 @@ class CodeHealthAnalyzer(Analyzer):
             "todo_debt": 0.10,
             "git_structure": 0.10,
         }
-        eligible = {name: value for name, value in components.items() if value is not None}
-        if eligible:
+        source_states = {item.source_id: item.state for item in analyzer_input.facts.source_statuses}
+        sonar_observations = bool(self._SONAR_QUALITY_KEYS & observations.keys())
+        sonar_limitation = any(
+            item.code.startswith("sonarqube.") for item in analyzer_input.facts.code_health.limitations
+        )
+        if "sonarqube" in source_states:
+            sonar_available = source_states["sonarqube"] is CollectionState.AVAILABLE and sonar_observations
+        else:
+            sonar_available = sonar_observations and not sonar_limitation
+
+        eligible = {name: value for name, value in components.items() if value is not None and name != "git_structure"}
+        if sonar_available and eligible:
             total_weight = sum(weights[name] for name in eligible)
             score = sum(float(value) * weights[name] for name, value in eligible.items()) / total_weight
         else:
-            explicit = number("code_health_score", number("score"))
-            score = max(0.0, min(100.0, explicit)) if explicit is not None else None
-        confidence = number("confidence", 1.0 if eligible else 0.0) or 0.0
+            score = None
+        if source_states:
+            covered_engines = sum(
+                source_states.get(source) is CollectionState.AVAILABLE for source in self._REQUIRED_SOURCES
+            )
+            total_engines = len(self._REQUIRED_SOURCES)
+        else:
+            covered_engines = 1 if sonar_available else 0
+            total_engines = 1
+        coverage = covered_engines / total_engines
         partial = (
             observations.get("partial") is True
             or observations.get("collection_state") == "partial"
             or bool(analyzer_input.facts.code_health.limitations)
+            or covered_engines < total_engines
         )
-        if partial and score is not None:
-            score = min(score, 80.0)
+        confidence = (
+            1.0
+            if score is not None and not partial
+            else 0.65
+            if score is not None
+            else 0.20
+            if not sonar_available
+            else 0.45
+        )
         findings: list[Finding] = []
         for dimension, count, severity in (
             ("bugs", int(max(0.0, number("bug_count", number("reliability_bugs", 0.0)) or 0.0)), "high"),
@@ -143,17 +183,23 @@ class CodeHealthAnalyzer(Analyzer):
                         evidence_ids=(evidence_id,),
                     )
                 )
-        limitations = (
-            (
+        limitations: list[Limitation] = []
+        if not sonar_available:
+            limitations.append(
+                Limitation(
+                    code="code_health.core_unavailable",
+                    reason="SonarQube static-analysis evidence is unavailable; Code Health score is inconclusive",
+                    affected_scope="code_health",
+                )
+            )
+        if partial:
+            limitations.append(
                 Limitation(
                     code="code_health.partial",
                     reason="One or more Code Health engines returned partial facts",
                     affected_scope="code_health",
-                ),
+                )
             )
-            if partial
-            else ()
-        )
         status = (
             CategoryStatus.INCONCLUSIVE
             if score is None
@@ -171,9 +217,27 @@ class CodeHealthAnalyzer(Analyzer):
                 **{name: value for name, value in components.items() if value is not None},
             },
             findings=tuple(findings),
-            limitations=limitations,
-            coverage=observations.get("coverage"),
+            limitations=tuple(limitations),
+            coverage=coverage,
+            coverage_covered=covered_engines if source_states else None,
+            coverage_total=total_engines if source_states else None,
+            coverage_reason=(
+                "SonarQube core evidence is unavailable"
+                if not sonar_available and source_states
+                else "One or more optional Code Health engines are unavailable"
+                if partial and source_states
+                else None
+            ),
             confidence=confidence,
+            confidence_reason=(
+                "numeric Code Health score is not defensible without SonarQube core evidence"
+                if not sonar_available and source_states
+                else "numeric score is provisional because one or more engines are unavailable"
+                if partial and source_states
+                else "required Code Health engines are available"
+                if source_states
+                else None
+            ),
         )
 
 

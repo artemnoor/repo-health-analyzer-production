@@ -44,10 +44,10 @@ class DocumentationAnalyzer(Analyzer):
             quality = max(0.0, min(100.0, float(vale_quality)))
         except (TypeError, ValueError):
             quality, _density = documentation_quality(finding_points=finding_points, words=words)
-        completeness = number("completeness", 100.0 if file_count else 0.0)
+        completeness = number("completeness", 0.0)
         instructions = number("instructions", 100.0 if observations.get("has_instructions") else 0.0)
-        readability = number("readability", 100.0)
-        if readability == 100.0 and words:
+        readability = number("readability", 0.0 if not words else 100.0)
+        if "readability" not in observations and words:
             complex_words = number("complex_words")
             long_words = number("long_words")
             readability = max(

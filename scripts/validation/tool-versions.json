@@ -1,0 +1,20 @@
+{
+  "vale": {
+    "version": "3.22.0",
+    "url": "https://github.com/vale-cli/vale/releases/download/v3.22.0/vale_3.22.0_Windows_64-bit.zip",
+    "sha256": "7e55b39881f48ced8cf27406129c065a20247800e82e816a9e79d06c4b1a199e",
+    "executable": "vale.exe"
+  },
+  "git-sizer": {
+    "version": "1.5.0",
+    "url": "https://github.com/github/git-sizer/releases/download/v1.5.0/git-sizer-1.5.0-windows-amd64.zip",
+    "sha256": "52093c1cba0bb8e00da14c9eef678eb052fc729c32419415817076f06b5c85d8",
+    "executable": "git-sizer.exe"
+  },
+  "sonar-scanner": {
+    "version": "8.1.0.6389",
+    "url": "https://binaries.sonarsource.com/Distribution/sonar-scanner-cli/sonar-scanner-cli-8.1.0.6389-windows-x64.zip",
+    "sha256": "73f0e71928673d5b2f39bb86213342a30e51a14c8eec345164016bb29c8df8ee",
+    "executable": "sonar-scanner-8.1.0.6389-windows-x64\\bin\\sonar-scanner.bat"
+  }
+}

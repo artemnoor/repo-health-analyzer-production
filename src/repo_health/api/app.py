@@ -15,7 +15,13 @@ from fastapi.responses import JSONResponse
 from pydantic import BaseModel, ConfigDict, Field, ValidationError
 
 from ..config import RuntimeConfig
-from ..contracts.requests import AnalysisRequest, RepositoryRef
+from ..contracts.requests import (
+    AnalysisRequest,
+    AssessmentProfile,
+    AuthorizationContext,
+    RepositoryRef,
+    SourceCraftAccessState,
+)
 from ..infrastructure.scheduler import IntervalScheduler
 from ..orchestration import AnalysisOrchestrator
 from ..persistence import IdempotencyConflict, SQLitePersistence
@@ -37,6 +43,7 @@ class AnalysisCreate(BaseModel):
     model_config = ConfigDict(extra="forbid")
     repository: RepositoryRegistration
     requested_analyzer_ids: tuple[str, ...] = ()
+    assessment_profile: AssessmentProfile = AssessmentProfile.PUBLIC
     mode: str = "full"
     as_of: datetime | None = None
     idempotency_key: str | None = Field(default=None, max_length=128)
@@ -48,6 +55,7 @@ class ScheduledAnalysisCreate(BaseModel):
     repository: RepositoryRegistration
     interval_seconds: float = Field(gt=0, le=86_400)
     requested_analyzer_ids: tuple[str, ...] = ()
+    assessment_profile: AssessmentProfile = AssessmentProfile.PUBLIC
     mode: str = "full"
 
 
@@ -58,6 +66,17 @@ def _to_repository_ref(body: RepositoryRegistration) -> RepositoryRef:
         return RepositoryRef(**body.model_dump(exclude_none=True))
     except ValidationError as exc:
         raise HTTPException(status_code=422, detail="invalid repository reference") from exc
+
+
+def _authorization_context(config: RuntimeConfig) -> AuthorizationContext:
+    return AuthorizationContext(
+        sourcecraft_access=(
+            SourceCraftAccessState.CREDENTIAL_PRESENT
+            if config.sourcecraft_token_present
+            else SourceCraftAccessState.UNAVAILABLE
+        ),
+        sourcecraft_credential_present=config.sourcecraft_token_present,
+    )
 
 
 def create_app(
@@ -152,16 +171,18 @@ def create_app(
     @app.post("/analyses", status_code=status.HTTP_202_ACCEPTED)
     async def create_analysis(body: AnalysisCreate, background: BackgroundTasks) -> dict[str, Any]:
         as_of = body.as_of or datetime.now(UTC)
-        request_contract = AnalysisRequest(
-            repository=_to_repository_ref(body.repository),
-            requested_analyzer_ids=body.requested_analyzer_ids,
-            mode=body.mode,
-            as_of=as_of,
-            config_digest=config.digest(),
-            idempotency_key=body.idempotency_key,
-            timeout_seconds=body.timeout_seconds,
-        )
         try:
+            request_contract = AnalysisRequest(
+                repository=_to_repository_ref(body.repository),
+                requested_analyzer_ids=body.requested_analyzer_ids,
+                assessment_profile=body.assessment_profile,
+                authorization_context=_authorization_context(config),
+                mode=body.mode,
+                as_of=as_of,
+                config_digest=config.digest(),
+                idempotency_key=body.idempotency_key,
+                timeout_seconds=body.timeout_seconds,
+            )
             record = orchestrator.start(request_contract)
         except Exception as exc:
             if type(exc).__name__ == "IdempotencyConflict":
@@ -226,6 +247,8 @@ def create_app(
                 request_contract = AnalysisRequest(
                     repository=_to_repository_ref(body.repository),
                     requested_analyzer_ids=body.requested_analyzer_ids,
+                    assessment_profile=body.assessment_profile,
+                    authorization_context=_authorization_context(config),
                     mode=body.mode,
                     as_of=datetime.now(UTC),
                     idempotency_key=f"{job_name}-{uuid.uuid4().hex}",

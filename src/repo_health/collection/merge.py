@@ -21,10 +21,18 @@ def merge_fact_group(left: FactGroup, right: FactGroup) -> FactGroup:
         raise TypeError(f"cannot merge different fact groups: {type(left).__name__}, {type(right).__name__}")
     observations = {item.key: item for item in left.observations}
     observations.update({item.key: item for item in right.observations})
+    values: dict[str, object] = {
+        "available": left.available or right.available,
+        "observations": tuple(observations[key] for key in sorted(observations)),
+        "limitations": _unique_limitations((*left.limitations, *right.limitations)),
+    }
+    # SecurityFacts carries lifecycle state in addition to the common fact
+    # group fields.  Preserve it across the generic merge boundary so a
+    # finished/no-scan/failed AppSec result cannot silently become ambiguous.
+    if hasattr(left, "scan_state"):
+        values["scan_state"] = right.scan_state or left.scan_state
     return type(left)(
-        available=left.available or right.available,
-        observations=tuple(observations[key] for key in sorted(observations)),
-        limitations=_unique_limitations((*left.limitations, *right.limitations)),
+        **values,
     )
 
 
@@ -33,13 +41,22 @@ def merge_repository_facts(left: RepositoryFacts, right: RepositoryFacts) -> Rep
 
     statuses = {item.source_id: item for item in left.source_statuses}
     statuses.update({item.source_id: item for item in right.source_statuses})
+    capabilities = {item.capability_id: item for item in left.capability_states}
+    capabilities.update({item.capability_id: item for item in right.capability_states})
     updates: dict[str, object] = {
         "repository": right.repository or left.repository,
+        "assessment_profile": (
+            right.assessment_profile
+            if left.assessment_profile.value == "public" and right.assessment_profile.value == "owner_extended"
+            else left.assessment_profile
+        ),
         "source_snapshot_digest": right.source_snapshot_digest or left.source_snapshot_digest,
         "collected_at": right.collected_at or left.collected_at,
         "source_versions": {**left.source_versions, **right.source_versions},
         "source_statuses": tuple(statuses[key] for key in sorted(statuses)),
         "capabilities": tuple(sorted(set(left.capabilities) | set(right.capabilities))),
+        "used_sources": tuple(sorted(set(left.used_sources) | set(right.used_sources) | set(statuses))),
+        "capability_states": tuple(capabilities[key] for key in sorted(capabilities)),
         "limitations": _unique_limitations((*left.limitations, *right.limitations)),
     }
     for group_name in _GROUP_NAMES:

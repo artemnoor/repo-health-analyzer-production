@@ -1,0 +1,84 @@
+{
+  "schema_version": "repo-health.external-providers-live-v1",
+  "captured_at": "2026-09-22T02:48:12Z",
+  "credentials": {
+    "sourcecraft": "configured_presence_only",
+    "sonarqube": "temporary_local_token_revoked"
+  },
+  "sourcecraft": {
+    "issues": {
+      "repository": "artem03102006/repo-health-calibration-issues",
+      "endpoint": "/repos/{org_slug}/{repo_slug}/issues",
+      "comments_endpoint": "/repos/{org_slug}/{repo_slug}/issues/{issue_slug}/comments",
+      "status": "available",
+      "observations": {
+        "issue_count": 8,
+        "open_count": 5,
+        "closed_count": 3,
+        "open_age_p75_hours": 36.11421649111111,
+        "stale_count": 0,
+        "stale_ratio": 0.0,
+        "answered_count": 5,
+        "comments_available": true,
+        "coverage": 1.0,
+        "confidence": 1.0
+      },
+      "raw_payload_policy": "keys_and_bounded_scalar_observations_only"
+    },
+    "cicd": {
+      "repository": "artem03102006/repo-health-calibration-ci-mixed",
+      "endpoint": "/repos/{org_slug}/{repo_slug}/cicd/runs",
+      "status": "available",
+      "observations": {
+        "run_count": 10,
+        "success_count": 7,
+        "failed_count": 3,
+        "failure_rate": 0.3,
+        "success_rate": 0.7,
+        "p50_seconds": 3.4812184999999998,
+        "p95_seconds": 4.353374349999998,
+        "coverage": 1.0,
+        "confidence": 1.0
+      },
+      "raw_payload_policy": "keys_and_bounded_scalar_observations_only"
+    },
+    "appsec": {
+      "repository": "artem03102006/repo-health-calibration-security",
+      "endpoint_chain": [
+        "/v1/scans",
+        "/v1/defect-groups",
+        "/v1/findings"
+      ],
+      "status": "unavailable",
+      "limitation": "sourcecraft.appsec.scans.unavailable",
+      "raw_payload_policy": "no_raw_security_payload_persisted"
+    }
+  },
+  "sonarqube": {
+    "endpoint": "http://127.0.0.1:9000",
+    "server_status": "UP",
+    "scanner": "8.1.0.6389",
+    "quality_gate": "PASS",
+    "project_key": "artem03102006.repo-health-calibration-ci-mixed",
+    "collector": "available",
+    "normalization": "sqale_rating_to_maintainability_rating",
+    "token_persisted": false
+  },
+  "six_category_e2e": {
+    "api_worker_projection_equal": true,
+    "documentation": "skipped",
+    "activity": "numeric",
+    "issues_full_runtime": {
+      "repository": "artem03102006/repo-health-calibration-issues",
+      "status": "warn",
+      "score": 68.34415584415584,
+      "coverage": "complete",
+      "confidence": "high",
+      "evidence_count": 1
+    },
+    "issues": "inconclusive_on_empty_ci_fixture",
+    "cicd": "numeric",
+    "security": "skipped",
+    "code_health": "numeric_partial"
+  }
+}

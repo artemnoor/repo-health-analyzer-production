@@ -8,9 +8,12 @@ import pytest
 from pydantic import ValidationError
 
 from repo_health.contracts import (
+    AnalysisRequest,
     AnalysisState,
     AnalysisStatus,
     AnalyzerInput,
+    AssessmentProfile,
+    AuthorizationContext,
     CategoryResult,
     CategoryStatus,
     Confidence,
@@ -22,6 +25,7 @@ from repo_health.contracts import (
     RepositoryFacts,
     RepositoryRef,
     ScoreInput,
+    SourceCraftAccessState,
 )
 
 NOW = datetime(2026, 9, 20, 12, 0, tzinfo=UTC)
@@ -46,6 +50,36 @@ def test_repository_ref_without_head_sha_round_trips_through_json() -> None:
     )
 
     assert RepositoryRef.model_validate_json(ref.to_json()) == ref
+
+
+def test_profile_and_authorization_context_are_typed_and_secret_free() -> None:
+    request = AnalysisRequest(
+        repository=repository(),
+        assessment_profile=AssessmentProfile.OWNER_EXTENDED,
+        authorization_context=AuthorizationContext(
+            identity_subject="yandex-user-42",
+            sourcecraft_access=SourceCraftAccessState.AUTHORIZED,
+            sourcecraft_credential_present=True,
+            sourcecraft_scopes=("issues:read", "appsec:read"),
+        ),
+        as_of=NOW,
+    )
+
+    payload = request.to_json()
+    assert request.assessment_profile is AssessmentProfile.OWNER_EXTENDED
+    assert request.authorization_context.sourcecraft_scopes == ("appsec:read", "issues:read")
+    assert "token-value" not in payload
+    assert "password" not in payload.lower()
+    assert AnalysisRequest.model_validate_json(payload) == request
+
+
+def test_owner_extended_requires_trusted_identity_and_authorized_sourcecraft() -> None:
+    with pytest.raises(ValueError, match="OWNER_EXTENDED"):
+        AnalysisRequest(
+            repository=repository(),
+            assessment_profile=AssessmentProfile.OWNER_EXTENDED,
+            as_of=NOW,
+        )
 
 
 def evidence() -> Evidence:
@@ -114,6 +148,7 @@ def test_repository_facts_are_typed_and_analyzer_input_checks_digest() -> None:
     )
     analyzer_input = AnalyzerInput(
         analysis_id="analysis-1",
+        as_of=NOW,
         repository=repository(),
         analyzer_id="documentation",
         analyzer_version="v1",
@@ -129,6 +164,7 @@ def test_repository_facts_are_typed_and_analyzer_input_checks_digest() -> None:
     with pytest.raises(ValidationError, match="facts_digest"):
         AnalyzerInput(
             analysis_id="analysis-1",
+            as_of=NOW,
             repository=repository(),
             analyzer_id="documentation",
             analyzer_version="v1",

@@ -13,7 +13,6 @@ from .collection import (
     SourceCraftAppSecCollector,
     SourceCraftCicdCollector,
     SourceCraftClient,
-    SourceCraftCollector,
     SourceCraftIssuesCollector,
 )
 from .collection.code_health import GitSizerCollector, SonarQubeCollector, TodoHistoryCollector
@@ -22,7 +21,8 @@ from .collection.fallback import UnavailableFactCollector
 from .collection.git import PyDrillerCollector
 from .collection.sourcecraft import EnvironmentCredentialProvider
 from .config import CapabilityState, CapabilityStatus, RuntimeConfig
-from .contracts.results import CollectionState
+from .contracts.results import CapabilityStatus as ContractCapabilityStatus
+from .contracts.results import CollectionState, ProviderCapabilityState
 from .execution import LocalExecutor, WorkerExecutor
 from .infrastructure.git import GitCollector
 from .orchestration import AnalysisOrchestrator
@@ -78,7 +78,7 @@ def build_production_runtime(
     store = persistence or SQLitePersistence(config.db_path)
     owns_persistence = persistence is None
     collectors = _build_collectors(config, capabilities)
-    collection = CollectionService(collectors)
+    collection = CollectionService(collectors, capability_states=_contract_capabilities(capabilities))
 
     register_default_factories()
     factories = {
@@ -119,7 +119,7 @@ def _build_collectors(config: RuntimeConfig, capabilities: tuple[CapabilityStatu
     collectors = [
         GitCollector(),
         PyDrillerCollector(),
-        ValeCollector(executable=config.vale_path),
+        ValeCollector(executable=config.vale_path, config_path=config.vale_config_path),
         TodoHistoryCollector(),
         GitSizerCollector(executable=config.git_sizer_path),
     ]
@@ -144,16 +144,17 @@ def _build_collectors(config: RuntimeConfig, capabilities: tuple[CapabilityStatu
 
     sourcecraft = capability_map["sourcecraft"]
     if sourcecraft.state is CapabilityState.AVAILABLE:
-        client = SourceCraftClient(base_url=config.sourcecraft_url or "")
-        collectors.append(
-            SourceCraftCollector(
-                (
-                    SourceCraftIssuesCollector(client=client),
-                    SourceCraftCicdCollector(client=client),
-                    SourceCraftAppSecCollector(client=client),
-                )
+        client = SourceCraftClient(
+            base_url=config.sourcecraft_url or "",
+            credentials=EnvironmentCredentialProvider(),
+        )
+        collectors.extend(
+            (
+                SourceCraftIssuesCollector(client=client),
+                SourceCraftCicdCollector(client=client),
             )
         )
+        collectors.append(SourceCraftAppSecCollector(client=client))
     else:
         for source_id, fact_group in (
             ("sourcecraft.issues", "issues"),
@@ -169,6 +170,17 @@ def _build_collectors(config: RuntimeConfig, capabilities: tuple[CapabilityStatu
                 )
             )
     return tuple(collectors)
+
+
+def _contract_capabilities(capabilities: tuple[CapabilityStatus, ...]) -> tuple[ContractCapabilityStatus, ...]:
+    return tuple(
+        ContractCapabilityStatus(
+            capability_id=item.engine,
+            state=ProviderCapabilityState(item.state.value),
+            reason=item.reason,
+        )
+        for item in capabilities
+    )
 
 
 __all__ = ["ProductionRuntime", "build_production_runtime"]

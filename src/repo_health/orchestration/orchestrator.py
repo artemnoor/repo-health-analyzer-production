@@ -70,6 +70,7 @@ class AnalysisOrchestrator:
         except Exception as exc:
             facts = RepositoryFacts(
                 repository=request.repository,
+                assessment_profile=request.assessment_profile,
                 limitations=(
                     Limitation(code="collection.failed", reason="collection failed before analyzer dispatch"),
                 ),
@@ -116,7 +117,14 @@ class AnalysisOrchestrator:
         *,
         failure_reason: str | None,
     ) -> AnalysisEnvelope:
-        score = self.score_engine.score(self._score_input(request, categories, policy_digest))
+        score_input = self._score_input(request, categories, policy_digest)
+        score = self.score_engine.score(score_input).model_copy(
+            update={
+                "assessment_profile": request.assessment_profile,
+                "used_sources": score_input.used_sources,
+                "capability_states": score_input.capability_states,
+            }
+        )
         failed = tuple(item.analyzer_id for item in categories if item.status.value in {"error", "skipped"})
         omitted = len(categories) != len(CANONICAL_ANALYZER_IDS)
         state = (
@@ -148,6 +156,7 @@ class AnalysisOrchestrator:
         envelope = AnalysisEnvelope(
             analysis_id=request.analysis_id,
             request=request,
+            assessment_profile=request.assessment_profile,
             facts=facts,
             facts_digest=facts.digest(),
             category_results=categories,
@@ -190,7 +199,9 @@ class AnalysisOrchestrator:
                 category=canonical_registry.get(analyzer_id)[0].category,
                 input={
                     "analysis_id": request.analysis_id,
+                    "as_of": request.as_of,
                     "repository": request.repository.model_dump(mode="json"),
+                    "assessment_profile": request.assessment_profile,
                     "analyzer_id": analyzer_id,
                     "analyzer_version": canonical_registry.get(analyzer_id)[0].version,
                     "facts": facts.model_dump(mode="json"),
@@ -220,6 +231,14 @@ class AnalysisOrchestrator:
         return ScoreInput(
             analysis_id=request.analysis_id,
             repository=request.repository,
+            assessment_profile=request.assessment_profile,
+            used_sources=tuple(sorted({source for item in categories for source in item.used_sources})),
+            capability_states=tuple(
+                sorted(
+                    {item.capability_id: item for result in categories for item in result.capability_states}.values(),
+                    key=lambda item: item.capability_id,
+                )
+            ),
             documentation=by_category.get(HealthCategory.DOCUMENTATION),
             activity=by_category.get(HealthCategory.ACTIVITY),
             issues=by_category.get(HealthCategory.ISSUES),
